@@ -58,6 +58,9 @@ static constexpr uint32_t LEARN_TIMEOUT_MS = 30000;
 struct ButtonRecord {
   uint32_t code;
   uint8_t output;
+  uint8_t actionType; // 0 local output, 1 local UART RP2040, 2 RS-485 RP2040
+  uint8_t actionCommand; // 0 none, 1 open, 2 closed, 3 vent, 4 stop
+  uint8_t rs485Node; // 0..7
   bool enabled;
   char name[NAME_LEN];
 };
@@ -321,6 +324,9 @@ static void saveRecords() {
     char key[16];
     snprintf(key, sizeof(key), "code%u", i); prefs.putUInt(key, records[i].code);
     snprintf(key, sizeof(key), "out%u", i); prefs.putUChar(key, records[i].output);
+    snprintf(key, sizeof(key), "act%u", i); prefs.putUChar(key, records[i].actionType);
+    snprintf(key, sizeof(key), "cmd%u", i); prefs.putUChar(key, records[i].actionCommand);
+    snprintf(key, sizeof(key), "node%u", i); prefs.putUChar(key, records[i].rs485Node);
     snprintf(key, sizeof(key), "en%u", i); prefs.putBool(key, records[i].enabled);
     snprintf(key, sizeof(key), "name%u", i); prefs.putString(key, records[i].name);
   }
@@ -346,6 +352,12 @@ static void loadRecords() {
     char key[16];
     snprintf(key, sizeof(key), "code%u", i); records[i].code = prefs.getUInt(key, 0);
     snprintf(key, sizeof(key), "out%u", i); records[i].output = prefs.getUChar(key, 255);
+    snprintf(key, sizeof(key), "act%u", i); records[i].actionType = prefs.getUChar(key, 0);
+    snprintf(key, sizeof(key), "cmd%u", i); records[i].actionCommand = prefs.getUChar(key, 0);
+    snprintf(key, sizeof(key), "node%u", i); records[i].rs485Node = prefs.getUChar(key, 0);
+    records[i].actionType = constrain(records[i].actionType, 0, 2);
+    records[i].actionCommand = constrain(records[i].actionCommand, 0, 4);
+    records[i].rs485Node = constrain(records[i].rs485Node, 0, RS485_NODE_COUNT - 1);
     snprintf(key, sizeof(key), "en%u", i); records[i].enabled = prefs.getBool(key, true);
     snprintf(key, sizeof(key), "name%u", i);
     String name = prefs.getString(key, "");
@@ -505,6 +517,60 @@ static void sendWindowConfigToRp2040() {
   sendRpCommand(line);
 }
 
+static String windowCommandLine(uint8_t command) {
+  if (command == 1) return "CMD OPEN";
+  if (command == 2) return "CMD CLOSED";
+  if (command == 3) return "CMD VENT";
+  if (command == 4) return "CMD STOP";
+  return "";
+}
+
+static String windowCommandLabel(uint8_t command) {
+  if (command == 1) return "Открыто";
+  if (command == 2) return "Закрыто";
+  if (command == 3) return "Проветривание";
+  if (command == 4) return "Стоп";
+  return "-";
+}
+
+static String rfActionLabel(const ButtonRecord &record) {
+  if (record.actionType == 1) {
+    return "UART RP2040: " + windowCommandLabel(record.actionCommand);
+  }
+  if (record.actionType == 2) {
+    String label = "RS-485 ";
+    if (record.rs485Node < RS485_NODE_COUNT) {
+      label += String(record.rs485Node + 1);
+      label += " ";
+      label += rs485Nodes[record.rs485Node].name;
+    } else {
+      label += "-";
+    }
+    label += ": ";
+    label += windowCommandLabel(record.actionCommand);
+    return label;
+  }
+  if (record.output < OUTPUT_COUNT) return "Выход " + String(record.output + 1);
+  return "-";
+}
+
+static void executeRfAction(const ButtonRecord &record) {
+  const String commandLine = windowCommandLine(record.actionCommand);
+  if (record.actionType == 1) {
+    if (commandLine.length()) sendRpCommand(commandLine);
+    return;
+  }
+  if (record.actionType == 2) {
+    if (!commandLine.length()) return;
+    if (record.rs485Node >= RS485_NODE_COUNT) return;
+    const Rs485NodeConfig &node = rs485Nodes[record.rs485Node];
+    if (!node.enabled) return;
+    sendRs485Line("@" + String(node.address) + " " + commandLine);
+    return;
+  }
+  if (record.output < OUTPUT_COUNT) pulseOutput(record.output);
+}
+
 static bool addRecord(uint32_t code) {
   if (findRecord(code) >= 0) {
     flashRgb(60, 60, 60);
@@ -518,6 +584,9 @@ static bool addRecord(uint32_t code) {
   ButtonRecord &record = records[recordCount];
   record.code = code;
   record.output = 255;
+  record.actionType = 0;
+  record.actionCommand = 0;
+  record.rs485Node = 0;
   record.enabled = true;
   snprintf(record.name, sizeof(record.name), "Button %u", recordCount + 1);
   ++recordCount;
@@ -569,7 +638,7 @@ static void handleCode(uint32_t code) {
   lastMatchedOutput = record.output;
   lastMatchedIndex = index;
   strlcpy(lastMatchedName, record.name, sizeof(lastMatchedName));
-  if (record.output < OUTPUT_COUNT) pulseOutput(record.output);
+  executeRfAction(record);
 }
 
 static void processRf() {
@@ -782,8 +851,9 @@ static void handleConfig() {
   html += lastMatchedCode == 0 ? String("-") : htmlEscape(lastMatchedName);
   html += F("</span><br><b>Код кнопки:</b> <span id='lastMatched'>");
   html += lastMatchedCode == 0 ? String("-") : codeHex(lastMatchedCode);
-  html += F("</span><br><b>Назначенный выход:</b> <span id='lastOutput'>");
-  html += lastMatchedOutput < OUTPUT_COUNT ? "Выход " + String(lastMatchedOutput + 1) : "-";
+  html += F("</span><br><b>Назначенное действие:</b> <span id='lastOutput'>");
+  if (lastMatchedIndex >= 0 && lastMatchedIndex < recordCount) html += htmlEscape(rfActionLabel(records[lastMatchedIndex]));
+  else html += F("-");
   html += F("</span><br><b>Прошло после нажатия:</b> <span id='lastAge'>-</span></div>");
 
   html += F("<p><a id='learnBtn' class='btn");
@@ -801,7 +871,7 @@ static void handleConfig() {
   html += F("\"><p><button type='submit'>Сохранить Wi-Fi</button></p>");
   html += F("<p class='muted'>Новые данные Wi-Fi начнут использоваться после рестарта ESP32.</p></form></div>");
 
-  html += F("<form method='post' action='/save'><table><tr><th>#</th><th>Код</th><th>Название</th><th>Выход</th><th>Включено</th><th>Индикатор</th><th>Удалить</th></tr>");
+  html += F("<form method='post' action='/save'><table><tr><th>#</th><th>Код</th><th>Название</th><th>Действие</th><th>Команда</th><th>RS-485</th><th>Лок. выход</th><th>Включено</th><th>Индикатор</th><th>Удалить</th></tr>");
   for (uint8_t i = 0; i < recordCount; ++i) {
     const uint16_t remoteId = remoteIdFromCode(records[i].code);
     if (i == 0 || remoteIdFromCode(records[i - 1].code) != remoteId) {
@@ -811,7 +881,7 @@ static void handleConfig() {
       }
       uint8_t buttonsInRemote = 0;
       for (uint8_t j = i; j < recordCount && remoteIdFromCode(records[j].code) == remoteId; ++j) ++buttonsInRemote;
-      html += F("<tr><th colspan='7'>Пульт ");
+      html += F("<tr><th colspan='10'>Пульт ");
       html += String(remoteNumber);
       html += F(" / адрес ");
       html += remoteHex(remoteId);
@@ -829,7 +899,43 @@ static void handleConfig() {
     html += String(i);
     html += F("' maxlength='23' value=\"");
     html += htmlEscape(records[i].name);
-    html += F("\"></td><td><select name='out");
+    html += F("\"></td><td><select name='act");
+    html += String(i);
+    html += F("'><option value='0'");
+    if (records[i].actionType == 0) html += F(" selected");
+    html += F(">Локальный выход ESP32</option><option value='1'");
+    if (records[i].actionType == 1) html += F(" selected");
+    html += F(">Локальная RP2040 UART</option><option value='2'");
+    if (records[i].actionType == 2) html += F(" selected");
+    html += F(">RP2040 RS-485</option></select></td><td><select name='cmd");
+    html += String(i);
+    html += F("'><option value='0'");
+    if (records[i].actionCommand == 0) html += F(" selected");
+    html += F(">-</option><option value='1'");
+    if (records[i].actionCommand == 1) html += F(" selected");
+    html += F(">Открыто</option><option value='2'");
+    if (records[i].actionCommand == 2) html += F(" selected");
+    html += F(">Закрыто</option><option value='3'");
+    if (records[i].actionCommand == 3) html += F(" selected");
+    html += F(">Проветривание</option><option value='4'");
+    if (records[i].actionCommand == 4) html += F(" selected");
+    html += F(">Стоп</option></select></td><td><select name='node");
+    html += String(i);
+    html += F("'>");
+    for (uint8_t node = 0; node < RS485_NODE_COUNT; ++node) {
+      html += F("<option value='");
+      html += String(node);
+      html += "'";
+      if (records[i].rs485Node == node) html += F(" selected");
+      html += F(">");
+      html += String(node + 1);
+      html += F(" / addr ");
+      html += String(rs485Nodes[node].address);
+      html += F(" / ");
+      html += htmlEscape(rs485Nodes[node].name);
+      html += F("</option>");
+    }
+    html += F("</select></td><td><select name='out");
     html += String(i);
     html += F("'><option value='255'>Не назначен</option>");
     for (uint8_t out = 0; out < OUTPUT_COUNT; ++out) {
@@ -882,7 +988,7 @@ static void handleStatusApi() {
   json += F(",\"lastMatchedIndex\":");
   json += String(lastMatchedIndex);
   json += F(",\"lastOutput\":\"");
-  if (lastMatchedOutput < OUTPUT_COUNT) json += "Выход " + String(lastMatchedOutput + 1);
+  if (lastMatchedIndex >= 0 && lastMatchedIndex < recordCount) json += htmlEscape(rfActionLabel(records[lastMatchedIndex]));
   json += F("\"}");
   server.send(200, "application/json", json);
 }
@@ -937,9 +1043,15 @@ static void handleSave() {
     ButtonRecord record = records[i];
     const String nameKey = "name" + String(i);
     const String outKey = "out" + String(i);
+    const String actKey = "act" + String(i);
+    const String cmdKey = "cmd" + String(i);
+    const String nodeKey = "node" + String(i);
     const String enKey = "en" + String(i);
     if (server.hasArg(nameKey)) strlcpy(record.name, server.arg(nameKey).c_str(), sizeof(record.name));
     if (server.hasArg(outKey)) record.output = static_cast<uint8_t>(server.arg(outKey).toInt());
+    if (server.hasArg(actKey)) record.actionType = static_cast<uint8_t>(constrain(server.arg(actKey).toInt(), 0, 2));
+    if (server.hasArg(cmdKey)) record.actionCommand = static_cast<uint8_t>(constrain(server.arg(cmdKey).toInt(), 0, 4));
+    if (server.hasArg(nodeKey)) record.rs485Node = static_cast<uint8_t>(constrain(server.arg(nodeKey).toInt(), 0, RS485_NODE_COUNT - 1));
     record.enabled = server.hasArg(enKey);
     newRecords[newCount++] = record;
   }
