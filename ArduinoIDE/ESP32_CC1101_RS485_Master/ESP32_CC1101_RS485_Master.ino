@@ -102,11 +102,12 @@ static constexpr uint32_t RS485_BAUD = 38400;
 static constexpr uint32_t RS485_TURNAROUND_US = 120;
 static constexpr uint8_t RS485_NODE_COUNT = 8;
 static constexpr uint8_t RS485_ACTUATORS = 4;
+static constexpr uint8_t RP_NAME_LEN = 33;
 
 struct Rs485NodeConfig {
   bool enabled;
   uint8_t address;
-  char name[20];
+  char name[RP_NAME_LEN];
   char uid[33];
   uint16_t maxCurrentMa[RS485_ACTUATORS];
   uint16_t zeroCurrentMa;
@@ -114,6 +115,8 @@ struct Rs485NodeConfig {
 };
 
 static uint8_t windowCount = 2;
+static char localRpName[RP_NAME_LEN] = "Локальная RP2040";
+static char mainWindowTarget[8] = "local";
 static uint16_t windowMaxCurrentMa[WINDOW_ACTUATORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
 static uint16_t windowZeroCurrentMa = 80;
 static uint32_t windowMaxMoveMs = 45000;
@@ -387,6 +390,10 @@ static void saveWifiSettings(const String &ssid, const String &password) {
 
 static void loadWindowSettings() {
   prefs.begin("window", true);
+  String localName = prefs.getString("localName", "Локальная RP2040");
+  strlcpy(localRpName, localName.c_str(), sizeof(localRpName));
+  String mainTarget = prefs.getString("mainTarget", "local");
+  strlcpy(mainWindowTarget, mainTarget.c_str(), sizeof(mainWindowTarget));
   windowCount = prefs.getUChar("count", 2);
   windowZeroCurrentMa = prefs.getUShort("zeroMa", 80);
   windowMaxMoveMs = prefs.getUInt("maxMove", 45000);
@@ -401,6 +408,8 @@ static void loadWindowSettings() {
 
 static void saveWindowSettings() {
   prefs.begin("window", false);
+  prefs.putString("localName", localRpName);
+  prefs.putString("mainTarget", mainWindowTarget);
   prefs.putUChar("count", windowCount);
   prefs.putUShort("zeroMa", windowZeroCurrentMa);
   prefs.putUInt("maxMove", windowMaxMoveMs);
@@ -569,6 +578,22 @@ static void executeRfAction(const ButtonRecord &record) {
     return;
   }
   if (record.output < OUTPUT_COUNT) pulseOutput(record.output);
+}
+
+static bool sendWindowTargetCommand(const String &target, const String &commandLine) {
+  if (!commandLine.length()) return false;
+  if (target == "local") {
+    sendRpCommand(commandLine);
+    return true;
+  }
+  if (target.startsWith("rs")) {
+    const int idx = target.substring(2).toInt();
+    if (idx < 0 || idx >= RS485_NODE_COUNT) return false;
+    if (!rs485Nodes[idx].enabled) return false;
+    sendRs485Line("@" + String(rs485Nodes[idx].address) + " " + commandLine);
+    return true;
+  }
+  return false;
 }
 
 static bool addRecord(uint32_t code) {
@@ -743,7 +768,7 @@ static void appendRs485Config(String &html) {
     html += F("'><label><input type='checkbox' name='enabled' value='1'");
     if (node.enabled) html += F(" checked");
     html += F("> Включен</label>");
-    html += F("<label>Название</label><input name='name' maxlength='19' value='");
+    html += F("<label>Название</label><input name='name' maxlength='31' value='");
     html += htmlEscape(node.name);
     html += F("'><label>Адрес RS-485</label><input name='addr' type='number' min='1' max='247' value='");
     html += String(node.address);
@@ -791,15 +816,33 @@ static void appendRs485Config(String &html) {
 static void handleRoot() {
   if (!webAuth()) return;
   String html;
-  html.reserve(5000);
+  html.reserve(7000);
   appendPageHeader(html, "Window controller");
   html += F("<div class='card'><h2>Управление окнами</h2><p id='wstatus'>Загрузка статуса...</p>");
-  html += F("<form method='post' action='/window/cmd'><input type='hidden' name='mode' value='open'><button style='width:100%;font-size:22px;padding:18px' type='submit'>Открыто</button></form>");
-  html += F("<form method='post' action='/window/cmd'><input type='hidden' name='mode' value='closed'><button style='width:100%;font-size:22px;padding:18px;background:#475467' type='submit'>Закрыто</button></form>");
-  html += F("<form method='post' action='/window/cmd'><input type='hidden' name='mode' value='vent'><button style='width:100%;font-size:22px;padding:18px' type='submit'>Проветривание</button></form>");
-  html += F("<form method='post' action='/window/cmd'><input type='hidden' name='mode' value='stop'><button class='danger' type='submit'>Стоп</button></form>");
+  html += F("<form method='post' action='/window/cmd'><label>Выберите окно</label><select id='target' name='target'><option value='local'");
+  if (strcmp(mainWindowTarget, "local") == 0) html += F(" selected");
+  html += F(">");
+  html += htmlEscape(localRpName);
+  html += F("</option>");
+  for (uint8_t i = 0; i < RS485_NODE_COUNT; ++i) {
+    if (!rs485Nodes[i].enabled) continue;
+    String targetValue = "rs" + String(i);
+    html += F("<option value='rs");
+    html += String(i);
+    html += F("'");
+    if (targetValue == mainWindowTarget) html += F(" selected");
+    html += F(">");
+    html += htmlEscape(rs485Nodes[i].name);
+    html += F(" / адрес ");
+    html += String(rs485Nodes[i].address);
+    html += F("</option>");
+  }
+  html += F("</select><button name='mode' value='open' style='width:100%;font-size:22px;padding:18px' type='submit'>Открыто</button>");
+  html += F("<button name='mode' value='closed' style='width:100%;font-size:22px;padding:18px;background:#475467' type='submit'>Закрыто</button>");
+  html += F("<button name='mode' value='vent' style='width:100%;font-size:22px;padding:18px' type='submit'>Проветривание</button>");
+  html += F("<button name='mode' value='stop' class='danger' type='submit'>Стоп</button></form>");
   html += F("<p><a href='/config'>config</a></p></div>");
-  html += F("<script>function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}async function upd(){try{let r=await fetch('/api/window',{cache:'no-store'});let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Состояние:</b> '+s.state+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+(s.fault||'none')+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){document.getElementById('wstatus').textContent='Нет связи';}}setInterval(upd,700);upd();</script>");
+  html += F("<script>function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}async function upd(){try{let t=document.getElementById('target').value;let r=await fetch('/api/window?target='+encodeURIComponent(t),{cache:'no-store'});let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Окно:</b> '+(s.name||'-')+'<br><b>Состояние:</b> '+(s.state||'unknown')+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+(s.fault||'none')+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){document.getElementById('wstatus').textContent='Нет связи';}}document.getElementById('target').addEventListener('change',upd);setInterval(upd,700);upd();</script>");
   appendPageFooter(html);
   server.send(200, "text/html; charset=utf-8", html);
 }
@@ -811,6 +854,9 @@ static void handleConfig() {
   appendPageHeader(html, "ESP32 CC1101 receiver");
   html += F("<p><a class='btn' href='/'>Главная</a></p>");
   html += F("<div class='card'><h2>Настройки окон</h2><form method='post' action='/window/save'>");
+  html += F("<label>Имя локальной RP2040</label><input name='localName' maxlength='31' value='");
+  html += htmlEscape(localRpName);
+  html += F("'>");
   html += F("<label>Количество окон</label><select name='windows'><option value='1'");
   if (windowCount == 1) html += F(" selected");
   html += F(">1 окно</option><option value='2'");
@@ -1065,16 +1111,22 @@ static void handleSave() {
 static void handleWindowCommand() {
   if (!webAuth()) return;
   const String mode = server.arg("mode");
-  if (mode == "open") sendRpCommand("CMD OPEN");
-  else if (mode == "closed") sendRpCommand("CMD CLOSED");
-  else if (mode == "vent") sendRpCommand("CMD VENT");
-  else if (mode == "stop") sendRpCommand("CMD STOP");
+  const String target = server.hasArg("target") ? server.arg("target") : "local";
+  strlcpy(mainWindowTarget, target.c_str(), sizeof(mainWindowTarget));
+  saveWindowSettings();
+  uint8_t command = 0;
+  if (mode == "open") command = 1;
+  else if (mode == "closed") command = 2;
+  else if (mode == "vent") command = 3;
+  else if (mode == "stop") command = 4;
+  sendWindowTargetCommand(target, windowCommandLine(command));
   server.sendHeader("Location", "/");
   server.send(303);
 }
 
 static void handleWindowSave() {
   if (!webAuth()) return;
+  if (server.hasArg("localName")) strlcpy(localRpName, server.arg("localName").c_str(), sizeof(localRpName));
   windowCount = constrain(server.arg("windows").toInt(), 1, 2);
   windowZeroCurrentMa = constrain(server.arg("zeroMa").toInt(), 1, 1000);
   windowMaxMoveMs = constrain(server.arg("maxMove").toInt(), 1000, 180000);
@@ -1090,15 +1142,31 @@ static void handleWindowSave() {
 
 static void handleWindowApi() {
   if (!webAuth()) return;
+  const String target = server.hasArg("target") ? server.arg("target") : "local";
   String body;
-  if (lastRpStatus.startsWith("{") && lastRpStatus.endsWith("}")) {
-    body = lastRpStatus;
+  String status = lastRpStatus;
+  String name = localRpName;
+  uint32_t ageMs = millis() - lastRpStatusMs;
+  if (target.startsWith("rs")) {
+    const int idx = target.substring(2).toInt();
+    if (idx >= 0 && idx < RS485_NODE_COUNT) {
+      status = rs485Status[idx];
+      name = rs485Nodes[idx].name;
+      ageMs = millis() - rs485LastSeenMs[idx];
+    }
+  }
+  if (status.startsWith("{") && status.endsWith("}")) {
+    body = status;
     body.remove(body.length() - 1);
-    body += F(",\"ageMs\":");
-    body += String(millis() - lastRpStatusMs);
+    body += F(",\"name\":\"");
+    body += htmlEscape(name);
+    body += F("\",\"ageMs\":");
+    body += String(ageMs);
     body += F("}");
   } else {
-    body = F("{\"state\":\"unknown\",\"target\":\"none\",\"position\":\"none\",\"fault\":\"no_rp2040\",\"faultActuator\":0,\"current\":[],\"reed\":[],\"inaOk\":[],\"cap\":0,\"ageMs\":0}");
+    body = F("{\"state\":\"unknown\",\"target\":\"none\",\"position\":\"none\",\"fault\":\"no_rp2040\",\"faultActuator\":0,\"current\":[],\"reed\":[],\"inaOk\":[],\"cap\":0,\"name\":\"");
+    body += htmlEscape(name);
+    body += F("\",\"ageMs\":0}");
   }
   server.send(200, "application/json", body);
 }
