@@ -809,7 +809,13 @@ static void appendRs485Config(String &html) {
     html += F("'><button type='submit'>Записать адрес в RP2040</button></form>");
     html += F("<p>Статус: <span id='rs");
     html += String(n);
-    html += F("status'>-</span></p></div>");
+    html += F("status'>-</span><br>Герконы: <span id='rs");
+    html += String(n);
+    html += F("reeds'>-</span><br>CAP1188: <span id='rs");
+    html += String(n);
+    html += F("cap'>-</span><br>Авария: <span id='rs");
+    html += String(n);
+    html += F("fault'>-</span></p></div>");
   }
   html += F("</div>");
   html += F("<script>function showNode(i){document.querySelectorAll('.rsnode').forEach((e,k)=>e.style.display=k==i?'block':'none')}showNode(0);</script>");
@@ -1013,7 +1019,7 @@ static void handleConfig() {
   html += F("<p class='muted'>Обучение: нажмите физическую кнопку или «Добавить пульт», затем нажимайте кнопки пульта. Повторное короткое нажатие или «Закончить обучение» возвращает рабочий режим.</p>");
   html += F("<script>let activeLed=-1;function setLed(i,on){const e=document.getElementById('led'+i);if(e)e.classList.toggle('on',on);}async function rfStatus(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)return;const s=await r.json();document.getElementById('lastSeen').textContent=s.lastSeen||'-';document.getElementById('lastButton').textContent=s.lastButton||'-';document.getElementById('lastMatched').textContent=s.lastMatched||'-';document.getElementById('lastOutput').textContent=s.lastOutput||'-';document.getElementById('lastAge').textContent=s.lastMatchedAgeMs>=0?((s.lastMatchedAgeMs/1000).toFixed(1)+' s'):'-';const b=document.getElementById('learnBtn');if(b){b.textContent=s.learnMode?'Закончить обучение':'Добавить пульт';b.classList.toggle('danger',s.learnMode);}if(activeLed!==s.lastMatchedIndex){if(activeLed>=0)setLed(activeLed,false);activeLed=s.lastMatchedIndex;}if(s.lastMatchedAgeMs>=0&&s.lastMatchedAgeMs<700)setLed(s.lastMatchedIndex,true);else if(activeLed>=0)setLed(activeLed,false);}catch(e){}}setInterval(rfStatus,500);rfStatus();</script>");
   html += F("<script>async function winStatus(){try{const r=await fetch('/api/window',{cache:'no-store'});const s=await r.json();const cur=s.current||[];const ok=s.inaOk||[];for(let i=0;i<8;i++){let c=document.getElementById('cur'+i);if(c)c.textContent=(cur[i]??0)+' mA';let o=document.getElementById('ina'+i);if(o)o.textContent=ok[i]?'OK':'нет';}document.getElementById('reeds').textContent=(s.reed||[]).join(', ');document.getElementById('cap').textContent='0x'+Number(s.cap||0).toString(16);document.getElementById('wfault').textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');}catch(e){}}setInterval(winStatus,700);winStatus();</script>");
-  html += F("<script>async function rsStatus(){try{const r=await fetch('/api/rs485',{cache:'no-store'});const d=await r.json();(d.nodes||[]).forEach((n,i)=>{let e=document.getElementById('rs'+i+'status');if(e)e.textContent=n.status||'-';let s=n.json||{};let cur=s.current||[];let ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('rs'+i+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('rs'+i+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}})}catch(e){}}setInterval(rsStatus,1000);rsStatus();</script>");
+  html += F("<script>async function rsStatus(){try{const r=await fetch('/api/rs485',{cache:'no-store'});const d=await r.json();(d.nodes||[]).forEach((n,i)=>{let e=document.getElementById('rs'+i+'status');if(e)e.textContent=n.status||'-';let s=n.json||{};let cur=s.current||[];let ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('rs'+i+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('rs'+i+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('rs'+i+'reeds');if(reeds)reeds.textContent=(s.reed||[]).join(', ');let cap=document.getElementById('rs'+i+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('rs'+i+'fault');if(fault)fault.textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');})}catch(e){}}setInterval(rsStatus,1000);rsStatus();</script>");
   appendPageFooter(html);
   server.send(200, "text/html", html);
 }
