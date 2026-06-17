@@ -113,6 +113,9 @@ struct Rs485NodeConfig {
   uint16_t maxCurrentMa[RS485_ACTUATORS];
   uint16_t zeroCurrentMa;
   uint32_t maxMoveMs;
+  bool capEnabled;
+  uint8_t capMask;
+  uint16_t capConfirmMs;
 };
 
 static uint8_t windowCount = 2;
@@ -121,6 +124,9 @@ static char mainWindowTarget[8] = "local";
 static uint16_t windowMaxCurrentMa[WINDOW_ACTUATORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
 static uint16_t windowZeroCurrentMa = 80;
 static uint32_t windowMaxMoveMs = 45000;
+static bool windowCapEnabled = true;
+static uint8_t windowCapMask = 0xFF;
+static uint16_t windowCapConfirmMs = 50;
 static String rpLine;
 static String lastRpStatus = "{}";
 static uint32_t lastRpStatusMs = 0;
@@ -398,6 +404,9 @@ static void loadWindowSettings() {
   windowCount = prefs.getUChar("count", 2);
   windowZeroCurrentMa = prefs.getUShort("zeroMa", 80);
   windowMaxMoveMs = prefs.getUInt("maxMove", 45000);
+  windowCapEnabled = prefs.getBool("capEn", true);
+  windowCapMask = prefs.getUChar("capMask", 0xFF);
+  windowCapConfirmMs = prefs.getUShort("capMs", 50);
   for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
     char key[12];
     snprintf(key, sizeof(key), "max%u", i);
@@ -414,6 +423,9 @@ static void saveWindowSettings() {
   prefs.putUChar("count", windowCount);
   prefs.putUShort("zeroMa", windowZeroCurrentMa);
   prefs.putUInt("maxMove", windowMaxMoveMs);
+  prefs.putBool("capEn", windowCapEnabled);
+  prefs.putUChar("capMask", windowCapMask);
+  prefs.putUShort("capMs", windowCapConfirmMs);
   for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
     char key[12];
     snprintf(key, sizeof(key), "max%u", i);
@@ -440,6 +452,12 @@ static void loadRs485Settings() {
     rs485Nodes[n].zeroCurrentMa = prefs.getUShort(key, 80);
     snprintf(key, sizeof(key), "move%u", n);
     rs485Nodes[n].maxMoveMs = prefs.getUInt(key, 45000);
+    snprintf(key, sizeof(key), "capEn%u", n);
+    rs485Nodes[n].capEnabled = prefs.getBool(key, true);
+    snprintf(key, sizeof(key), "capMask%u", n);
+    rs485Nodes[n].capMask = prefs.getUChar(key, 0xFF);
+    snprintf(key, sizeof(key), "capMs%u", n);
+    rs485Nodes[n].capConfirmMs = prefs.getUShort(key, 50);
     for (uint8_t a = 0; a < RS485_ACTUATORS; ++a) {
       snprintf(key, sizeof(key), "n%ua%u", n, a);
       rs485Nodes[n].maxCurrentMa[a] = prefs.getUShort(key, 2500);
@@ -464,6 +482,12 @@ static void saveRs485Settings() {
     prefs.putUShort(key, rs485Nodes[n].zeroCurrentMa);
     snprintf(key, sizeof(key), "move%u", n);
     prefs.putUInt(key, rs485Nodes[n].maxMoveMs);
+    snprintf(key, sizeof(key), "capEn%u", n);
+    prefs.putBool(key, rs485Nodes[n].capEnabled);
+    snprintf(key, sizeof(key), "capMask%u", n);
+    prefs.putUChar(key, rs485Nodes[n].capMask);
+    snprintf(key, sizeof(key), "capMs%u", n);
+    prefs.putUShort(key, rs485Nodes[n].capConfirmMs);
     for (uint8_t a = 0; a < RS485_ACTUATORS; ++a) {
       snprintf(key, sizeof(key), "n%ua%u", n, a);
       prefs.putUShort(key, rs485Nodes[n].maxCurrentMa[a]);
@@ -500,6 +524,9 @@ static String rs485ConfigLine(uint8_t index) {
   String line = "@" + String(node.address) + " CFG";
   line += " ZEROMA=" + String(node.zeroCurrentMa);
   line += " MAXMOVEMS=" + String(node.maxMoveMs);
+  line += " CAPEN=" + String(node.capEnabled ? 1 : 0);
+  line += " CAPMASK=" + String(node.capMask);
+  line += " CAPMS=" + String(node.capConfirmMs);
   for (uint8_t a = 0; a < RS485_ACTUATORS; ++a) {
     line += " A";
     line += String(a + 1);
@@ -518,6 +545,9 @@ static void sendWindowConfigToRp2040() {
   String line = "CFG WINDOWS=" + String(windowCount);
   line += " ZEROMA=" + String(windowZeroCurrentMa);
   line += " MAXMOVEMS=" + String(windowMaxMoveMs);
+  line += " CAPEN=" + String(windowCapEnabled ? 1 : 0);
+  line += " CAPMASK=" + String(windowCapMask);
+  line += " CAPMS=" + String(windowCapConfirmMs);
   for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
     line += " A";
     line += String(i + 1);
@@ -780,6 +810,12 @@ static void appendRs485Config(String &html) {
     html += String(node.zeroCurrentMa);
     html += F("'><label>Максимальное время движения, мс</label><input name='move' type='number' min='1000' max='180000' value='");
     html += String(node.maxMoveMs);
+    html += F("'><label><input type='checkbox' name='capEn' value='1'");
+    if (node.capEnabled) html += F(" checked");
+    html += F("> Защита CAP1188 включена</label><label>Маска каналов CAP1188, 0-255</label><input name='capMask' type='number' min='0' max='255' value='");
+    html += String(node.capMask);
+    html += F("'><label>Подтверждение CAP1188, мс</label><input name='capMs' type='number' min='0' max='5000' value='");
+    html += String(node.capConfirmMs);
     html += F("'><table><tr><th>Актуатор</th><th>Макс. ток, мА</th><th>Ток</th><th>INA219</th></tr>");
     for (uint8_t a = 0; a < RS485_ACTUATORS; ++a) {
       html += F("<tr><td>");
@@ -874,6 +910,12 @@ static void handleConfig() {
   html += String(windowZeroCurrentMa);
   html += F("'><label>Максимальное время движения, мс</label><input name='maxMove' type='number' value='");
   html += String(windowMaxMoveMs);
+  html += F("'><label><input type='checkbox' name='capEn' value='1'");
+  if (windowCapEnabled) html += F(" checked");
+  html += F("> Защита CAP1188 включена</label><label>Маска каналов CAP1188, 0-255</label><input name='capMask' type='number' min='0' max='255' value='");
+  html += String(windowCapMask);
+  html += F("'><label>Подтверждение CAP1188, мс</label><input name='capMs' type='number' min='0' max='5000' value='");
+  html += String(windowCapConfirmMs);
   html += F("'><table><tr><th>Актуатор</th><th>Макс. ток, мА</th><th>Ток</th><th>INA219</th></tr>");
   for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
     html += F("<tr><td>");
@@ -1140,6 +1182,9 @@ static void handleWindowSave() {
   windowCount = constrain(server.arg("windows").toInt(), 1, 2);
   windowZeroCurrentMa = constrain(server.arg("zeroMa").toInt(), 1, 1000);
   windowMaxMoveMs = constrain(server.arg("maxMove").toInt(), 1000, 180000);
+  windowCapEnabled = server.hasArg("capEn");
+  windowCapMask = static_cast<uint8_t>(constrain(server.arg("capMask").toInt(), 0, 255));
+  windowCapConfirmMs = static_cast<uint16_t>(constrain(server.arg("capMs").toInt(), 0, 5000));
   for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
     String key = "max" + String(i);
     if (server.hasArg(key)) windowMaxCurrentMa[i] = constrain(server.arg(key).toInt(), 100, 10000);
@@ -1205,6 +1250,9 @@ static void handleRs485Save() {
   strlcpy(node.uid, server.arg("uid").c_str(), sizeof(node.uid));
   node.zeroCurrentMa = constrain(server.arg("zero").toInt(), 1, 1000);
   node.maxMoveMs = constrain(server.arg("move").toInt(), 1000, 180000);
+  node.capEnabled = server.hasArg("capEn");
+  node.capMask = static_cast<uint8_t>(constrain(server.arg("capMask").toInt(), 0, 255));
+  node.capConfirmMs = static_cast<uint16_t>(constrain(server.arg("capMs").toInt(), 0, 5000));
   for (uint8_t a = 0; a < RS485_ACTUATORS; ++a) {
     const String key = "max" + String(a);
     if (server.hasArg(key)) node.maxCurrentMa[a] = constrain(server.arg(key).toInt(), 100, 10000);

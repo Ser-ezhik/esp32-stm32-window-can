@@ -47,10 +47,11 @@ constexpr uint8_t INA_ADDRS[ACTUATORS] = {0x40, 0x41, 0x44, 0x45};
 
 constexpr uint8_t CAP1188_ADDR = 0x29;
 constexpr uint8_t CAP1188_IRQ_PIN = 5; // set to 255 if IRQ is not connected
-constexpr uint8_t CAP1188_STOP_MASK = 0xFF;
+constexpr uint8_t DEFAULT_CAP1188_STOP_MASK = 0xFF;
+constexpr uint32_t DEFAULT_CAP1188_CONFIRM_MS = 50;
 
 constexpr uint32_t CONFIG_MAGIC = 0x52343835u; // R485
-constexpr uint16_t CONFIG_VERSION = 1;
+constexpr uint16_t CONFIG_VERSION = 2;
 
 enum TargetMode : uint8_t { TARGET_NONE, TARGET_OPEN, TARGET_CLOSED, TARGET_VENT };
 enum RunState : uint8_t { STATE_IDLE, STATE_MOVING, STATE_FAULT };
@@ -69,6 +70,10 @@ struct PersistedConfig {
   uint32_t noCurrentFaultMs;
   uint32_t maxMoveMs;
   uint32_t sensorPollMs;
+  uint8_t capEnabled;
+  uint8_t capStopMask;
+  uint16_t reserved2;
+  uint32_t capConfirmMs;
   float maxCurrentMa[ACTUATORS];
   float zeroCurrentMa[ACTUATORS];
   uint32_t checksum;
@@ -130,6 +135,9 @@ uint32_t startIgnoreEndstopMs = 450;
 uint32_t noCurrentFaultMs = 1800;
 uint32_t maxMoveMs = 45000;
 uint32_t sensorPollMs = 10;
+bool capProtectionEnabled = true;
+uint8_t capStopMask = DEFAULT_CAP1188_STOP_MASK;
+uint32_t capConfirmMs = DEFAULT_CAP1188_CONFIRM_MS;
 uint32_t statusPrintMs = 1000;
 
 bool inaOk[ACTUATORS] = {};
@@ -143,7 +151,9 @@ bool groupRunning[GROUPS] = {};
 bool groupDone[GROUPS] = {};
 bool reeds[5] = {};
 uint8_t capTouched = 0;
+uint8_t capActiveTouched = 0;
 volatile bool capIrqSeen = false;
+uint32_t capActiveSince = 0;
 
 RunState state = STATE_IDLE;
 TargetMode target = TARGET_NONE;
@@ -250,6 +260,9 @@ static void applyConfig(const PersistedConfig &cfg) {
   noCurrentFaultMs = constrain(cfg.noCurrentFaultMs, 100ul, 60000ul);
   maxMoveMs = constrain(cfg.maxMoveMs, 1000ul, 180000ul);
   sensorPollMs = constrain(cfg.sensorPollMs, 2ul, 1000ul);
+  capProtectionEnabled = cfg.capEnabled != 0;
+  capStopMask = cfg.capStopMask;
+  capConfirmMs = constrain(cfg.capConfirmMs, 0ul, 5000ul);
   for (uint8_t i = 0; i < ACTUATORS; ++i) {
     maxCurrentMa[i] = constrain(cfg.maxCurrentMa[i], 100.0f, 10000.0f);
     zeroCurrentMa[i] = constrain(cfg.zeroCurrentMa[i], 1.0f, 1000.0f);
@@ -268,6 +281,9 @@ static void makeConfig(PersistedConfig &cfg) {
   cfg.noCurrentFaultMs = noCurrentFaultMs;
   cfg.maxMoveMs = maxMoveMs;
   cfg.sensorPollMs = sensorPollMs;
+  cfg.capEnabled = capProtectionEnabled ? 1 : 0;
+  cfg.capStopMask = capStopMask;
+  cfg.capConfirmMs = capConfirmMs;
   for (uint8_t i = 0; i < ACTUATORS; ++i) {
     cfg.maxCurrentMa[i] = maxCurrentMa[i];
     cfg.zeroCurrentMa[i] = zeroCurrentMa[i];
@@ -370,12 +386,22 @@ static void startMove(TargetMode newTarget) {
 static void pollCap() {
   if (!capOk) {
     capTouched = 0;
+    capActiveTouched = 0;
+    capActiveSince = 0;
     return;
   }
   if (!capIrqSeen && millis() - lastSensorPollAt < sensorPollMs) return;
   capIrqSeen = false;
+  const uint32_t now = millis();
   capTouched = cap1188.touched();
-  if ((capTouched & CAP1188_STOP_MASK) != 0 && state == STATE_MOVING) {
+  capActiveTouched = capProtectionEnabled ? (capTouched & capStopMask) : 0;
+  if (capActiveTouched != 0) {
+    if (capActiveSince == 0) capActiveSince = now;
+  } else {
+    capActiveSince = 0;
+  }
+  if (capProtectionEnabled && capActiveTouched != 0 && state == STATE_MOVING &&
+      (capConfirmMs == 0 || now - capActiveSince >= capConfirmMs)) {
     stopAll("cap1188", 0, true);
   }
 }
@@ -497,6 +523,14 @@ static String statusJson() {
   json += String(faultActuator);
   json += F(",\"cap\":");
   json += String(capTouched);
+  json += F(",\"capActive\":");
+  json += String(capActiveTouched);
+  json += F(",\"capEnabled\":");
+  json += capProtectionEnabled ? F("true") : F("false");
+  json += F(",\"capMask\":");
+  json += String(capStopMask);
+  json += F(",\"capConfirmMs\":");
+  json += String(capConfirmMs);
   json += F(",\"flashLoaded\":");
   json += configLoaded ? F("true") : F("false");
   json += F(",\"flashSaved\":");
@@ -588,6 +622,9 @@ static void handleCommand(String payload, bool broadcast) {
     }
     maxMoveMs = valueAfter(payload, "MAXMOVEMS=", maxMoveMs);
     noCurrentFaultMs = valueAfter(payload, "NOCURRENTMS=", noCurrentFaultMs);
+    capProtectionEnabled = valueAfter(payload, "CAPEN=", capProtectionEnabled ? 1 : 0) != 0;
+    capStopMask = static_cast<uint8_t>(constrain(valueAfter(payload, "CAPMASK=", capStopMask), 0, 255));
+    capConfirmMs = constrain(static_cast<uint32_t>(valueAfter(payload, "CAPMS=", capConfirmMs)), 0ul, 5000ul);
     configSaved = saveConfigToFlash();
   }
   replyStatus();
