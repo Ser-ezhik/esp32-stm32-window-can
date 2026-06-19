@@ -100,7 +100,7 @@ static constexpr int RP2040_UART1_TX_PIN = 3;
 static constexpr int RP2040_UART2_RX_PIN = 41;
 static constexpr int RP2040_UART2_TX_PIN = 42;
 static constexpr uint32_t RP2040_UART_BAUD = 115200;
-static constexpr uint8_t WINDOW_ACTUATORS = 8;
+static constexpr uint8_t LOCAL_ACTUATORS = 4;
 static constexpr int RS485_RX_PIN = 38;
 static constexpr int RS485_TX_PIN = 39;
 static constexpr int RS485_DE_RE_PIN = 40;
@@ -123,15 +123,22 @@ struct Rs485NodeConfig {
   uint16_t capConfirmMs;
 };
 
+struct LocalRpConfig {
+  char name[RP_NAME_LEN];
+  uint16_t maxCurrentMa[LOCAL_ACTUATORS];
+  uint16_t zeroCurrentMa;
+  uint32_t maxMoveMs;
+  bool capEnabled;
+  uint8_t capMask;
+  uint16_t capConfirmMs;
+};
+
 static uint8_t windowCount = 2;
-static char localRpName[LOCAL_RP_COUNT][RP_NAME_LEN] = {"Локальная RP2040 1", "Локальная RP2040 2"};
 static char mainWindowTarget[8] = "local";
-static uint16_t windowMaxCurrentMa[WINDOW_ACTUATORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
-static uint16_t windowZeroCurrentMa = 80;
-static uint32_t windowMaxMoveMs = 45000;
-static bool windowCapEnabled = true;
-static uint8_t windowCapMask = 0xFF;
-static uint16_t windowCapConfirmMs = 50;
+static LocalRpConfig localRp[LOCAL_RP_COUNT] = {
+  {"Локальная RP2040 1", {2500, 2500, 2500, 2500}, 80, 45000, true, 0xFF, 50},
+  {"Локальная RP2040 2", {2500, 2500, 2500, 2500}, 80, 45000, true, 0xFF, 50},
+};
 static String rpLine[LOCAL_RP_COUNT];
 static String lastRpStatus[LOCAL_RP_COUNT] = {"{}", "{}"};
 static uint32_t lastRpStatusMs[LOCAL_RP_COUNT] = {0};
@@ -416,21 +423,31 @@ static void saveWifiSettings(const String &ssid, const String &password) {
 static void loadWindowSettings() {
   prefs.begin("window", true);
   String localName = prefs.getString("localName0", prefs.getString("localName", "Локальная RP2040 1"));
-  strlcpy(localRpName[0], localName.c_str(), sizeof(localRpName[0]));
+  strlcpy(localRp[0].name, localName.c_str(), sizeof(localRp[0].name));
   localName = prefs.getString("localName1", "Локальная RP2040 2");
-  strlcpy(localRpName[1], localName.c_str(), sizeof(localRpName[1]));
+  strlcpy(localRp[1].name, localName.c_str(), sizeof(localRp[1].name));
   String mainTarget = prefs.getString("mainTarget", "local");
   strlcpy(mainWindowTarget, mainTarget.c_str(), sizeof(mainWindowTarget));
   windowCount = prefs.getUChar("count", 2);
-  windowZeroCurrentMa = prefs.getUShort("zeroMa", 80);
-  windowMaxMoveMs = prefs.getUInt("maxMove", 45000);
-  windowCapEnabled = prefs.getBool("capEn", true);
-  windowCapMask = prefs.getUChar("capMask", 0xFF);
-  windowCapConfirmMs = prefs.getUShort("capMs", 50);
-  for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
-    char key[12];
-    snprintf(key, sizeof(key), "max%u", i);
-    windowMaxCurrentMa[i] = prefs.getUShort(key, 2500);
+  for (uint8_t n = 0; n < LOCAL_RP_COUNT; ++n) {
+    char key[20];
+    snprintf(key, sizeof(key), "l%uzero", n);
+    localRp[n].zeroCurrentMa = prefs.getUShort(key, prefs.getUShort("zeroMa", 80));
+    snprintf(key, sizeof(key), "l%umove", n);
+    localRp[n].maxMoveMs = prefs.getUInt(key, prefs.getUInt("maxMove", 45000));
+    snprintf(key, sizeof(key), "l%ucapEn", n);
+    localRp[n].capEnabled = prefs.getBool(key, prefs.getBool("capEn", true));
+    snprintf(key, sizeof(key), "l%ucapMask", n);
+    localRp[n].capMask = prefs.getUChar(key, prefs.getUChar("capMask", 0xFF));
+    snprintf(key, sizeof(key), "l%ucapMs", n);
+    localRp[n].capConfirmMs = prefs.getUShort(key, prefs.getUShort("capMs", 50));
+    for (uint8_t a = 0; a < LOCAL_ACTUATORS; ++a) {
+      snprintf(key, sizeof(key), "l%umax%u", n, a);
+      const uint8_t oldIndex = n * LOCAL_ACTUATORS + a;
+      char oldKey[12];
+      snprintf(oldKey, sizeof(oldKey), "max%u", oldIndex);
+      localRp[n].maxCurrentMa[a] = prefs.getUShort(key, prefs.getUShort(oldKey, 2500));
+    }
   }
   prefs.end();
   windowCount = constrain(windowCount, 1, 2);
@@ -438,19 +455,26 @@ static void loadWindowSettings() {
 
 static void saveWindowSettings() {
   prefs.begin("window", false);
-  prefs.putString("localName0", localRpName[0]);
-  prefs.putString("localName1", localRpName[1]);
+  prefs.putString("localName0", localRp[0].name);
+  prefs.putString("localName1", localRp[1].name);
   prefs.putString("mainTarget", mainWindowTarget);
   prefs.putUChar("count", windowCount);
-  prefs.putUShort("zeroMa", windowZeroCurrentMa);
-  prefs.putUInt("maxMove", windowMaxMoveMs);
-  prefs.putBool("capEn", windowCapEnabled);
-  prefs.putUChar("capMask", windowCapMask);
-  prefs.putUShort("capMs", windowCapConfirmMs);
-  for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
-    char key[12];
-    snprintf(key, sizeof(key), "max%u", i);
-    prefs.putUShort(key, windowMaxCurrentMa[i]);
+  for (uint8_t n = 0; n < LOCAL_RP_COUNT; ++n) {
+    char key[20];
+    snprintf(key, sizeof(key), "l%uzero", n);
+    prefs.putUShort(key, localRp[n].zeroCurrentMa);
+    snprintf(key, sizeof(key), "l%umove", n);
+    prefs.putUInt(key, localRp[n].maxMoveMs);
+    snprintf(key, sizeof(key), "l%ucapEn", n);
+    prefs.putBool(key, localRp[n].capEnabled);
+    snprintf(key, sizeof(key), "l%ucapMask", n);
+    prefs.putUChar(key, localRp[n].capMask);
+    snprintf(key, sizeof(key), "l%ucapMs", n);
+    prefs.putUShort(key, localRp[n].capConfirmMs);
+    for (uint8_t a = 0; a < LOCAL_ACTUATORS; ++a) {
+      snprintf(key, sizeof(key), "l%umax%u", n, a);
+      prefs.putUShort(key, localRp[n].maxCurrentMa[a]);
+    }
   }
   prefs.end();
 }
@@ -576,25 +600,26 @@ static void sendRs485NodeConfig(uint8_t index) {
   sendRs485Line(rs485ConfigLine(index));
 }
 
-static String localConfigLine() {
+static String localConfigLine(uint8_t index) {
+  if (index >= LOCAL_RP_COUNT) index = 0;
+  const LocalRpConfig &cfg = localRp[index];
   String line = "CFG WINDOWS=" + String(windowCount);
-  line += " ZEROMA=" + String(windowZeroCurrentMa);
-  line += " MAXMOVEMS=" + String(windowMaxMoveMs);
-  line += " CAPEN=" + String(windowCapEnabled ? 1 : 0);
-  line += " CAPMASK=" + String(windowCapMask);
-  line += " CAPMS=" + String(windowCapConfirmMs);
-  for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
+  line += " ZEROMA=" + String(cfg.zeroCurrentMa);
+  line += " MAXMOVEMS=" + String(cfg.maxMoveMs);
+  line += " CAPEN=" + String(cfg.capEnabled ? 1 : 0);
+  line += " CAPMASK=" + String(cfg.capMask);
+  line += " CAPMS=" + String(cfg.capConfirmMs);
+  for (uint8_t i = 0; i < LOCAL_ACTUATORS; ++i) {
     line += " A";
     line += String(i + 1);
     line += "MAX=";
-    line += String(windowMaxCurrentMa[i]);
+    line += String(cfg.maxCurrentMa[i]);
   }
   return line;
 }
 
 static void sendWindowConfigToRp2040() {
-  const String line = localConfigLine();
-  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) sendRpCommand(i, line);
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) sendRpCommand(i, localConfigLine(i));
 }
 
 static String windowCommandLine(uint8_t command) {
@@ -949,7 +974,7 @@ static void handleRoot() {
     html += F("'");
     if (targetValue == mainWindowTarget || (i == 0 && strcmp(mainWindowTarget, "local") == 0)) html += F(" selected");
     html += F(">");
-    html += htmlEscape(localRpName[i]);
+    html += htmlEscape(localRp[i].name);
     html += F(" / UART");
     html += String(i + 1);
     html += F("</option>");
@@ -983,47 +1008,72 @@ static void handleConfig() {
   html.reserve(17000);
   appendPageHeader(html, "ESP32 CC1101 receiver");
   html += F("<p><a class='btn' href='/'>Главная</a></p>");
-  html += F("<div class='card'><h2>Настройки окон</h2><form method='post' action='/window/save'>");
-  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
-    html += F("<label>Имя локальной RP2040 UART");
-    html += String(i + 1);
-    html += F("</label><input name='localName");
-    html += String(i);
-    html += F("' maxlength='31' value='");
-    html += htmlEscape(localRpName[i]);
-    html += F("'>");
-  }
+  html += F("<div class='card'><h2>Локальные RP2040 по UART</h2><form method='post' action='/window/save'>");
   html += F("<label>Количество окон</label><select name='windows'><option value='1'");
   if (windowCount == 1) html += F(" selected");
   html += F(">1 окно</option><option value='2'");
   if (windowCount == 2) html += F(" selected");
   html += F(">2 окна</option></select>");
-  html += F("<label>Порог отсутствия тока, мА</label><input name='zeroMa' type='number' value='");
-  html += String(windowZeroCurrentMa);
-  html += F("'><label>Максимальное время движения, мс</label><input name='maxMove' type='number' value='");
-  html += String(windowMaxMoveMs);
-  html += F("'><label><input type='checkbox' name='capEn' value='1'");
-  if (windowCapEnabled) html += F(" checked");
-  html += F("> Защита CAP1188 включена</label><label>Маска каналов CAP1188, 0-255</label><input name='capMask' type='number' min='0' max='255' value='");
-  html += String(windowCapMask);
-  html += F("'><label>Подтверждение CAP1188, мс</label><input name='capMs' type='number' min='0' max='5000' value='");
-  html += String(windowCapConfirmMs);
-  html += F("'><table><tr><th>Актуатор</th><th>Макс. ток, мА</th><th>Ток</th><th>INA219</th></tr>");
-  for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
-    html += F("<tr><td>");
-    html += String(i + 1);
-    html += F("</td><td><input name='max");
-    html += String(i);
-    html += F("' type='number' value='");
-    html += String(windowMaxCurrentMa[i]);
-    html += F("'></td><td id='cur");
-    html += String(i);
-    html += F("'>-</td><td id='ina");
-    html += String(i);
-    html += F("'>-</td></tr>");
+  for (uint8_t n = 0; n < LOCAL_RP_COUNT; ++n) {
+    const LocalRpConfig &cfg = localRp[n];
+    html += F("<div class='card'><h3>UART");
+    html += String(n + 1);
+    html += F(" - ");
+    html += htmlEscape(cfg.name);
+    html += F("</h3><label>Имя RP2040</label><input name='localName");
+    html += String(n);
+    html += F("' maxlength='31' value='");
+    html += htmlEscape(cfg.name);
+    html += F("'><label>Порог отсутствия тока, мА</label><input name='l");
+    html += String(n);
+    html += F("zero' type='number' min='1' max='1000' value='");
+    html += String(cfg.zeroCurrentMa);
+    html += F("'><label>Максимальное время движения, мс</label><input name='l");
+    html += String(n);
+    html += F("move' type='number' min='1000' max='180000' value='");
+    html += String(cfg.maxMoveMs);
+    html += F("'><label><input type='checkbox' name='l");
+    html += String(n);
+    html += F("capEn' value='1'");
+    if (cfg.capEnabled) html += F(" checked");
+    html += F("> Защита CAP1188 включена</label><label>Маска каналов CAP1188, 0-255</label><input name='l");
+    html += String(n);
+    html += F("capMask' type='number' min='0' max='255' value='");
+    html += String(cfg.capMask);
+    html += F("'><label>Подтверждение CAP1188, мс</label><input name='l");
+    html += String(n);
+    html += F("capMs' type='number' min='0' max='5000' value='");
+    html += String(cfg.capConfirmMs);
+    html += F("'><table><tr><th>Актуатор</th><th>Макс. ток, мА</th><th>Ток</th><th>INA219</th></tr>");
+    for (uint8_t a = 0; a < LOCAL_ACTUATORS; ++a) {
+      html += F("<tr><td>");
+      html += String(a + 1);
+      html += F("</td><td><input name='l");
+      html += String(n);
+      html += F("max");
+      html += String(a);
+      html += F("' type='number' min='100' max='10000' value='");
+      html += String(cfg.maxCurrentMa[a]);
+      html += F("'></td><td id='l");
+      html += String(n);
+      html += F("cur");
+      html += String(a);
+      html += F("'>-</td><td id='l");
+      html += String(n);
+      html += F("ina");
+      html += String(a);
+      html += F("'>-</td></tr>");
+    }
+    html += F("</table><p>Герконы: <span id='l");
+    html += String(n);
+    html += F("reeds'>-</span><br>CAP1188: <span id='l");
+    html += String(n);
+    html += F("cap'>-</span><br>Авария: <span id='l");
+    html += String(n);
+    html += F("fault'>-</span></p></div>");
   }
-  html += F("</table><p><button type='submit'>Сохранить настройки окон</button></p></form>");
-  html += F("<p>Герконы: <span id='reeds'>-</span><br>CAP1188: <span id='cap'>-</span><br>Авария: <span id='wfault'>-</span></p></div>");
+  html += F("<p><button type='submit'>Сохранить настройки локальных RP2040</button></p></form>");
+  html += F("</div>");
   appendRs485Config(html);
   html += F("<div class='card'><b>Состояние:</b> ");
   html += WiFi.getMode() == WIFI_AP ? "режим точки доступа" : "подключен к Wi-Fi";
@@ -1136,7 +1186,7 @@ static void handleConfig() {
       html += F("' value='1'");
       if (records[i].targetMask & localTargetBit(local)) html += F(" checked");
       html += F("> ");
-      html += htmlEscape(localRpName[local]);
+      html += htmlEscape(localRp[local].name);
       html += F("</label>");
     }
     for (uint8_t node = 0; node < RS485_NODE_COUNT; ++node) {
@@ -1177,7 +1227,7 @@ static void handleConfig() {
   html += F("</table><p><button type='submit'>Сохранить</button></p></form>");
   html += F("<p class='muted'>Обучение: нажмите физическую кнопку или «Добавить пульт», затем нажимайте кнопки пульта. Повторное короткое нажатие или «Закончить обучение» возвращает рабочий режим.</p>");
   html += F("<script>let activeLed=-1;function setLed(i,on){const e=document.getElementById('led'+i);if(e)e.classList.toggle('on',on);}async function rfStatus(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)return;const s=await r.json();document.getElementById('lastSeen').textContent=s.lastSeen||'-';document.getElementById('lastButton').textContent=s.lastButton||'-';document.getElementById('lastMatched').textContent=s.lastMatched||'-';document.getElementById('lastOutput').textContent=s.lastOutput||'-';document.getElementById('lastAge').textContent=s.lastMatchedAgeMs>=0?((s.lastMatchedAgeMs/1000).toFixed(1)+' s'):'-';const b=document.getElementById('learnBtn');if(b){b.textContent=s.learnMode?'Закончить обучение':'Добавить пульт';b.classList.toggle('danger',s.learnMode);}if(activeLed!==s.lastMatchedIndex){if(activeLed>=0)setLed(activeLed,false);activeLed=s.lastMatchedIndex;}if(s.lastMatchedAgeMs>=0&&s.lastMatchedAgeMs<700)setLed(s.lastMatchedIndex,true);else if(activeLed>=0)setLed(activeLed,false);}catch(e){}}setInterval(rfStatus,500);rfStatus();</script>");
-  html += F("<script>async function winStatus(){try{const r=await fetch('/api/window',{cache:'no-store'});const s=await r.json();const cur=s.current||[];const ok=s.inaOk||[];for(let i=0;i<8;i++){let c=document.getElementById('cur'+i);if(c)c.textContent=(cur[i]??0)+' mA';let o=document.getElementById('ina'+i);if(o)o.textContent=ok[i]?'OK':'нет';}document.getElementById('reeds').textContent=(s.reed||[]).join(', ');document.getElementById('cap').textContent='0x'+Number(s.cap||0).toString(16);document.getElementById('wfault').textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');}catch(e){}}setInterval(winStatus,700);winStatus();</script>");
+  html += F("<script>async function winStatus(){for(let n=0;n<2;n++){try{const r=await fetch('/api/window?target=local'+n,{cache:'no-store'});const s=await r.json();const cur=s.current||[];const ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('l'+n+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('l'+n+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('l'+n+'reeds');if(reeds)reeds.textContent=(s.reed||[]).join(', ');let cap=document.getElementById('l'+n+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('l'+n+'fault');if(fault)fault.textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');}catch(e){}}}setInterval(winStatus,700);winStatus();</script>");
   html += F("<script>async function rsStatus(){try{const r=await fetch('/api/rs485',{cache:'no-store'});const d=await r.json();(d.nodes||[]).forEach((n,i)=>{let e=document.getElementById('rs'+i+'status');if(e)e.textContent=n.status||'-';let s=n.json||{};let cur=s.current||[];let ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('rs'+i+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('rs'+i+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('rs'+i+'reeds');if(reeds)reeds.textContent=(s.reed||[]).join(', ');let cap=document.getElementById('rs'+i+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('rs'+i+'fault');if(fault)fault.textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');})}catch(e){}}setInterval(rsStatus,1000);rsStatus();</script>");
   appendPageFooter(html);
   server.send(200, "text/html", html);
@@ -1309,17 +1359,24 @@ static void handleWindowSave() {
   if (!webAuth()) return;
   for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
     const String key = "localName" + String(i);
-    if (server.hasArg(key)) strlcpy(localRpName[i], server.arg(key).c_str(), sizeof(localRpName[i]));
+    if (server.hasArg(key)) strlcpy(localRp[i].name, server.arg(key).c_str(), sizeof(localRp[i].name));
   }
   windowCount = constrain(server.arg("windows").toInt(), 1, 2);
-  windowZeroCurrentMa = constrain(server.arg("zeroMa").toInt(), 1, 1000);
-  windowMaxMoveMs = constrain(server.arg("maxMove").toInt(), 1000, 180000);
-  windowCapEnabled = server.hasArg("capEn");
-  windowCapMask = static_cast<uint8_t>(constrain(server.arg("capMask").toInt(), 0, 255));
-  windowCapConfirmMs = static_cast<uint16_t>(constrain(server.arg("capMs").toInt(), 0, 5000));
-  for (uint8_t i = 0; i < WINDOW_ACTUATORS; ++i) {
-    String key = "max" + String(i);
-    if (server.hasArg(key)) windowMaxCurrentMa[i] = constrain(server.arg(key).toInt(), 100, 10000);
+  for (uint8_t n = 0; n < LOCAL_RP_COUNT; ++n) {
+    LocalRpConfig &cfg = localRp[n];
+    String key = "l" + String(n) + "zero";
+    if (server.hasArg(key)) cfg.zeroCurrentMa = constrain(server.arg(key).toInt(), 1, 1000);
+    key = "l" + String(n) + "move";
+    if (server.hasArg(key)) cfg.maxMoveMs = constrain(server.arg(key).toInt(), 1000, 180000);
+    cfg.capEnabled = server.hasArg("l" + String(n) + "capEn");
+    key = "l" + String(n) + "capMask";
+    if (server.hasArg(key)) cfg.capMask = static_cast<uint8_t>(constrain(server.arg(key).toInt(), 0, 255));
+    key = "l" + String(n) + "capMs";
+    if (server.hasArg(key)) cfg.capConfirmMs = static_cast<uint16_t>(constrain(server.arg(key).toInt(), 0, 5000));
+    for (uint8_t a = 0; a < LOCAL_ACTUATORS; ++a) {
+      key = "l" + String(n) + "max" + String(a);
+      if (server.hasArg(key)) cfg.maxCurrentMa[a] = constrain(server.arg(key).toInt(), 100, 10000);
+    }
   }
   saveWindowSettings();
   sendWindowConfigToRp2040();
@@ -1332,15 +1389,15 @@ static void handleWindowApi() {
   const String target = server.hasArg("target") ? server.arg("target") : "local";
   String body;
   String status = lastRpStatus[0];
-  String name = localRpName[0];
+  String name = localRp[0].name;
   uint32_t ageMs = millis() - lastRpStatusMs[0];
   if (target == "local" || target == "local0") {
     status = lastRpStatus[0];
-    name = localRpName[0];
+    name = localRp[0].name;
     ageMs = millis() - lastRpStatusMs[0];
   } else if (target == "local1") {
     status = lastRpStatus[1];
-    name = localRpName[1];
+    name = localRp[1].name;
     ageMs = millis() - lastRpStatusMs[1];
   } else if (target.startsWith("rs")) {
     const int idx = target.substring(2).toInt();
