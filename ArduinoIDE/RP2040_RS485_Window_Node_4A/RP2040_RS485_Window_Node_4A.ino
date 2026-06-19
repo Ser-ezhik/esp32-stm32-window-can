@@ -20,12 +20,10 @@ constexpr uint8_t RS485_DE_RE_PIN = 2;
 constexpr uint32_t RS485_BAUD = 38400;
 constexpr uint32_t RS485_TURNAROUND_US = 120;
 
-constexpr uint8_t RELAY_EXTEND_PIN = 10;
-constexpr uint8_t RELAY_RETRACT_PIN = 11;
+constexpr uint8_t ACT_EXTEND_PINS[ACTUATORS] = {10, 12, 14, 20};
+constexpr uint8_t ACT_RETRACT_PINS[ACTUATORS] = {11, 13, 15, 21};
 constexpr bool RELAY_ACTIVE_LEVEL = HIGH;
-
-constexpr uint8_t GROUP_ENABLE_PINS[GROUPS] = {12, 13}; // top, bottom
-constexpr bool GROUP_ENABLE_ACTIVE_LEVEL = HIGH;
+constexpr uint32_t RELAY_DIRECTION_PAUSE_MS = 80;
 
 constexpr uint8_t REED_MID_PIN = 16;
 constexpr uint8_t REED_VENT_PIN = 17;
@@ -192,14 +190,27 @@ static void writeActive(uint8_t pin, bool active, bool activeLevel) {
   digitalWrite(pin, active ? activeLevel : !activeLevel);
 }
 
+static void setActuatorRelay(uint8_t actuator, Direction dir) {
+  if (actuator >= ACTUATORS) return;
+  writeActive(ACT_EXTEND_PINS[actuator], false, RELAY_ACTIVE_LEVEL);
+  writeActive(ACT_RETRACT_PINS[actuator], false, RELAY_ACTIVE_LEVEL);
+  if (dir == DIR_EXTEND) {
+    writeActive(ACT_EXTEND_PINS[actuator], true, RELAY_ACTIVE_LEVEL);
+  } else if (dir == DIR_RETRACT) {
+    writeActive(ACT_RETRACT_PINS[actuator], true, RELAY_ACTIVE_LEVEL);
+  }
+}
+
 static void allRelaysOff() {
-  writeActive(RELAY_EXTEND_PIN, false, RELAY_ACTIVE_LEVEL);
-  writeActive(RELAY_RETRACT_PIN, false, RELAY_ACTIVE_LEVEL);
+  for (uint8_t i = 0; i < ACTUATORS; ++i) setActuatorRelay(i, DIR_NONE);
 }
 
 static void setGroup(uint8_t group, bool on) {
   groupRunning[group] = on;
-  writeActive(GROUP_ENABLE_PINS[group], on, GROUP_ENABLE_ACTIVE_LEVEL);
+  const Direction groupDirection = on ? direction : DIR_NONE;
+  for (uint8_t i = 0; i < ACTUATORS_PER_GROUP; ++i) {
+    setActuatorRelay(actIndex(group, i), groupDirection);
+  }
 }
 
 static void allGroupsOff() {
@@ -355,17 +366,11 @@ static void clearTimers() {
 
 static void setDirection(Direction dir) {
   allRelaysOff();
-  delay(80);
-  if (dir == DIR_EXTEND) {
-    writeActive(RELAY_RETRACT_PIN, false, RELAY_ACTIVE_LEVEL);
-    delayMicroseconds(500);
-    writeActive(RELAY_EXTEND_PIN, true, RELAY_ACTIVE_LEVEL);
-  } else if (dir == DIR_RETRACT) {
-    writeActive(RELAY_EXTEND_PIN, false, RELAY_ACTIVE_LEVEL);
-    delayMicroseconds(500);
-    writeActive(RELAY_RETRACT_PIN, true, RELAY_ACTIVE_LEVEL);
-  }
+  delay(RELAY_DIRECTION_PAUSE_MS);
   direction = dir;
+  for (uint8_t group = 0; group < GROUPS; ++group) {
+    if (groupRunning[group]) setGroup(group, true);
+  }
 }
 
 static void startMove(TargetMode newTarget) {
@@ -683,10 +688,11 @@ static String readUid() {
 void setup() {
   pinMode(RS485_DE_RE_PIN, OUTPUT);
   setRs485Tx(false);
-  pinMode(RELAY_EXTEND_PIN, OUTPUT);
-  pinMode(RELAY_RETRACT_PIN, OUTPUT);
+  for (uint8_t i = 0; i < ACTUATORS; ++i) {
+    pinMode(ACT_EXTEND_PINS[i], OUTPUT);
+    pinMode(ACT_RETRACT_PINS[i], OUTPUT);
+  }
   allRelaysOff();
-  for (uint8_t group = 0; group < GROUPS; ++group) pinMode(GROUP_ENABLE_PINS[group], OUTPUT);
   allGroupsOff();
 
   pinMode(REED_MID_PIN, INPUT_PULLDOWN);
