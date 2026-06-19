@@ -61,7 +61,7 @@ struct ButtonRecord {
   uint8_t actionType; // 0 local output, 1 local UART RP2040, 2 RS-485 RP2040, 3 RP2040 group
   uint8_t actionCommand; // 0 none, 1 open, 2 closed, 3 vent, 4 stop
   uint8_t rs485Node; // 0..7
-  uint16_t targetMask; // bit 0 local UART, bits 1..8 RS-485 nodes
+  uint16_t targetMask; // bit 0 local UART #1, bit 1 local UART #2, bits 2..9 RS-485 nodes
   bool enabled;
   char name[NAME_LEN];
 };
@@ -90,11 +90,15 @@ static char wifiPassword[WIFI_PASSWORD_LEN] = "";
 
 static Preferences prefs;
 static WebServer server(80);
-static HardwareSerial rpSerial(1);
+static HardwareSerial rpSerial1(1);
+static HardwareSerial rpSerial2(0);
 static HardwareSerial rs485Serial(2);
 
-static constexpr int RP2040_UART_RX_PIN = 2;
-static constexpr int RP2040_UART_TX_PIN = 3;
+static constexpr uint8_t LOCAL_RP_COUNT = 2;
+static constexpr int RP2040_UART1_RX_PIN = 2;
+static constexpr int RP2040_UART1_TX_PIN = 3;
+static constexpr int RP2040_UART2_RX_PIN = 41;
+static constexpr int RP2040_UART2_TX_PIN = 42;
 static constexpr uint32_t RP2040_UART_BAUD = 115200;
 static constexpr uint8_t WINDOW_ACTUATORS = 8;
 static constexpr int RS485_RX_PIN = 38;
@@ -120,7 +124,7 @@ struct Rs485NodeConfig {
 };
 
 static uint8_t windowCount = 2;
-static char localRpName[RP_NAME_LEN] = "Локальная RP2040";
+static char localRpName[LOCAL_RP_COUNT][RP_NAME_LEN] = {"Локальная RP2040 1", "Локальная RP2040 2"};
 static char mainWindowTarget[8] = "local";
 static uint16_t windowMaxCurrentMa[WINDOW_ACTUATORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
 static uint16_t windowZeroCurrentMa = 80;
@@ -128,9 +132,9 @@ static uint32_t windowMaxMoveMs = 45000;
 static bool windowCapEnabled = true;
 static uint8_t windowCapMask = 0xFF;
 static uint16_t windowCapConfirmMs = 50;
-static String rpLine;
-static String lastRpStatus = "{}";
-static uint32_t lastRpStatusMs = 0;
+static String rpLine[LOCAL_RP_COUNT];
+static String lastRpStatus[LOCAL_RP_COUNT] = {"{}", "{}"};
+static uint32_t lastRpStatusMs[LOCAL_RP_COUNT] = {0};
 static Rs485NodeConfig rs485Nodes[RS485_NODE_COUNT];
 static String rs485Line;
 static String rs485Status[RS485_NODE_COUNT];
@@ -143,6 +147,9 @@ static volatile uint32_t isrLastEdgeUs = 0;
 static volatile uint32_t isrLastActivityUs = 0;
 static volatile bool isrHadActivity = false;
 static volatile bool isrFrameReady = false;
+
+static uint16_t localTargetBit(uint8_t index);
+static uint16_t rs485TargetBit(uint8_t index);
 
 void IRAM_ATTR onGdo0Change() {
   const uint32_t nowUs = micros();
@@ -367,13 +374,17 @@ static void loadRecords() {
     snprintf(key, sizeof(key), "act%u", i); records[i].actionType = prefs.getUChar(key, 0);
     snprintf(key, sizeof(key), "cmd%u", i); records[i].actionCommand = prefs.getUChar(key, 0);
     snprintf(key, sizeof(key), "node%u", i); records[i].rs485Node = prefs.getUChar(key, 0);
-    snprintf(key, sizeof(key), "tmask%u", i); records[i].targetMask = prefs.getUShort(key, 0);
+    snprintf(key, sizeof(key), "tmask%u", i);
+    const bool hasTargetMask = prefs.isKey(key);
+    records[i].targetMask = prefs.getUShort(key, 0);
     records[i].actionType = constrain(records[i].actionType, 0, 3);
     records[i].actionCommand = constrain(records[i].actionCommand, 0, 4);
     records[i].rs485Node = constrain(records[i].rs485Node, 0, RS485_NODE_COUNT - 1);
-    if (records[i].targetMask == 0) {
-      if (records[i].actionType == 1) records[i].targetMask = 0x0001;
-      else if (records[i].actionType == 2) records[i].targetMask = static_cast<uint16_t>(1u << (records[i].rs485Node + 1));
+    if (hasTargetMask) {
+      records[i].targetMask &= 0x03FF;
+    } else {
+      if (records[i].actionType == 1) records[i].targetMask = localTargetBit(0);
+      else if (records[i].actionType == 2) records[i].targetMask = rs485TargetBit(records[i].rs485Node);
     }
     snprintf(key, sizeof(key), "en%u", i); records[i].enabled = prefs.getBool(key, true);
     snprintf(key, sizeof(key), "name%u", i);
@@ -404,8 +415,10 @@ static void saveWifiSettings(const String &ssid, const String &password) {
 
 static void loadWindowSettings() {
   prefs.begin("window", true);
-  String localName = prefs.getString("localName", "Локальная RP2040");
-  strlcpy(localRpName, localName.c_str(), sizeof(localRpName));
+  String localName = prefs.getString("localName0", prefs.getString("localName", "Локальная RP2040 1"));
+  strlcpy(localRpName[0], localName.c_str(), sizeof(localRpName[0]));
+  localName = prefs.getString("localName1", "Локальная RP2040 2");
+  strlcpy(localRpName[1], localName.c_str(), sizeof(localRpName[1]));
   String mainTarget = prefs.getString("mainTarget", "local");
   strlcpy(mainWindowTarget, mainTarget.c_str(), sizeof(mainWindowTarget));
   windowCount = prefs.getUChar("count", 2);
@@ -425,7 +438,8 @@ static void loadWindowSettings() {
 
 static void saveWindowSettings() {
   prefs.begin("window", false);
-  prefs.putString("localName", localRpName);
+  prefs.putString("localName0", localRpName[0]);
+  prefs.putString("localName1", localRpName[1]);
   prefs.putString("mainTarget", mainWindowTarget);
   prefs.putUChar("count", windowCount);
   prefs.putUShort("zeroMa", windowZeroCurrentMa);
@@ -503,11 +517,25 @@ static void saveRs485Settings() {
   prefs.end();
 }
 
-static void sendRpCommand(const String &line) {
-  rpSerial.print(line);
-  rpSerial.print('\n');
-  Serial.print("[RP2040] > ");
+static HardwareSerial *localRpSerial(uint8_t index) {
+  if (index == 0) return &rpSerial1;
+  if (index == 1) return &rpSerial2;
+  return nullptr;
+}
+
+static void sendRpCommand(uint8_t index, const String &line) {
+  HardwareSerial *port = localRpSerial(index);
+  if (!port) return;
+  port->print(line);
+  port->print('\n');
+  Serial.print("[RP2040 UART");
+  Serial.print(index + 1);
+  Serial.print("] > ");
   Serial.println(line);
+}
+
+static void sendRpCommandAllLocal(const String &line) {
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) sendRpCommand(i, line);
 }
 
 static void setRs485Tx(bool enabled) {
@@ -548,7 +576,7 @@ static void sendRs485NodeConfig(uint8_t index) {
   sendRs485Line(rs485ConfigLine(index));
 }
 
-static void sendWindowConfigToRp2040() {
+static String localConfigLine() {
   String line = "CFG WINDOWS=" + String(windowCount);
   line += " ZEROMA=" + String(windowZeroCurrentMa);
   line += " MAXMOVEMS=" + String(windowMaxMoveMs);
@@ -561,7 +589,12 @@ static void sendWindowConfigToRp2040() {
     line += "MAX=";
     line += String(windowMaxCurrentMa[i]);
   }
-  sendRpCommand(line);
+  return line;
+}
+
+static void sendWindowConfigToRp2040() {
+  const String line = localConfigLine();
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) sendRpCommand(i, line);
 }
 
 static String windowCommandLine(uint8_t command) {
@@ -599,9 +632,11 @@ static String rfActionLabel(const ButtonRecord &record) {
   }
   if (record.actionType == 3) {
     uint8_t count = 0;
-    if (record.targetMask & 0x0001) ++count;
+    for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
+      if (record.targetMask & localTargetBit(i)) ++count;
+    }
     for (uint8_t i = 0; i < RS485_NODE_COUNT; ++i) {
-      if (record.targetMask & (1u << (i + 1))) ++count;
+      if (record.targetMask & rs485TargetBit(i)) ++count;
     }
     return "Группа RP2040 (" + String(count) + "): " + windowCommandLabel(record.actionCommand);
   }
@@ -612,7 +647,7 @@ static String rfActionLabel(const ButtonRecord &record) {
 static void executeRfAction(const ButtonRecord &record) {
   const String commandLine = windowCommandLine(record.actionCommand);
   if (record.actionType == 1) {
-    if (commandLine.length()) sendRpCommand(commandLine);
+    if (commandLine.length()) sendRpCommand(0, commandLine);
     return;
   }
   if (record.actionType == 2) {
@@ -625,9 +660,11 @@ static void executeRfAction(const ButtonRecord &record) {
   }
   if (record.actionType == 3) {
     if (!commandLine.length()) return;
-    if (record.targetMask & 0x0001) sendRpCommand(commandLine);
+    for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
+      if (record.targetMask & localTargetBit(i)) sendRpCommand(i, commandLine);
+    }
     for (uint8_t i = 0; i < RS485_NODE_COUNT; ++i) {
-      if ((record.targetMask & (1u << (i + 1))) == 0) continue;
+      if ((record.targetMask & rs485TargetBit(i)) == 0) continue;
       if (!rs485Nodes[i].enabled) continue;
       sendRs485Line("@" + String(rs485Nodes[i].address) + " " + commandLine);
       delay(15);
@@ -640,7 +677,13 @@ static void executeRfAction(const ButtonRecord &record) {
 static bool sendWindowTargetCommand(const String &target, const String &commandLine) {
   if (!commandLine.length()) return false;
   if (target == "local") {
-    sendRpCommand(commandLine);
+    sendRpCommand(0, commandLine);
+    return true;
+  }
+  if (target.startsWith("local")) {
+    int idx = target.substring(5).toInt();
+    if (idx < 0 || idx >= LOCAL_RP_COUNT) return false;
+    sendRpCommand(static_cast<uint8_t>(idx), commandLine);
     return true;
   }
   if (target.startsWith("rs")) {
@@ -780,6 +823,14 @@ static String remoteHex(uint16_t remoteId) {
   return String(buf);
 }
 
+static uint16_t localTargetBit(uint8_t index) {
+  return index < LOCAL_RP_COUNT ? static_cast<uint16_t>(1u << index) : 0;
+}
+
+static uint16_t rs485TargetBit(uint8_t index) {
+  return index < RS485_NODE_COUNT ? static_cast<uint16_t>(1u << (index + LOCAL_RP_COUNT)) : 0;
+}
+
 static void appendPageHeader(String &html, const char *title) {
   html += F("<!doctype html><html><head><meta charset='utf-8'>");
   html += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
@@ -890,11 +941,19 @@ static void handleRoot() {
   html.reserve(7000);
   appendPageHeader(html, "Window controller");
   html += F("<div class='card'><h2>Управление окнами</h2><p id='wstatus'>Загрузка статуса...</p>");
-  html += F("<form method='post' action='/window/cmd'><label>Выберите окно</label><select id='target' name='target'><option value='local'");
-  if (strcmp(mainWindowTarget, "local") == 0) html += F(" selected");
-  html += F(">");
-  html += htmlEscape(localRpName);
-  html += F("</option>");
+  html += F("<form method='post' action='/window/cmd'><label>Выберите окно</label><select id='target' name='target'>");
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
+    String targetValue = "local" + String(i);
+    html += F("<option value='");
+    html += targetValue;
+    html += F("'");
+    if (targetValue == mainWindowTarget || (i == 0 && strcmp(mainWindowTarget, "local") == 0)) html += F(" selected");
+    html += F(">");
+    html += htmlEscape(localRpName[i]);
+    html += F(" / UART");
+    html += String(i + 1);
+    html += F("</option>");
+  }
   for (uint8_t i = 0; i < RS485_NODE_COUNT; ++i) {
     if (!rs485Nodes[i].enabled) continue;
     String targetValue = "rs" + String(i);
@@ -925,9 +984,15 @@ static void handleConfig() {
   appendPageHeader(html, "ESP32 CC1101 receiver");
   html += F("<p><a class='btn' href='/'>Главная</a></p>");
   html += F("<div class='card'><h2>Настройки окон</h2><form method='post' action='/window/save'>");
-  html += F("<label>Имя локальной RP2040</label><input name='localName' maxlength='31' value='");
-  html += htmlEscape(localRpName);
-  html += F("'>");
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
+    html += F("<label>Имя локальной RP2040 UART");
+    html += String(i + 1);
+    html += F("</label><input name='localName");
+    html += String(i);
+    html += F("' maxlength='31' value='");
+    html += htmlEscape(localRpName[i]);
+    html += F("'>");
+  }
   html += F("<label>Количество окон</label><select name='windows'><option value='1'");
   if (windowCount == 1) html += F(" selected");
   html += F(">1 окно</option><option value='2'");
@@ -1062,20 +1127,25 @@ static void handleConfig() {
       html += htmlEscape(rs485Nodes[node].name);
       html += F("</option>");
     }
-    html += F("</select></td><td><label><input type='checkbox' name='tlocal");
-    html += String(i);
-    html += F("' value='1'");
-    if (records[i].targetMask & 0x0001) html += F(" checked");
-    html += F("> ");
-    html += htmlEscape(localRpName);
-    html += F("</label>");
+    html += F("</select></td><td>");
+    for (uint8_t local = 0; local < LOCAL_RP_COUNT; ++local) {
+      html += F("<label><input type='checkbox' name='tlocal");
+      html += String(i);
+      html += F("_");
+      html += String(local);
+      html += F("' value='1'");
+      if (records[i].targetMask & localTargetBit(local)) html += F(" checked");
+      html += F("> ");
+      html += htmlEscape(localRpName[local]);
+      html += F("</label>");
+    }
     for (uint8_t node = 0; node < RS485_NODE_COUNT; ++node) {
       html += F("<label><input type='checkbox' name='tn");
       html += String(i);
       html += F("_");
       html += String(node);
       html += F("' value='1'");
-      if (records[i].targetMask & (1u << (node + 1))) html += F(" checked");
+      if (records[i].targetMask & rs485TargetBit(node)) html += F(" checked");
       html += F("> ");
       html += htmlEscape(rs485Nodes[node].name);
       html += F("</label>");
@@ -1198,13 +1268,15 @@ static void handleSave() {
     if (server.hasArg(cmdKey)) record.actionCommand = static_cast<uint8_t>(constrain(server.arg(cmdKey).toInt(), 0, 4));
     if (server.hasArg(nodeKey)) record.rs485Node = static_cast<uint8_t>(constrain(server.arg(nodeKey).toInt(), 0, RS485_NODE_COUNT - 1));
     uint16_t targetMask = 0;
-    if (server.hasArg("tlocal" + String(i))) targetMask |= 0x0001;
+    for (uint8_t local = 0; local < LOCAL_RP_COUNT; ++local) {
+      if (server.hasArg("tlocal" + String(i) + "_" + String(local))) targetMask |= localTargetBit(local);
+    }
     for (uint8_t node = 0; node < RS485_NODE_COUNT; ++node) {
-      if (server.hasArg("tn" + String(i) + "_" + String(node))) targetMask |= static_cast<uint16_t>(1u << (node + 1));
+      if (server.hasArg("tn" + String(i) + "_" + String(node))) targetMask |= rs485TargetBit(node);
     }
     if (targetMask == 0) {
-      if (record.actionType == 1) targetMask = 0x0001;
-      else if (record.actionType == 2) targetMask = static_cast<uint16_t>(1u << (record.rs485Node + 1));
+      if (record.actionType == 1) targetMask = localTargetBit(0);
+      else if (record.actionType == 2) targetMask = rs485TargetBit(record.rs485Node);
     }
     record.targetMask = targetMask;
     record.enabled = server.hasArg(enKey);
@@ -1235,7 +1307,10 @@ static void handleWindowCommand() {
 
 static void handleWindowSave() {
   if (!webAuth()) return;
-  if (server.hasArg("localName")) strlcpy(localRpName, server.arg("localName").c_str(), sizeof(localRpName));
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
+    const String key = "localName" + String(i);
+    if (server.hasArg(key)) strlcpy(localRpName[i], server.arg(key).c_str(), sizeof(localRpName[i]));
+  }
   windowCount = constrain(server.arg("windows").toInt(), 1, 2);
   windowZeroCurrentMa = constrain(server.arg("zeroMa").toInt(), 1, 1000);
   windowMaxMoveMs = constrain(server.arg("maxMove").toInt(), 1000, 180000);
@@ -1256,10 +1331,18 @@ static void handleWindowApi() {
   if (!webAuth()) return;
   const String target = server.hasArg("target") ? server.arg("target") : "local";
   String body;
-  String status = lastRpStatus;
-  String name = localRpName;
-  uint32_t ageMs = millis() - lastRpStatusMs;
-  if (target.startsWith("rs")) {
+  String status = lastRpStatus[0];
+  String name = localRpName[0];
+  uint32_t ageMs = millis() - lastRpStatusMs[0];
+  if (target == "local" || target == "local0") {
+    status = lastRpStatus[0];
+    name = localRpName[0];
+    ageMs = millis() - lastRpStatusMs[0];
+  } else if (target == "local1") {
+    status = lastRpStatus[1];
+    name = localRpName[1];
+    ageMs = millis() - lastRpStatusMs[1];
+  } else if (target.startsWith("rs")) {
     const int idx = target.substring(2).toInt();
     if (idx >= 0 && idx < RS485_NODE_COUNT) {
       status = rs485Status[idx];
@@ -1408,22 +1491,30 @@ static void beginWeb() {
   server.begin();
 }
 
-static void readRp2040() {
-  while (rpSerial.available()) {
-    const char c = static_cast<char>(rpSerial.read());
+static void readRp2040Port(uint8_t index) {
+  HardwareSerial *port = localRpSerial(index);
+  if (!port) return;
+  while (port->available()) {
+    const char c = static_cast<char>(port->read());
     if (c == '\n' || c == '\r') {
-      rpLine.trim();
-      if (rpLine.length()) {
-        lastRpStatus = rpLine;
-        lastRpStatusMs = millis();
-        Serial.print("[RP2040] < ");
-        Serial.println(lastRpStatus);
+      rpLine[index].trim();
+      if (rpLine[index].length()) {
+        lastRpStatus[index] = rpLine[index];
+        lastRpStatusMs[index] = millis();
+        Serial.print("[RP2040 UART");
+        Serial.print(index + 1);
+        Serial.print("] < ");
+        Serial.println(lastRpStatus[index]);
       }
-      rpLine = "";
-    } else if (rpLine.length() < 900) {
-      rpLine += c;
+      rpLine[index] = "";
+    } else if (rpLine[index].length() < 900) {
+      rpLine[index] += c;
     }
   }
+}
+
+static void readRp2040() {
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) readRp2040Port(i);
 }
 
 static void handleRs485Line(String line) {
@@ -1521,7 +1612,8 @@ void setup() {
   loadWifiSettings();
   loadWindowSettings();
   loadRs485Settings();
-  rpSerial.begin(RP2040_UART_BAUD, SERIAL_8N1, RP2040_UART_RX_PIN, RP2040_UART_TX_PIN);
+  rpSerial1.begin(RP2040_UART_BAUD, SERIAL_8N1, RP2040_UART1_RX_PIN, RP2040_UART1_TX_PIN);
+  rpSerial2.begin(RP2040_UART_BAUD, SERIAL_8N1, RP2040_UART2_RX_PIN, RP2040_UART2_TX_PIN);
   pinMode(RS485_DE_RE_PIN, OUTPUT);
   setRs485Tx(false);
   rs485Serial.begin(RS485_BAUD, SERIAL_8N1, RS485_RX_PIN, RS485_TX_PIN);
@@ -1535,7 +1627,7 @@ void setup() {
   }
   beginWeb();
   sendWindowConfigToRp2040();
-  sendRpCommand("STATUS");
+  sendRpCommandAllLocal("STATUS");
   sendRs485Line("@0 DISCOVER");
 }
 
@@ -1546,7 +1638,7 @@ void loop() {
   static uint32_t lastRpStatusAsk = 0;
   if (millis() - lastRpStatusAsk > 1000) {
     lastRpStatusAsk = millis();
-    sendRpCommand("STATUS");
+    sendRpCommandAllLocal("STATUS");
   }
   static uint32_t lastRs485Poll = 0;
   static uint8_t rs485PollIndex = 0;
