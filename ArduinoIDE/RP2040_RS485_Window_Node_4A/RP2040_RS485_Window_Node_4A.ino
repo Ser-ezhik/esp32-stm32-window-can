@@ -22,7 +22,7 @@ constexpr uint32_t RS485_TURNAROUND_US = 120;
 
 constexpr uint8_t ACT_EXTEND_PINS[ACTUATORS] = {10, 12, 14, 20};
 constexpr uint8_t ACT_RETRACT_PINS[ACTUATORS] = {11, 13, 15, 21};
-constexpr bool RELAY_ACTIVE_LEVEL = HIGH;
+constexpr bool RELAY_ACTIVE_LEVEL = LOW;
 constexpr uint32_t RELAY_DIRECTION_PAUSE_MS = 80;
 
 constexpr uint8_t REED_MID_PIN = 16;
