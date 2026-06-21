@@ -156,6 +156,18 @@ static uint32_t rs485LastSeenMs[RS485_NODE_COUNT] = {0};
 static String rs485DiscoverLog;
 static String backupUploadData;
 
+struct PendingWindowCommand {
+  bool active;
+  bool rs485;
+  uint8_t index;
+  String line;
+  uint8_t remaining;
+  uint32_t nextMs;
+};
+
+static PendingWindowCommand pendingWebCommand = {false, false, 0, "", 0, 0};
+static uint32_t webCommandQuietUntilMs = 0;
+
 static volatile uint16_t isrPulseCount = 0;
 static volatile uint32_t isrPulseDurations[RF_MAX_PULSES];
 static volatile uint32_t isrLastEdgeUs = 0;
@@ -754,6 +766,54 @@ static bool sendWindowTargetCommand(const String &target, const String &commandL
     return true;
   }
   return false;
+}
+
+static bool enqueueWindowTargetCommand(const String &target, const String &commandLine) {
+  if (!commandLine.length()) return false;
+  pendingWebCommand.active = false;
+  pendingWebCommand.rs485 = false;
+  pendingWebCommand.index = 0;
+  pendingWebCommand.line = commandLine;
+  pendingWebCommand.remaining = COMMAND_REPEAT_COUNT;
+  pendingWebCommand.nextMs = millis();
+
+  if (target == "local") {
+    pendingWebCommand.index = 0;
+  } else if (target.startsWith("local")) {
+    const int idx = target.substring(5).toInt();
+    if (idx < 0 || idx >= LOCAL_RP_COUNT) return false;
+    pendingWebCommand.index = static_cast<uint8_t>(idx);
+  } else if (target.startsWith("rs")) {
+    const int idx = target.substring(2).toInt();
+    if (idx < 0 || idx >= RS485_NODE_COUNT) return false;
+    if (!rs485Nodes[idx].enabled) return false;
+    pendingWebCommand.rs485 = true;
+    pendingWebCommand.index = static_cast<uint8_t>(idx);
+    pendingWebCommand.line = "@" + String(rs485Nodes[idx].address) + " " + commandLine;
+  } else {
+    return false;
+  }
+
+  pendingWebCommand.active = true;
+  webCommandQuietUntilMs = millis() + (COMMAND_REPEAT_COUNT * COMMAND_REPEAT_DELAY_MS) + 120;
+  return true;
+}
+
+static void processPendingWebCommand() {
+  if (!pendingWebCommand.active) return;
+  const uint32_t now = millis();
+  if (static_cast<int32_t>(now - pendingWebCommand.nextMs) < 0) return;
+
+  if (pendingWebCommand.rs485) sendRs485Line(pendingWebCommand.line);
+  else sendRpCommand(pendingWebCommand.index, pendingWebCommand.line);
+
+  if (pendingWebCommand.remaining > 0) --pendingWebCommand.remaining;
+  if (pendingWebCommand.remaining == 0) {
+    pendingWebCommand.active = false;
+    webCommandQuietUntilMs = now + 80;
+  } else {
+    pendingWebCommand.nextMs = now + COMMAND_REPEAT_DELAY_MS;
+  }
 }
 
 static bool addRecord(uint32_t code) {
@@ -1605,7 +1665,7 @@ static void handleWindowCommand() {
   else if (mode == "closed") command = 2;
   else if (mode == "vent") command = 3;
   else if (mode == "stop") command = 4;
-  const bool ok = sendWindowTargetCommand(target, windowCommandLine(command), false);
+  const bool ok = enqueueWindowTargetCommand(target, windowCommandLine(command));
   if (server.hasArg("ajax")) {
     server.send(ok ? 200 : 400, "text/plain; charset=utf-8", ok ? "OK" : "ERR");
     return;
@@ -1953,16 +2013,18 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  processPendingWebCommand();
   readRp2040();
   readRs485();
   static uint32_t lastRpStatusAsk = 0;
-  if (millis() - lastRpStatusAsk > 1000) {
+  const bool webCommandQuiet = pendingWebCommand.active || static_cast<int32_t>(millis() - webCommandQuietUntilMs) < 0;
+  if (!webCommandQuiet && millis() - lastRpStatusAsk > 1000) {
     lastRpStatusAsk = millis();
     sendRpCommandAllLocal("STATUS");
   }
   static uint32_t lastRs485Poll = 0;
   static uint8_t rs485PollIndex = 0;
-  if (millis() - lastRs485Poll > 250) {
+  if (!webCommandQuiet && millis() - lastRs485Poll > 250) {
     lastRs485Poll = millis();
     for (uint8_t tries = 0; tries < RS485_NODE_COUNT; ++tries) {
       rs485PollIndex = (rs485PollIndex + 1) % RS485_NODE_COUNT;
