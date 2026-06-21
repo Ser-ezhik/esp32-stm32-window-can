@@ -868,7 +868,7 @@ static void appendPageHeader(String &html, const char *title) {
   html += F("input:not([type=checkbox]),select{width:100%;box-sizing:border-box;padding:5px 6px;margin:2px 0 6px}input[type=checkbox]{width:auto;margin:0 5px 0 0;vertical-align:middle}");
   html += F("button,.btn{display:inline-block;padding:7px 10px;margin:3px 2px;border:0;background:#1f6feb;color:white;text-decoration:none;border-radius:4px}.danger{background:#b42318}.muted{color:#667085}");
   html += F(".card{background:white;padding:10px;margin:10px 0;border:1px solid #dbe1ea;border-radius:6px}.scroll{overflow-x:auto}.rf-table{min-width:1180px}.rf-table td{white-space:nowrap}.rf-table input:not([type=checkbox]),.rf-table select{min-width:100px}");
-  html += F(".targets{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:4px 10px;min-width:260px}.targets label{display:flex;align-items:center;white-space:nowrap}");
+  html += F(".targets{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:4px 10px;min-width:260px}.targets label{display:flex;align-items:center;white-space:nowrap}.cellhide>*{display:none!important}");
   html += F(".led{width:16px;height:16px;border-radius:50%;background:#111;border:1px solid #444;box-shadow:inset 0 0 4px #000;display:inline-block}.led.on{background:#ffd21a;border-color:#b58b00;box-shadow:0 0 12px #ffd21a}.center{text-align:center}");
   html += F("</style></head><body><main><h1>Приемник ESP32 CC1101</h1>");
 }
@@ -1140,7 +1140,7 @@ static void handleConfig() {
     html += String(i);
     html += F("' maxlength='23' value=\"");
     html += htmlEscape(records[i].name);
-    html += F("\"></td><td><select name='act");
+    html += F("\"></td><td><select class='actsel' onchange='rfRow(this)' name='act");
     html += String(i);
     html += F("'><option value='0'");
     if (records[i].actionType == 0) html += F(" selected");
@@ -1150,7 +1150,7 @@ static void handleConfig() {
     if (records[i].actionType == 2) html += F(" selected");
     html += F(">RP2040 RS-485</option><option value='3'");
     if (records[i].actionType == 3) html += F(" selected");
-    html += F(">Группа RP2040</option></select></td><td><select name='cmd");
+    html += F(">Группа RP2040</option></select></td><td class='cmdCell'><select name='cmd");
     html += String(i);
     html += F("'><option value='0'");
     if (records[i].actionCommand == 0) html += F(" selected");
@@ -1162,7 +1162,7 @@ static void handleConfig() {
     if (records[i].actionCommand == 3) html += F(" selected");
     html += F(">Проветривание</option><option value='4'");
     if (records[i].actionCommand == 4) html += F(" selected");
-    html += F(">Стоп</option></select></td><td><select name='node");
+    html += F(">Стоп</option></select></td><td class='nodeCell'><select name='node");
     html += String(i);
     html += F("'>");
     for (uint8_t node = 0; node < RS485_NODE_COUNT; ++node) {
@@ -1178,7 +1178,7 @@ static void handleConfig() {
       html += htmlEscape(rs485Nodes[node].name);
       html += F("</option>");
     }
-    html += F("</select></td><td><div class='targets'>");
+    html += F("</select></td><td class='targetCell'><div class='targets'>");
     for (uint8_t local = 0; local < LOCAL_RP_COUNT; ++local) {
       html += F("<label><input type='checkbox' name='tlocal");
       html += String(i);
@@ -1201,7 +1201,7 @@ static void handleConfig() {
       html += htmlEscape(rs485Nodes[node].name);
       html += F("</label>");
     }
-    html += F("</div></td><td><select name='out");
+    html += F("</div></td><td class='outCell'><select name='out");
     html += String(i);
     html += F("'><option value='255'>Не назначен</option>");
     for (uint8_t out = 0; out < OUTPUT_COUNT; ++out) {
@@ -1227,6 +1227,7 @@ static void handleConfig() {
   }
   html += F("</table></div><p><button type='submit'>Сохранить</button></p></form>");
   html += F("<p class='muted'>Обучение: нажмите физическую кнопку или «Добавить пульт», затем нажимайте кнопки пульта. Повторное короткое нажатие или «Закончить обучение» возвращает рабочий режим.</p>");
+  html += F("<script>function rfRow(s){const r=s.closest('tr');if(!r)return;const a=s.value;function sh(c,on){const e=r.querySelector(c);if(e)e.classList.toggle('cellhide',!on)}sh('.cmdCell',a!='0');sh('.nodeCell',a=='2');sh('.targetCell',a=='3');sh('.outCell',a=='0')}document.querySelectorAll('.actsel').forEach(rfRow);</script>");
   html += F("<script>let activeLed=-1;function setLed(i,on){const e=document.getElementById('led'+i);if(e)e.classList.toggle('on',on);}async function rfStatus(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)return;const s=await r.json();document.getElementById('lastSeen').textContent=s.lastSeen||'-';document.getElementById('lastButton').textContent=s.lastButton||'-';document.getElementById('lastMatched').textContent=s.lastMatched||'-';document.getElementById('lastOutput').textContent=s.lastOutput||'-';document.getElementById('lastAge').textContent=s.lastMatchedAgeMs>=0?((s.lastMatchedAgeMs/1000).toFixed(1)+' s'):'-';const b=document.getElementById('learnBtn');if(b){b.textContent=s.learnMode?'Закончить обучение':'Добавить пульт';b.classList.toggle('danger',s.learnMode);}if(activeLed!==s.lastMatchedIndex){if(activeLed>=0)setLed(activeLed,false);activeLed=s.lastMatchedIndex;}if(s.lastMatchedAgeMs>=0&&s.lastMatchedAgeMs<700)setLed(s.lastMatchedIndex,true);else if(activeLed>=0)setLed(activeLed,false);}catch(e){}}setInterval(rfStatus,500);rfStatus();</script>");
   html += F("<script>async function winStatus(){for(let n=0;n<2;n++){try{const r=await fetch('/api/window?target=local'+n,{cache:'no-store'});const s=await r.json();const cur=s.current||[];const ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('l'+n+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('l'+n+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('l'+n+'reeds');if(reeds)reeds.textContent=(s.reed||[]).join(', ');let cap=document.getElementById('l'+n+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('l'+n+'fault');if(fault)fault.textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');}catch(e){}}}setInterval(winStatus,700);winStatus();</script>");
   html += F("<script>async function rsStatus(){try{const r=await fetch('/api/rs485',{cache:'no-store'});const d=await r.json();(d.nodes||[]).forEach((n,i)=>{let e=document.getElementById('rs'+i+'status');if(e)e.textContent=n.status||'-';let s=n.json||{};let cur=s.current||[];let ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('rs'+i+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('rs'+i+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('rs'+i+'reeds');if(reeds)reeds.textContent=(s.reed||[]).join(', ');let cap=document.getElementById('rs'+i+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('rs'+i+'fault');if(fault)fault.textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');})}catch(e){}}setInterval(rsStatus,1000);rsStatus();</script>");
