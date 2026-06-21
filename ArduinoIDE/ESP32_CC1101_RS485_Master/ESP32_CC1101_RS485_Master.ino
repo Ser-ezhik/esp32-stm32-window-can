@@ -728,20 +728,20 @@ static void executeRfAction(const ButtonRecord &record) {
 static bool sendWindowTargetCommand(const String &target, const String &commandLine) {
   if (!commandLine.length()) return false;
   if (target == "local") {
-    sendRpCommand(0, commandLine);
+    sendRpCommandReliable(0, commandLine);
     return true;
   }
   if (target.startsWith("local")) {
     int idx = target.substring(5).toInt();
     if (idx < 0 || idx >= LOCAL_RP_COUNT) return false;
-    sendRpCommand(static_cast<uint8_t>(idx), commandLine);
+    sendRpCommandReliable(static_cast<uint8_t>(idx), commandLine);
     return true;
   }
   if (target.startsWith("rs")) {
     const int idx = target.substring(2).toInt();
     if (idx < 0 || idx >= RS485_NODE_COUNT) return false;
     if (!rs485Nodes[idx].enabled) return false;
-    sendRs485Line("@" + String(rs485Nodes[idx].address) + " " + commandLine);
+    sendRs485LineReliable("@" + String(rs485Nodes[idx].address) + " " + commandLine);
     return true;
   }
   return false;
