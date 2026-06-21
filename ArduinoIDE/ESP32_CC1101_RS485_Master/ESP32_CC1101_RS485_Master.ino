@@ -730,23 +730,27 @@ static void executeRfAction(const ButtonRecord &record) {
   if (record.output < OUTPUT_COUNT) pulseOutput(record.output);
 }
 
-static bool sendWindowTargetCommand(const String &target, const String &commandLine) {
+static bool sendWindowTargetCommand(const String &target, const String &commandLine, bool reliable = true) {
   if (!commandLine.length()) return false;
   if (target == "local") {
-    sendRpCommandReliable(0, commandLine);
+    if (reliable) sendRpCommandReliable(0, commandLine);
+    else sendRpCommand(0, commandLine);
     return true;
   }
   if (target.startsWith("local")) {
     int idx = target.substring(5).toInt();
     if (idx < 0 || idx >= LOCAL_RP_COUNT) return false;
-    sendRpCommandReliable(static_cast<uint8_t>(idx), commandLine);
+    if (reliable) sendRpCommandReliable(static_cast<uint8_t>(idx), commandLine);
+    else sendRpCommand(static_cast<uint8_t>(idx), commandLine);
     return true;
   }
   if (target.startsWith("rs")) {
     const int idx = target.substring(2).toInt();
     if (idx < 0 || idx >= RS485_NODE_COUNT) return false;
     if (!rs485Nodes[idx].enabled) return false;
-    sendRs485LineReliable("@" + String(rs485Nodes[idx].address) + " " + commandLine);
+    const String line = "@" + String(rs485Nodes[idx].address) + " " + commandLine;
+    if (reliable) sendRs485LineReliable(line);
+    else sendRs485Line(line);
     return true;
   }
   return false;
@@ -1213,7 +1217,7 @@ static void handleRoot() {
   html += F("<button class='mainbtn' name='mode' value='vent' type='submit'>Проветривание</button>");
   html += F("<button name='mode' value='stop' class='danger' type='submit'>Стоп</button></form>");
   html += F("<p><a href='/config'>config</a></p></div>");
-  html += F("<script>function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}async function upd(){try{let t=document.getElementById('target').value;let r=await fetch('/api/window?target='+encodeURIComponent(t),{cache:'no-store'});let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Окно:</b> '+(s.name||'-')+'<br><b>Состояние:</b> '+(s.state||'unknown')+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+(s.fault||'none')+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){document.getElementById('wstatus').textContent='Нет связи';}}document.getElementById('target').addEventListener('change',upd);document.getElementById('cmdform').addEventListener('submit',async e=>{e.preventDefault();let b=e.submitter;if(!b)return;let f=new FormData(e.target);f.set('mode',b.value);f.set('ajax','1');b.disabled=true;try{await fetch('/window/cmd',{method:'POST',body:f,cache:'no-store'});setTimeout(upd,80);}finally{b.disabled=false;}});setInterval(upd,700);upd();</script>");
+  html += F("<script>function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}async function upd(){try{let t=document.getElementById('target').value;let r=await fetch('/api/window?target='+encodeURIComponent(t),{cache:'no-store'});let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Окно:</b> '+(s.name||'-')+'<br><b>Состояние:</b> '+(s.state||'unknown')+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+(s.fault||'none')+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){document.getElementById('wstatus').textContent='Нет связи';}}document.getElementById('target').addEventListener('change',upd);document.getElementById('cmdform').addEventListener('submit',async e=>{e.preventDefault();let b=e.submitter;if(!b)return;let f=new FormData(e.target);f.set('mode',b.value);f.set('ajax','1');b.disabled=true;try{await fetch('/window/cmd',{method:'POST',body:f,cache:'no-store'});setTimeout(upd,80);}finally{b.disabled=false;}});setInterval(upd,1500);upd();</script>");
   appendPageFooter(html);
   server.send(200, "text/html; charset=utf-8", html);
 }
@@ -1601,7 +1605,7 @@ static void handleWindowCommand() {
   else if (mode == "closed") command = 2;
   else if (mode == "vent") command = 3;
   else if (mode == "stop") command = 4;
-  const bool ok = sendWindowTargetCommand(target, windowCommandLine(command));
+  const bool ok = sendWindowTargetCommand(target, windowCommandLine(command), false);
   if (server.hasArg("ajax")) {
     server.send(ok ? 200 : 400, "text/plain; charset=utf-8", ok ? "OK" : "ERR");
     return;
