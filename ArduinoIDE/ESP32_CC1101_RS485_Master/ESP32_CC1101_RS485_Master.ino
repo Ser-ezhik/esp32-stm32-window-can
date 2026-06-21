@@ -38,8 +38,8 @@ static const char *AP_PASSWORD = "12345678";
 // ----------------------------- RF settings -----------------------------
 static constexpr float RF_FREQ_MHZ = 433.92;
 static constexpr float RF_DATA_RATE_KBPS = 19.2;
-static constexpr uint32_t RF_IDLE_FRAME_US = 30000;
-static constexpr uint32_t RF_DEBOUNCE_MS = 700;
+static constexpr uint32_t RF_IDLE_FRAME_US = 18000;
+static constexpr uint32_t RF_DEBOUNCE_MS = 250;
 static constexpr size_t RF_MAX_PULSES = 180;
 static constexpr byte CC1101_GDO0_ASYNC_SERIAL = 0x0D;
 static constexpr byte CC1101_GDO2_CARRIER_SENSE = 0x0E;
@@ -807,18 +807,28 @@ static void processRf() {
   noInterrupts();
   const bool ready = isrFrameReady;
   uint16_t pulseCount = isrPulseCount;
+  const bool enoughForFrame = pulseCount >= (EXPECTED_BITS * 2 + 1);
   uint32_t pulses[RF_MAX_PULSES];
   if (pulseCount > RF_MAX_PULSES) pulseCount = RF_MAX_PULSES;
-  if (ready) {
+  if (ready || enoughForFrame) {
     for (uint16_t i = 0; i < pulseCount; ++i) pulses[i] = isrPulseDurations[i];
+  }
+  if (ready) {
     isrPulseCount = 0;
     isrHadActivity = false;
     isrFrameReady = false;
   }
   interrupts();
-  if (!ready) return;
+  if (!ready && !enoughForFrame) return;
   uint32_t code = 0;
-  if (decodeFrame(pulses, pulseCount, code)) handleCode(code);
+  if (decodeFrame(pulses, pulseCount, code)) {
+    noInterrupts();
+    isrPulseCount = 0;
+    isrHadActivity = false;
+    isrFrameReady = false;
+    interrupts();
+    handleCode(code);
+  }
 }
 
 static bool webAuth() {
