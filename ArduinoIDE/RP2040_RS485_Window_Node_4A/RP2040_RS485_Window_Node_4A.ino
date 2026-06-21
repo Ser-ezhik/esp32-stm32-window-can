@@ -205,9 +205,23 @@ static void allRelaysOff() {
   for (uint8_t i = 0; i < ACTUATORS; ++i) setActuatorRelay(i, DIR_NONE);
 }
 
+static const char *directionName(Direction value) {
+  switch (value) {
+    case DIR_EXTEND: return "extend";
+    case DIR_RETRACT: return "retract";
+    default: return "none";
+  }
+}
+
 static void setGroup(uint8_t group, bool on) {
   groupRunning[group] = on;
   const Direction groupDirection = on ? direction : DIR_NONE;
+  Serial.print(F("[RELAY] group="));
+  Serial.print(group == GROUP_TOP ? F("top") : F("bottom"));
+  Serial.print(F(" on="));
+  Serial.print(on ? 1 : 0);
+  Serial.print(F(" dir="));
+  Serial.println(directionName(groupDirection));
   for (uint8_t i = 0; i < ACTUATORS_PER_GROUP; ++i) {
     setActuatorRelay(actIndex(group, i), groupDirection);
   }
@@ -218,6 +232,12 @@ static void allGroupsOff() {
 }
 
 static void stopAll(const String &why, int actuator = 0, bool asFault = false) {
+  Serial.print(F("[STOP] why="));
+  Serial.print(why);
+  Serial.print(F(" actuator="));
+  Serial.print(actuator);
+  Serial.print(F(" fault="));
+  Serial.println(asFault ? 1 : 0);
   allGroupsOff();
   allRelaysOff();
   direction = DIR_NONE;
@@ -374,7 +394,12 @@ static void setDirection(Direction dir) {
 }
 
 static void startMove(TargetMode newTarget) {
-  if (state == STATE_MOVING && target == newTarget) return;
+  Serial.print(F("[CMD] startMove target="));
+  Serial.println(targetName(newTarget));
+  if (state == STATE_MOVING && target == newTarget) {
+    Serial.println(F("[CMD] duplicate ignored"));
+    return;
+  }
   stopAll("none", 0, false);
   clearTimers();
   readReeds();
@@ -583,9 +608,24 @@ static void replyStatus(bool direct = false) {
   else rs485Send("@" + String(nodeAddress) + " " + statusJson());
 }
 
+static void replyAck(const String &payload, bool direct = false) {
+  String line = "ACK ";
+  line += payload;
+  line += " state=";
+  line += stateName(state);
+  line += " target=";
+  line += targetName(target);
+  line += " fault=";
+  line += fault;
+  if (!direct) line = "@" + String(nodeAddress) + " " + line;
+  rs485Send(line);
+}
+
 static void handleCommand(String payload, bool broadcast, bool direct = false) {
   payload.trim();
   payload.toUpperCase();
+  Serial.print(F("[RX] "));
+  Serial.println(payload);
 
   if (payload == "DISCOVER") {
     delay(5 + (nodeAddress * 11));
@@ -606,10 +646,20 @@ static void handleCommand(String payload, bool broadcast, bool direct = false) {
 
   if (broadcast) return;
 
-  if (payload == "CMD OPEN") startMove(TARGET_OPEN);
-  else if (payload == "CMD CLOSED") startMove(TARGET_CLOSED);
-  else if (payload == "CMD VENT") startMove(TARGET_VENT);
-  else if (payload == "CMD STOP") stopAll("stopped", 0, false);
+  bool ack = false;
+  if (payload == "CMD OPEN") {
+    startMove(TARGET_OPEN);
+    ack = true;
+  } else if (payload == "CMD CLOSED") {
+    startMove(TARGET_CLOSED);
+    ack = true;
+  } else if (payload == "CMD VENT") {
+    startMove(TARGET_VENT);
+    ack = true;
+  } else if (payload == "CMD STOP") {
+    stopAll("stopped", 0, false);
+    ack = true;
+  }
   else if (payload == "STATUS") {
     replyStatus(direct);
     return;
@@ -633,7 +683,9 @@ static void handleCommand(String payload, bool broadcast, bool direct = false) {
     capStopMask = static_cast<uint8_t>(constrain(valueAfter(payload, "CAPMASK=", capStopMask), 0, 255));
     capConfirmMs = constrain(static_cast<uint32_t>(valueAfter(payload, "CAPMS=", capConfirmMs)), 0ul, 5000ul);
     configSaved = saveConfigToFlash();
+    ack = true;
   }
+  if (ack) replyAck(payload, direct);
   replyStatus(direct);
 }
 

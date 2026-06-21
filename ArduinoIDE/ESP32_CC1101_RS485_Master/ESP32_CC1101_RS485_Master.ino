@@ -1805,12 +1805,14 @@ static void readRp2040Port(uint8_t index) {
     if (c == '\n' || c == '\r') {
       rpLine[index].trim();
       if (rpLine[index].length()) {
-        lastRpStatus[index] = rpLine[index];
-        lastRpStatusMs[index] = millis();
         Serial.print("[RP2040 UART");
         Serial.print(index + 1);
         Serial.print("] < ");
-        Serial.println(lastRpStatus[index]);
+        Serial.println(rpLine[index]);
+        if (rpLine[index].startsWith("{")) {
+          lastRpStatus[index] = rpLine[index];
+          lastRpStatusMs[index] = millis();
+        }
       }
       rpLine[index] = "";
     } else if (rpLine[index].length() < 900) {
