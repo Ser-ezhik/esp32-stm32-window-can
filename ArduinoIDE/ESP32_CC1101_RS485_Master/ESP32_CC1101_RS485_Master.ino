@@ -1277,7 +1277,7 @@ static void handleRoot() {
   html += F("<button class='mainbtn' name='mode' value='vent' type='submit'>Проветривание</button>");
   html += F("<button name='mode' value='stop' class='danger' type='submit'>Стоп</button></form>");
   html += F("<p><a href='/config'>config</a></p></div>");
-  html += F("<script>function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}async function upd(){try{let t=document.getElementById('target').value;let r=await fetch('/api/window?target='+encodeURIComponent(t),{cache:'no-store'});let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Окно:</b> '+(s.name||'-')+'<br><b>Состояние:</b> '+(s.state||'unknown')+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+(s.fault||'none')+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){document.getElementById('wstatus').textContent='Нет связи';}}document.getElementById('target').addEventListener('change',upd);document.getElementById('cmdform').addEventListener('submit',async e=>{e.preventDefault();let b=e.submitter;if(!b)return;let f=new FormData(e.target);f.set('mode',b.value);f.set('ajax','1');b.disabled=true;try{await fetch('/window/cmd',{method:'POST',body:f,cache:'no-store'});setTimeout(upd,80);}finally{b.disabled=false;}});setInterval(upd,1500);upd();</script>");
+  html += F("<script>function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}async function upd(){try{let t=document.getElementById('target').value;let r=await fetch('/api/window?target='+encodeURIComponent(t),{cache:'no-store'});let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Окно:</b> '+(s.name||'-')+'<br><b>Состояние:</b> '+(s.state||'unknown')+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+(s.fault||'none')+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){document.getElementById('wstatus').textContent='Нет связи';}}async function cmd(mode,b){let f=new FormData(document.getElementById('cmdform'));f.set('mode',mode);f.set('ajax','1');if(b)b.disabled=true;try{await fetch('/window/cmd',{method:'POST',body:f,cache:'no-store',keepalive:false});setTimeout(upd,80);}finally{if(b)b.disabled=false;}}document.getElementById('target').addEventListener('change',upd);document.getElementById('cmdform').addEventListener('submit',e=>{e.preventDefault();let b=e.submitter;if(b)cmd(b.value,b);});document.querySelectorAll('#cmdform button[name=mode]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();cmd(b.value,b);}));setInterval(upd,2500);upd();</script>");
   appendPageFooter(html);
   server.send(200, "text/html; charset=utf-8", html);
 }
@@ -1666,6 +1666,7 @@ static void handleWindowCommand() {
   else if (mode == "vent") command = 3;
   else if (mode == "stop") command = 4;
   const bool ok = enqueueWindowTargetCommand(target, windowCommandLine(command));
+  if (ok) processPendingWebCommand();
   if (server.hasArg("ajax")) {
     server.send(ok ? 200 : 400, "text/plain; charset=utf-8", ok ? "OK" : "ERR");
     return;
@@ -1832,6 +1833,7 @@ static void handleRs485Api() {
 
 static void beginWeb() {
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(wifiSsid, wifiPassword);
   DBG_PRINT("[WIFI] Connecting");
   for (uint8_t i = 0; i < 40 && WiFi.status() != WL_CONNECTED; ++i) {
@@ -1844,6 +1846,7 @@ static void beginWeb() {
     DBG_PRINTLN(WiFi.localIP());
   } else {
     WiFi.mode(WIFI_AP);
+    WiFi.setSleep(false);
     WiFi.softAP(AP_SSID, AP_PASSWORD);
     DBG_PRINT("[WIFI] AP IP: ");
     DBG_PRINTLN(WiFi.softAPIP());
