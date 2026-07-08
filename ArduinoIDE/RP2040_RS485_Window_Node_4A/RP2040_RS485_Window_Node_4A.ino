@@ -3,6 +3,10 @@
 #include <Adafruit_INA219.h>
 #include <Adafruit_CAP1188.h>
 #include "drivers/FlashIAP.h"
+#include <hardware/watchdog.h>
+
+static const char *FW_VERSION = "v1.1-safety-fixes";
+static const char *FW_BUILD_DATE = "2026-07-08";
 
 // RP2040 RS-485 window node: 4 actuators, 4 INA219, CAP1188, reeds, backup buttons.
 // RS-485 protocol is line based, 3.3 V UART through an external MAX3485/SP3485 module.
@@ -40,7 +44,9 @@ constexpr uint32_t BUTTON_DEBOUNCE_MS = 30;
 
 constexpr uint8_t I2C_SDA_PIN = 8;
 constexpr uint8_t I2C_SCL_PIN = 9;
-constexpr uint32_t I2C_CLOCK_HZ = 400000;
+constexpr uint32_t I2C_CLOCK_HZ = 100000;
+constexpr uint32_t INA_RETRY_MS = 2000;
+constexpr uint32_t WATCHDOG_TIMEOUT_MS = 10000;
 constexpr uint8_t INA_ADDRS[ACTUATORS] = {0x40, 0x41, 0x44, 0x45};
 
 constexpr uint8_t CAP1188_ADDR = 0x29;
@@ -141,6 +147,7 @@ uint32_t statusPrintMs = 1000;
 bool inaOk[ACTUATORS] = {};
 bool capOk = false;
 float currentMa[ACTUATORS] = {};
+uint32_t lastInaInitAttempt[ACTUATORS] = {};
 uint32_t overSince[ACTUATORS] = {};
 uint32_t zeroSince[ACTUATORS] = {};
 uint32_t earlyZeroSince[ACTUATORS] = {};
@@ -337,6 +344,7 @@ static bool loadConfigFromFlash() {
 }
 
 static bool saveConfigToFlash() {
+  watchdog_update();
   mbed::FlashIAP flash;
   if (flash.init() != 0) return false;
   PersistedConfig cfg;
@@ -349,11 +357,12 @@ static bool saveConfigToFlash() {
     flash.deinit();
     return false;
   }
-  uint8_t buffer[4096];
+  static uint8_t buffer[4096];
   memset(buffer, flash.get_erase_value(), sizeof(buffer));
   memcpy(buffer, &cfg, sizeof(cfg));
   const bool ok = (flash.erase(addr, sectorSize) == 0) && (flash.program(buffer, addr, writeSize) == 0);
   flash.deinit();
+  watchdog_update();
   return ok;
 }
 
@@ -363,6 +372,32 @@ static void readReeds() {
   reeds[2] = digitalRead(REED_CLOSED_PIN) == REED_ACTIVE_LEVEL;
   reeds[3] = digitalRead(REED_EXTRA1_PIN) == REED_ACTIVE_LEVEL;
   reeds[4] = digitalRead(REED_EXTRA2_PIN) == REED_ACTIVE_LEVEL;
+}
+
+static uint8_t readCapTouchedNow() {
+  if (!capOk) {
+    capTouched = 0;
+    capActiveTouched = 0;
+    capActiveSince = 0;
+    return 0;
+  }
+  capTouched = cap1188.touched();
+  capActiveTouched = capProtectionEnabled ? (capTouched & capStopMask) : 0;
+  if (capActiveTouched != 0) {
+    if (capActiveSince == 0) capActiveSince = millis();
+  } else {
+    capActiveSince = 0;
+  }
+  return capActiveTouched;
+}
+
+static void initIna(uint8_t index) {
+  if (index >= ACTUATORS || inaOk[index]) return;
+  const uint32_t now = millis();
+  if (now - lastInaInitAttempt[index] < INA_RETRY_MS) return;
+  lastInaInitAttempt[index] = now;
+  inaOk[index] = ina[index].begin(&sensorBus);
+  if (inaOk[index]) ina[index].setCalibration_32V_2A();
 }
 
 static bool actuatorZeroConfirmed(uint8_t index, uint32_t now) {
@@ -384,6 +419,16 @@ static void clearTimers() {
   }
 }
 
+static bool targetAlreadyReached(TargetMode newTarget) {
+  readReeds();
+  bool reached = false;
+  if (newTarget == TARGET_OPEN) reached = reeds[0];
+  else if (newTarget == TARGET_VENT) reached = reeds[1];
+  else if (newTarget == TARGET_CLOSED) reached = reeds[2];
+  if (reached) estimatedPosition = newTarget;
+  return reached;
+}
+
 static void setDirection(Direction dir) {
   allRelaysOff();
   delay(RELAY_DIRECTION_PAUSE_MS);
@@ -398,6 +443,17 @@ static void startMove(TargetMode newTarget) {
   Serial.println(targetName(newTarget));
   if (state == STATE_MOVING && target == newTarget) {
     Serial.println(F("[CMD] duplicate ignored"));
+    return;
+  }
+  if (targetAlreadyReached(newTarget)) {
+    stopAll("none", 0, false);
+    estimatedPosition = newTarget;
+    Serial.println(F("[CMD] already reached"));
+    return;
+  }
+  if (capProtectionEnabled && readCapTouchedNow() != 0) {
+    stopAll("cap1188", 0, true);
+    Serial.println(F("[CMD] blocked by CAP1188"));
     return;
   }
   stopAll("none", 0, false);
@@ -415,22 +471,10 @@ static void startMove(TargetMode newTarget) {
 }
 
 static void pollCap() {
-  if (!capOk) {
-    capTouched = 0;
-    capActiveTouched = 0;
-    capActiveSince = 0;
-    return;
-  }
   if (!capIrqSeen && millis() - lastSensorPollAt < sensorPollMs) return;
   capIrqSeen = false;
   const uint32_t now = millis();
-  capTouched = cap1188.touched();
-  capActiveTouched = capProtectionEnabled ? (capTouched & capStopMask) : 0;
-  if (capActiveTouched != 0) {
-    if (capActiveSince == 0) capActiveSince = now;
-  } else {
-    capActiveSince = 0;
-  }
+  readCapTouchedNow();
   if (capProtectionEnabled && capActiveTouched != 0 && state == STATE_MOVING &&
       (capConfirmMs == 0 || now - capActiveSince >= capConfirmMs)) {
     stopAll("cap1188", 0, true);
@@ -440,12 +484,14 @@ static void pollCap() {
 static void pollCurrents(uint32_t now) {
   for (uint8_t i = 0; i < ACTUATORS; ++i) {
     if (!inaOk[i]) {
+      initIna(i);
       currentMa[i] = 0;
       continue;
     }
     const float measured = ina[i].getCurrent_mA();
     if (!isfinite(measured) || !ina[i].success()) {
       inaOk[i] = false;
+      lastInaInitAttempt[i] = now;
       currentMa[i] = 0;
       if (state == STATE_MOVING) stopAll("ina219", i + 1, true);
       return;
@@ -535,13 +581,33 @@ static void updateMovement(uint32_t now) {
   }
 }
 
+static String escapeJson(const String &value) {
+  String out;
+  out.reserve(value.length() + 8);
+  for (uint16_t i = 0; i < value.length(); ++i) {
+    const char c = value[i];
+    if (c == '"') out += F("\\\"");
+    else if (c == '\\') out += F("\\\\");
+    else if (c == '\n') out += F("\\n");
+    else if (c == '\r') out += F("\\r");
+    else if (c == '\t') out += F("\\t");
+    else if (static_cast<uint8_t>(c) >= 0x20) out += c;
+  }
+  return out;
+}
+
 static String statusJson() {
+  readReeds();
   String json;
   json.reserve(760);
   json += F("{\"addr\":");
   json += String(nodeAddress);
+  json += F(",\"fw\":\"");
+  json += FW_VERSION;
+  json += F("\",\"build\":\"");
+  json += FW_BUILD_DATE;
   json += F(",\"uid\":\"");
-  json += nodeUid;
+  json += escapeJson(nodeUid);
   json += F("\",\"state\":\"");
   json += stateName(state);
   json += F("\",\"target\":\"");
@@ -549,7 +615,7 @@ static String statusJson() {
   json += F("\",\"position\":\"");
   json += targetName(estimatedPosition);
   json += F("\",\"fault\":\"");
-  json += fault;
+  json += escapeJson(fault);
   json += F("\",\"faultActuator\":");
   json += String(faultActuator);
   json += F(",\"cap\":");
@@ -738,7 +804,12 @@ static String readUid() {
   return out.length() ? out : "RP2040";
 }
 
+static void feedWatchdog() {
+  watchdog_update();
+}
+
 void setup() {
+  watchdog_enable(WATCHDOG_TIMEOUT_MS, true);
   pinMode(RS485_DE_RE_PIN, OUTPUT);
   setRs485Tx(false);
   for (uint8_t i = 0; i < ACTUATORS; ++i) {
@@ -782,6 +853,7 @@ void setup() {
 }
 
 void loop() {
+  feedWatchdog();
   const uint32_t now = millis();
   readRs485();
   readBackupButtons(now);

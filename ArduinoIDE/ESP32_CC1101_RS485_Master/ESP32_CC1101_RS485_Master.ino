@@ -6,6 +6,9 @@
 #include <WiFiUdp.h>
 #include <ESPmDNS.h>
 
+static const char *FW_VERSION = "v1.1-safety-fixes";
+static const char *FW_BUILD_DATE = "2026-07-08";
+
 // ----------------------------- Hardware pins -----------------------------
 static constexpr int PIN_SCK = 12;
 static constexpr int PIN_MISO = 13;
@@ -73,6 +76,14 @@ struct ButtonRecord {
   bool enabled;
   char name[NAME_LEN];
 };
+
+static ButtonRecord defaultButtonRecord(uint8_t index) {
+  ButtonRecord record = {};
+  record.output = 255;
+  record.enabled = true;
+  snprintf(record.name, sizeof(record.name), "Button %u", index + 1);
+  return record;
+}
 
 static ButtonRecord records[MAX_CODES];
 static uint8_t recordCount = 0;
@@ -163,6 +174,7 @@ static String rs485Status[RS485_NODE_COUNT];
 static uint32_t rs485LastSeenMs[RS485_NODE_COUNT] = {0};
 static String rs485DiscoverLog;
 static String backupUploadData;
+static bool backupUploadTooLarge = false;
 static String errorLog[ERROR_LOG_COUNT];
 static uint8_t errorLogHead = 0;
 static uint8_t errorLogSize = 0;
@@ -189,18 +201,21 @@ static volatile uint32_t isrLastEdgeUs = 0;
 static volatile uint32_t isrLastActivityUs = 0;
 static volatile bool isrHadActivity = false;
 static volatile bool isrFrameReady = false;
+static portMUX_TYPE rfMux = portMUX_INITIALIZER_UNLOCKED;
 
 static uint16_t localTargetBit(uint8_t index);
 static uint16_t rs485TargetBit(uint8_t index);
 
 void IRAM_ATTR onGdo0Change() {
   const uint32_t nowUs = micros();
+  portENTER_CRITICAL_ISR(&rfMux);
   if (isrHadActivity && isrPulseCount < RF_MAX_PULSES) {
     isrPulseDurations[isrPulseCount++] = nowUs - isrLastEdgeUs;
   }
   isrHadActivity = true;
   isrLastEdgeUs = nowUs;
   isrLastActivityUs = nowUs;
+  portEXIT_CRITICAL_ISR(&rfMux);
 }
 
 static void setRgb(uint8_t red, uint8_t green, uint8_t blue) {
@@ -348,25 +363,25 @@ static bool beginRadio() {
 }
 
 static void resetRfCapture() {
-  noInterrupts();
+  portENTER_CRITICAL(&rfMux);
   isrPulseCount = 0;
   isrLastEdgeUs = micros();
   isrLastActivityUs = isrLastEdgeUs;
   isrHadActivity = false;
   isrFrameReady = false;
-  interrupts();
+  portEXIT_CRITICAL(&rfMux);
 }
 
 static void pollRfFrameReady() {
-  noInterrupts();
+  portENTER_CRITICAL(&rfMux);
   const bool hadActivity = isrHadActivity;
   const uint32_t lastActivityUs = isrLastActivityUs;
   const bool ready = isrFrameReady;
-  interrupts();
+  portEXIT_CRITICAL(&rfMux);
   if (!ready && hadActivity && micros() - lastActivityUs > RF_IDLE_FRAME_US) {
-    noInterrupts();
+    portENTER_CRITICAL(&rfMux);
     isrFrameReady = true;
-    interrupts();
+    portEXIT_CRITICAL(&rfMux);
   }
 }
 
@@ -410,6 +425,7 @@ static void loadRecords() {
   recordCount = prefs.getUChar("count", 0);
   if (recordCount > MAX_CODES) recordCount = MAX_CODES;
   for (uint8_t i = 0; i < recordCount; ++i) {
+    records[i] = defaultButtonRecord(i);
     char key[16];
     snprintf(key, sizeof(key), "code%u", i); records[i].code = prefs.getUInt(key, 0);
     snprintf(key, sizeof(key), "out%u", i); records[i].output = prefs.getUChar(key, 255);
@@ -911,14 +927,8 @@ static bool addRecord(uint32_t code) {
     return false;
   }
   ButtonRecord &record = records[recordCount];
+  record = defaultButtonRecord(recordCount);
   record.code = code;
-  record.output = 255;
-  record.actionType = 0;
-  record.actionCommand = 0;
-  record.rs485Node = 0;
-  record.targetMask = 0;
-  record.enabled = true;
-  snprintf(record.name, sizeof(record.name), "Button %u", recordCount + 1);
   ++recordCount;
   saveRecords();
   DBG_PRINTF("[LEARN] Added 0x%06lX\n", static_cast<unsigned long>(code & 0xFFFFFF));
@@ -974,7 +984,7 @@ static void handleCode(uint32_t code) {
 static void processRf() {
   if (!radioReady) return;
   pollRfFrameReady();
-  noInterrupts();
+  portENTER_CRITICAL(&rfMux);
   const bool ready = isrFrameReady;
   uint16_t pulseCount = isrPulseCount;
   const bool enoughForFrame = pulseCount >= (EXPECTED_BITS * 2 + 1);
@@ -988,15 +998,15 @@ static void processRf() {
     isrHadActivity = false;
     isrFrameReady = false;
   }
-  interrupts();
+  portEXIT_CRITICAL(&rfMux);
   if (!ready && !enoughForFrame) return;
   uint32_t code = 0;
   if (decodeFrame(pulses, pulseCount, code)) {
-    noInterrupts();
+    portENTER_CRITICAL(&rfMux);
     isrPulseCount = 0;
     isrHadActivity = false;
     isrFrameReady = false;
-    interrupts();
+    portEXIT_CRITICAL(&rfMux);
     handleCode(code);
   }
 }
@@ -1270,6 +1280,7 @@ static bool applySettingsBackup(const String &data) {
   saveRs485Settings();
   recordCount = constrain(static_cast<int>(backupUInt(data, "records.count", recordCount)), 0, MAX_CODES);
   for (uint8_t i = 0; i < recordCount; ++i) {
+    records[i] = defaultButtonRecord(i);
     const String p = "record." + String(i) + ".";
     records[i].code = backupUInt(data, p + "code", records[i].code);
     records[i].output = constrain(static_cast<int>(backupUInt(data, p + "out", records[i].output)), 0, 255);
@@ -1710,18 +1721,32 @@ static void handleBackupImportUpload() {
   HTTPUpload &upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
     backupUploadData = "";
-    backupUploadData.reserve(upload.totalSize > 0 ? upload.totalSize + 16 : 12000);
+    backupUploadTooLarge = upload.totalSize > 32000;
+    if (!backupUploadTooLarge) backupUploadData.reserve(upload.totalSize > 0 ? upload.totalSize + 16 : 12000);
   } else if (upload.status == UPLOAD_FILE_WRITE) {
-    if (backupUploadData.length() + upload.currentSize < 32000) {
+    if (!backupUploadTooLarge && backupUploadData.length() + upload.currentSize < 32000) {
       backupUploadData.concat(reinterpret_cast<const char *>(upload.buf), upload.currentSize);
+    } else {
+      backupUploadTooLarge = true;
+      backupUploadData = "";
     }
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    backupUploadData = "";
+    backupUploadTooLarge = false;
   }
 }
 
 static void handleBackupImport() {
   if (!webAuth()) return;
+  if (backupUploadTooLarge) {
+    backupUploadData = "";
+    backupUploadTooLarge = false;
+    server.send(413, "text/plain; charset=utf-8", "Ошибка: файл настроек слишком большой");
+    return;
+  }
   const bool ok = applySettingsBackup(backupUploadData);
   backupUploadData = "";
+  backupUploadTooLarge = false;
   if (!ok) {
     server.send(400, "text/plain; charset=utf-8", "Ошибка: файл настроек не распознан");
     return;
@@ -1735,7 +1760,11 @@ static void handleStatusApi() {
   const uint32_t now = millis();
   String json;
   json.reserve(360);
-  json += F("{\"learnMode\":");
+  json += F("{\"fw\":\"");
+  json += FW_VERSION;
+  json += F("\",\"build\":\"");
+  json += FW_BUILD_DATE;
+  json += F("\",\"learnMode\":");
   json += learnMode ? F("true") : F("false");
   json += F(",\"lastSeen\":\"");
   json += lastSeenCode == 0 ? String("") : codeHex(lastSeenCode);
@@ -2067,6 +2096,10 @@ static void handleDiscovery() {
   response += mdnsName;
   response += F(".local\",\"mac\":\"");
   response += WiFi.macAddress();
+  response += F("\",\"fw\":\"");
+  response += FW_VERSION;
+  response += F("\",\"build\":\"");
+  response += FW_BUILD_DATE;
   response += F("\"}");
 
   discoveryUdp.beginPacket(discoveryUdp.remoteIP(), discoveryUdp.remotePort());
