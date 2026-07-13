@@ -5,8 +5,11 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESPmDNS.h>
+#include <Update.h>
+#include "esp_ota_ops.h"
+#include "esp_heap_caps.h"
 
-static const char *FW_VERSION = "v1.1-safety-fixes";
+static const char *FW_VERSION = "v1.9-rp2040-vectorfix";
 static const char *FW_BUILD_DATE = "2026-07-08";
 
 // ----------------------------- Hardware pins -----------------------------
@@ -45,6 +48,11 @@ static const char *WEB_PASSWORD = "admin12345";
 static const char *AP_PASSWORD = "12345678";
 static constexpr uint16_t DISCOVERY_PORT = 4210;
 static const char *DISCOVERY_QUERY = "WINDOW_DISCOVER";
+static const char *ESP32_OTA_TARGET = "ESP32_CC1101_RS485";
+static const char *ESP32_OTA_MAGIC = "WINESP32OTA1";
+static constexpr size_t ESP32_OTA_HEADER_SIZE = 256;
+static constexpr size_t RP2040_OTA_MAX_SIZE = 512u * 1024u;
+static constexpr size_t RP2040_OTA_PAGE_SIZE = 256u;
 
 // ----------------------------- RF settings -----------------------------
 static constexpr float RF_FREQ_MHZ = 433.92;
@@ -175,6 +183,23 @@ static uint32_t rs485LastSeenMs[RS485_NODE_COUNT] = {0};
 static String rs485DiscoverLog;
 static String backupUploadData;
 static bool backupUploadTooLarge = false;
+static bool esp32UpdateOk = false;
+static String esp32UpdateError;
+static bool esp32OtaHeaderOk = false;
+static bool esp32OtaUpdateStarted = false;
+static uint8_t esp32OtaHeader[ESP32_OTA_HEADER_SIZE];
+static size_t esp32OtaHeaderLen = 0;
+static uint32_t esp32OtaExpectedSize = 0;
+static uint32_t esp32OtaExpectedCrc = 0;
+static uint32_t esp32OtaWritten = 0;
+static uint32_t esp32OtaCrc = 0;
+static String esp32OtaVersion;
+static uint8_t *rp2040OtaData = nullptr;
+static size_t rp2040OtaSize = 0;
+static size_t rp2040OtaCapacity = 0;
+static String rp2040OtaTarget;
+static String rp2040UpdateError;
+static bool rp2040UploadTooLarge = false;
 static String errorLog[ERROR_LOG_COUNT];
 static uint8_t errorLogHead = 0;
 static uint8_t errorLogSize = 0;
@@ -210,7 +235,9 @@ void IRAM_ATTR onGdo0Change() {
   const uint32_t nowUs = micros();
   portENTER_CRITICAL_ISR(&rfMux);
   if (isrHadActivity && isrPulseCount < RF_MAX_PULSES) {
-    isrPulseDurations[isrPulseCount++] = nowUs - isrLastEdgeUs;
+    const uint16_t index = isrPulseCount;
+    isrPulseDurations[index] = nowUs - isrLastEdgeUs;
+    isrPulseCount = index + 1;
   }
   isrHadActivity = true;
   isrLastEdgeUs = nowUs;
@@ -642,12 +669,30 @@ static String uptimeText(uint32_t ms) {
   return String(buf);
 }
 
+static String faultTextRu(String fault) {
+  fault.trim();
+  fault.toLowerCase();
+  if (fault.length() == 0 || fault == "none" || fault == "ok") return "нет";
+  if (fault == "stopped" || fault == "stop") return "остановлено пользователем";
+  if (fault == "cap1188") return "сработала емкостная защита CAP1188";
+  if (fault == "overcurrent") return "превышен допустимый ток";
+  if (fault == "ina219") return "ошибка датчика тока INA219";
+  if (fault == "no_current") return "нет тока актуатора";
+  if (fault == "timeout") return "превышено время движения";
+  if (fault == "reed_conflict") return "конфликт герконов";
+  if (fault == "mid_reed_missed") return "не сработал геркон положения Открыто";
+  if (fault == "no_rp2040") return "нет связи с RP2040";
+  if (fault == "bootloader") return "переход RP2040 в загрузчик";
+  if (fault == "bootloader_fail") return "ошибка перехода RP2040 в загрузчик";
+  return fault;
+}
+
 static void appendErrorLog(const String &source, const String &fault, int actuator) {
   String line = uptimeText(millis());
   line += F(" | ");
   line += source;
   line += F(" | ");
-  line += fault;
+  line += faultTextRu(fault);
   if (actuator > 0) {
     line += F(" | актуатор ");
     line += String(actuator);
@@ -762,6 +807,15 @@ static String windowCommandLine(uint8_t command) {
   if (command == 2) return "CMD CLOSED";
   if (command == 3) return "CMD VENT";
   if (command == 4) return "CMD STOP";
+  return "";
+}
+
+static String windowModeLine(const String &mode) {
+  if (mode == "open") return "CMD OPEN";
+  if (mode == "closed") return "CMD CLOSED";
+  if (mode == "vent") return "CMD VENT";
+  if (mode == "stop") return "CMD STOP";
+  if (mode == "resetwdt") return "RESETWDT";
   return "";
 }
 
@@ -1380,7 +1434,7 @@ static void appendRs485Config(String &html) {
     html += F("</table><p><button type='submit'>Сохранить и отправить</button></p></form>");
     html += F("<form method='post' action='/rs485/cmd'><input type='hidden' name='idx' value='");
     html += String(n);
-    html += F("'><button name='mode' value='open'>Открыто</button><button name='mode' value='closed'>Закрыто</button><button name='mode' value='vent'>Проветривание</button><button class='danger' name='mode' value='stop'>Стоп</button><button name='mode' value='status'>Статус</button></form>");
+    html += F("'><button name='mode' value='open'>Открыто</button><button name='mode' value='closed'>Закрыто</button><button name='mode' value='vent'>Проветривание</button><button class='danger' name='mode' value='stop'>Стоп</button><button name='mode' value='status'>Статус</button><button name='mode' value='resetwdt'>Сбросить счетчик watchdog</button></form>");
     html += F("<form method='post' action='/rs485/address'><input type='hidden' name='idx' value='");
     html += String(n);
     html += F("'><label>Новый адрес по UID</label><input name='newaddr' type='number' min='1' max='247' value='");
@@ -1394,7 +1448,11 @@ static void appendRs485Config(String &html) {
     html += String(n);
     html += F("cap'>-</span><br>Авария: <span id='rs");
     html += String(n);
-    html += F("fault'>-</span></p></div>");
+    html += F("fault'>-</span><br>Watchdog reset: <span id='rs");
+    html += String(n);
+    html += F("wdt'>0</span><br>Диагностика: <span id='rs");
+    html += String(n);
+    html += F("diag'>-</span></p></div>");
   }
   html += F("</div>");
   html += F("<script>function showNode(i){document.querySelectorAll('.rsnode').forEach((e,k)=>e.style.display=k==i?'block':'none')}showNode(0);</script>");
@@ -1442,7 +1500,7 @@ static void handleRoot() {
   html += F("<button class='mainbtn' name='mode' value='vent' type='submit'>Проветривание</button>");
   html += F("<button name='mode' value='stop' class='danger' type='submit'>Стоп</button></form>");
   html += F("<p><a href='/config'>config</a></p></div>");
-  html += F("<script>let ub=0,cb=0;function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}function rq(u,o,m){let c=new AbortController(),t=setTimeout(()=>c.abort(),m);o=o||{};o.signal=c.signal;return fetch(u,o).finally(()=>clearTimeout(t))}async function upd(){if(ub||cb)return;ub=1;try{let t=document.getElementById('target').value;let r=await rq('/api/window?target='+encodeURIComponent(t),{cache:'no-store'},900);let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Окно:</b> '+(s.name||'-')+'<br><b>Состояние:</b> '+(s.state||'unknown')+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+(s.fault||'none')+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){}finally{ub=0}}async function cmd(mode,b){if(cb)return;cb=1;let f=new FormData(document.getElementById('cmdform'));f.set('mode',mode);f.set('ajax','1');if(b)b.disabled=true;try{await rq('/window/cmd',{method:'POST',body:f,cache:'no-store'},700);setTimeout(upd,120);}catch(e){document.getElementById('wstatus').textContent='Команда отправлена, ответ ESP32 задерживается';}finally{cb=0;if(b)b.disabled=false;}}document.getElementById('target').addEventListener('change',upd);document.getElementById('cmdform').addEventListener('submit',e=>{e.preventDefault();let b=e.submitter;if(b)cmd(b.value,b);});document.querySelectorAll('#cmdform button[name=mode]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();cmd(b.value,b);}));setInterval(upd,4000);upd();</script>");
+  html += F("<script>let ub=0,cb=0;function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}function f(s){return s.faultText||({none:'нет',cap1188:'сработала емкостная защита',overcurrent:'превышен ток',ina219:'ошибка INA219',no_current:'нет тока актуатора',timeout:'превышено время движения',reed_conflict:'конфликт герконов',mid_reed_missed:'не сработал геркон Открыто',no_rp2040:'нет связи с RP2040'}[s.fault]||s.fault||'нет')}function rq(u,o,m){let c=new AbortController(),t=setTimeout(()=>c.abort(),m);o=o||{};o.signal=c.signal;return fetch(u,o).finally(()=>clearTimeout(t))}async function upd(){if(ub||cb)return;ub=1;try{let t=document.getElementById('target').value;let r=await rq('/api/window?target='+encodeURIComponent(t),{cache:'no-store'},900);let s=await r.json();document.getElementById('wstatus').innerHTML='<b>Окно:</b> '+(s.name||'-')+'<br><b>Состояние:</b> '+(s.state||'unknown')+'<br><b>Цель:</b> '+n(s.target)+'<br><b>Положение:</b> '+n(s.position)+'<br><b>Авария:</b> '+f(s)+(s.faultActuator?(' актуатор '+s.faultActuator):'');}catch(e){}finally{ub=0}}async function cmd(mode,b){if(cb)return;cb=1;let f=new FormData(document.getElementById('cmdform'));f.set('mode',mode);f.set('ajax','1');if(b)b.disabled=true;try{await rq('/window/cmd',{method:'POST',body:f,cache:'no-store'},700);setTimeout(upd,120);}catch(e){document.getElementById('wstatus').textContent='Команда отправлена, ответ ESP32 задерживается';}finally{cb=0;if(b)b.disabled=false;}}document.getElementById('target').addEventListener('change',upd);document.getElementById('cmdform').addEventListener('submit',e=>{e.preventDefault();let b=e.submitter;if(b)cmd(b.value,b);});document.querySelectorAll('#cmdform button[name=mode]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();cmd(b.value,b);}));setInterval(upd,4000);upd();</script>");
   appendPageFooter(html);
   server.send(200, "text/html; charset=utf-8", html);
 }
@@ -1456,7 +1514,7 @@ static void handleMobileApp() {
   html += F("<link rel='manifest' href='/mobile/manifest.json'><title>Окна</title><style>");
   html += F("*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#030918;color:#eff7ff;font-family:Arial,sans-serif}main{max-width:520px;margin:auto;padding:22px 16px 28px}.panel{background:#061229;border:1px solid #13284d;border-radius:18px;padding:16px;box-shadow:0 18px 45px rgba(0,0,0,.34)}h1{font-size:24px;margin:6px 0 2px}p{color:#9fb1cf}.status{height:118px;line-height:1.35;margin:14px 0;overflow:hidden}.grid{display:grid;gap:12px;grid-template-rows:repeat(4,62px)}button{width:100%;height:62px;border:0;border-radius:14px;padding:0 16px;color:white;font-size:20px;font-weight:bold;touch-action:manipulation;background:#116fae}button:active{transform:scale(.99)}.open{background:#0984c6}.closed{background:#2452b8}.vent{background:#0f8d72}.stop{background:#9b1c2a}input,select{width:100%;padding:13px 12px;margin:6px 0 12px;border-radius:12px;border:1px solid #1a3763;background:#091735;color:white;font-size:16px}.row{display:flex;gap:8px}.row>*{flex:1}.link{background:transparent;border:1px solid #244a78;color:#8bdcff;font-size:15px;padding:11px}.hide{display:none}.small{font-size:13px;color:#7f91b0}");
   html += F("</style></head><body><main><div class='panel'><h1>Управление окнами</h1><p>ESP32 window controller</p><label>Окно</label><select id='target'></select><div id='status' class='status'>Загрузка...</div><div class='grid'><button class='open' data-mode='open'>Открыто</button><button class='closed' data-mode='closed'>Закрыто</button><button class='vent' data-mode='vent'>Проветривание</button><button class='stop' data-mode='stop'>Стоп</button></div></div></main>");
-  html += F("<script>let busy=0,targets=[];const $=id=>document.getElementById(id);function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}function rq(u,o,m){let c=new AbortController(),t=setTimeout(()=>c.abort(),m);o=o||{};o.signal=c.signal;return fetch(u,o).finally(()=>clearTimeout(t))}async function status(){if(busy)return;try{let t=$('target').value;if(!t)return;let r=await rq('/api/window?target='+encodeURIComponent(t),{cache:'no-store'},1000);let s=await r.json();$('status').innerHTML='<b>'+(s.name||'-')+'</b><br>Состояние: '+(s.state||'unknown')+'<br>Цель: '+n(s.target)+'<br>Авария: '+(s.fault||'none');}catch(e){$('status').textContent='Нет связи с ESP32'}}async function cmd(mode){if(busy)return;busy=1;$('status').textContent='Команда отправляется...';let f=new FormData();f.set('target',$('target').value);f.set('mode',mode);f.set('ajax','1');try{await rq('/window/cmd',{method:'POST',body:f,cache:'no-store'},900);setTimeout(status,160)}catch(e){$('status').textContent='Нет ответа ESP32'}finally{busy=0}}async function addTarget(v){try{let r=await rq('/api/window?target='+v,{cache:'no-store'},900);let s=await r.json();targets.push({v,n:s.name||v})}catch(e){}}async function loadTargets(){targets=[];await addTarget('local0');await addTarget('local1');try{let r=await rq('/api/rs485',{cache:'no-store'},1200);let j=await r.json();(j.nodes||[]).forEach((x,i)=>{if(x.enabled)targets.push({v:'rs'+i,n:(x.name||('RP2040 '+(i+1)))})})}catch(e){}$('target').innerHTML=targets.map(x=>'<option value=\"'+x.v+'\">'+x.n+'</option>').join('')||'<option value=\"local0\">local0</option>';status()}document.querySelectorAll('button[data-mode]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();cmd(b.dataset.mode)}));$('target').onchange=status;loadTargets();setInterval(status,5000);</script></body></html>");
+  html += F("<script>let busy=0,targets=[];const $=id=>document.getElementById(id);function n(v){return {open:'Открыто',closed:'Закрыто',vent:'Проветривание',none:'неизвестно'}[v]||v}function ft(s){return s.faultText||({none:'нет',cap1188:'сработала защита',overcurrent:'превышен ток',ina219:'ошибка INA219',no_current:'нет тока',timeout:'тайм-аут движения',reed_conflict:'конфликт герконов',mid_reed_missed:'не сработал геркон Открыто',no_rp2040:'нет связи с RP2040'}[s.fault]||s.fault||'нет')}function rq(u,o,m){let c=new AbortController(),t=setTimeout(()=>c.abort(),m);o=o||{};o.signal=c.signal;return fetch(u,o).finally(()=>clearTimeout(t))}async function status(){if(busy)return;try{let t=$('target').value;if(!t)return;let r=await rq('/api/window?target='+encodeURIComponent(t),{cache:'no-store'},1000);let s=await r.json();$('status').innerHTML='<b>'+(s.name||'-')+'</b><br>Состояние: '+(s.state||'unknown')+'<br>Цель: '+n(s.target)+'<br>Авария: '+ft(s);}catch(e){$('status').textContent='Нет связи с ESP32'}}async function cmd(mode){if(busy)return;busy=1;$('status').textContent='Команда отправляется...';let f=new FormData();f.set('target',$('target').value);f.set('mode',mode);f.set('ajax','1');try{await rq('/window/cmd',{method:'POST',body:f,cache:'no-store'},900);setTimeout(status,160)}catch(e){$('status').textContent='Нет ответа ESP32'}finally{busy=0}}async function addTarget(v){try{let r=await rq('/api/window?target='+v,{cache:'no-store'},900);let s=await r.json();targets.push({v,n:s.name||v})}catch(e){}}async function loadTargets(){targets=[];await addTarget('local0');await addTarget('local1');try{let r=await rq('/api/rs485',{cache:'no-store'},1200);let j=await r.json();(j.nodes||[]).forEach((x,i)=>{if(x.enabled)targets.push({v:'rs'+i,n:(x.name||('RP2040 '+(i+1)))})})}catch(e){}$('target').innerHTML=targets.map(x=>'<option value=\"'+x.v+'\">'+x.n+'</option>').join('')||'<option value=\"local0\">local0</option>';status()}document.querySelectorAll('button[data-mode]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();cmd(b.dataset.mode)}));$('target').onchange=status;loadTargets();setInterval(status,5000);</script></body></html>");
   server.send(200, "text/html; charset=utf-8", html);
 }
 
@@ -1474,6 +1532,7 @@ static void handleConfig() {
   html += F("<p><a class='btn' href='/backup/export'>Скачать настройки</a></p>");
   html += F("<form method='post' action='/backup/import' enctype='multipart/form-data'><label>Загрузить настройки из файла</label><input name='backup' type='file' accept='.txt,.cfg,.backup,text/plain'><button type='submit'>Загрузить настройки</button></form>");
   html += F("<p class='muted'>Файл содержит Wi-Fi, пульты, имена RP2040, токи, CAP1188 и адреса RS-485. После загрузки Wi-Fi может потребовать рестарт ESP32.</p></div>");
+  html += F("<div class='card'><h2>Обновление прошивок</h2><p class='muted'>ESP32 и RP2040 обновляются на отдельной странице обслуживания.</p><p><a class='btn' href='/firmware'>Открыть обновление прошивок</a></p></div>");
   html += F("<div class='card'><h2>Журнал ошибок</h2>");
   if (errorLogSize == 0) {
     html += F("<p class='muted'>Ошибок пока нет.</p>");
@@ -1547,7 +1606,13 @@ static void handleConfig() {
     html += String(n);
     html += F("cap'>-</span><br>Авария: <span id='l");
     html += String(n);
-    html += F("fault'>-</span></p></div>");
+    html += F("fault'>-</span><br>Watchdog reset: <span id='l");
+    html += String(n);
+    html += F("wdt'>0</span><br>Диагностика: <span id='l");
+    html += String(n);
+    html += F("diag'>-</span></p><p><a class='btn' href='/rp2040/resetwdt?target=local");
+    html += String(n);
+    html += F("'>Сбросить счетчик watchdog</a></p></div>");
   }
   html += F("<p><button type='submit'>Сохранить настройки локальных RP2040</button></p></form>");
   html += F("</div>");
@@ -1705,10 +1770,53 @@ static void handleConfig() {
   html += F("<p class='muted'>Обучение: нажмите физическую кнопку или «Добавить пульт», затем нажимайте кнопки пульта. Повторное короткое нажатие или «Закончить обучение» возвращает рабочий режим.</p>");
   html += F("<script>function rfRow(s){const r=s.closest('tr');if(!r)return;const a=s.value;function sh(c,on){const e=r.querySelector(c);if(e)e.classList.toggle('cellhide',!on)}function all(c,on){r.querySelectorAll(c).forEach(e=>e.style.display=on?'flex':'none')}sh('.cmdCell',a!='0');sh('.nodeCell',a=='2');sh('.targetCell',a=='1'||a=='3');sh('.outCell',a=='0');all('.localTarget',a=='1'||a=='3');all('.rsTarget',a=='3')}document.querySelectorAll('.actsel').forEach(rfRow);</script>");
   html += F("<script>let activeLed=-1;function setLed(i,on){const e=document.getElementById('led'+i);if(e)e.classList.toggle('on',on);}async function rfStatus(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)return;const s=await r.json();document.getElementById('lastSeen').textContent=s.lastSeen||'-';document.getElementById('lastButton').textContent=s.lastButton||'-';document.getElementById('lastMatched').textContent=s.lastMatched||'-';document.getElementById('lastOutput').textContent=s.lastOutput||'-';document.getElementById('lastAge').textContent=s.lastMatchedAgeMs>=0?((s.lastMatchedAgeMs/1000).toFixed(1)+' s'):'-';const b=document.getElementById('learnBtn');if(b){b.textContent=s.learnMode?'Закончить обучение':'Добавить пульт';b.classList.toggle('danger',s.learnMode);}if(activeLed!==s.lastMatchedIndex){if(activeLed>=0)setLed(activeLed,false);activeLed=s.lastMatchedIndex;}if(s.lastMatchedAgeMs>=0&&s.lastMatchedAgeMs<700)setLed(s.lastMatchedIndex,true);else if(activeLed>=0)setLed(activeLed,false);}catch(e){}}setInterval(rfStatus,500);rfStatus();</script>");
-  html += F("<script>async function winStatus(){for(let n=0;n<2;n++){try{const r=await fetch('/api/window?target=local'+n,{cache:'no-store'});const s=await r.json();const cur=s.current||[];const ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('l'+n+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('l'+n+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('l'+n+'reeds');if(reeds)reeds.textContent=(s.reed||[]).join(', ');let cap=document.getElementById('l'+n+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('l'+n+'fault');if(fault)fault.textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');}catch(e){}}}setInterval(winStatus,700);winStatus();</script>");
-  html += F("<script>async function rsStatus(){try{const r=await fetch('/api/rs485',{cache:'no-store'});const d=await r.json();(d.nodes||[]).forEach((n,i)=>{let e=document.getElementById('rs'+i+'status');if(e)e.textContent=n.status||'-';let s=n.json||{};let cur=s.current||[];let ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('rs'+i+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('rs'+i+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('rs'+i+'reeds');if(reeds)reeds.textContent=(s.reed||[]).join(', ');let cap=document.getElementById('rs'+i+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('rs'+i+'fault');if(fault)fault.textContent=(s.fault||'none')+(s.faultActuator?(' actuator '+s.faultActuator):'');})}catch(e){}}setInterval(rsStatus,1000);rsStatus();</script>");
+  html += F("<script>function reedText(r){r=r||[];const n=['Открыто','Проветривание','Закрыто','Доп. 1','Доп. 2'];return n.map((x,i)=>x+': '+(r[i]?1:0)).join(' | ')}function faultText(s){return s.faultText||({none:'нет',stopped:'остановлено пользователем',cap1188:'сработала емкостная защита CAP1188',overcurrent:'превышен допустимый ток',ina219:'ошибка датчика тока INA219',no_current:'нет тока актуатора',timeout:'превышено время движения',reed_conflict:'конфликт герконов',mid_reed_missed:'не сработал геркон положения Открыто',no_rp2040:'нет связи с RP2040'}[s.fault]||s.fault||'нет')}function diagText(s){let t='сейчас: '+(s.lastOp||'-');if(s.lastSensor)t+=' датчик '+s.lastSensor;if(s.bootWatchdogOp&&s.bootWatchdogOp!='unknown'){t+='; перед watchdog: '+s.bootWatchdogOp;if(s.bootWatchdogSensor)t+=' датчик '+s.bootWatchdogSensor}return t}</script>");
+  html += F("<script>async function winStatus(){for(let n=0;n<2;n++){try{const r=await fetch('/api/window?target=local'+n,{cache:'no-store'});const s=await r.json();const cur=s.current||[];const ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('l'+n+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('l'+n+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('l'+n+'reeds');if(reeds)reeds.textContent=reedText(s.reed);let cap=document.getElementById('l'+n+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('l'+n+'fault');if(fault)fault.textContent=faultText(s)+(s.faultActuator?(' актуатор '+s.faultActuator):'');let w=document.getElementById('l'+n+'wdt');if(w)w.textContent=Number(s.watchdogResets||0);let d=document.getElementById('l'+n+'diag');if(d)d.textContent=diagText(s);}catch(e){}}}setInterval(winStatus,700);winStatus();</script>");
+  html += F("<script>async function rsStatus(){try{const r=await fetch('/api/rs485',{cache:'no-store'});const d=await r.json();(d.nodes||[]).forEach((n,i)=>{let e=document.getElementById('rs'+i+'status');if(e)e.textContent=n.status||'-';let s=n.json||{};let cur=s.current||[];let ok=s.inaOk||[];for(let a=0;a<4;a++){let c=document.getElementById('rs'+i+'cur'+a);if(c)c.textContent=(cur[a]??0)+' mA';let o=document.getElementById('rs'+i+'ina'+a);if(o)o.textContent=ok[a]?'OK':'нет';}let reeds=document.getElementById('rs'+i+'reeds');if(reeds)reeds.textContent=reedText(s.reed);let cap=document.getElementById('rs'+i+'cap');if(cap)cap.textContent='0x'+Number(s.cap||0).toString(16);let fault=document.getElementById('rs'+i+'fault');if(fault)fault.textContent=faultText(s)+(s.faultActuator?(' актуатор '+s.faultActuator):'');let w=document.getElementById('rs'+i+'wdt');if(w)w.textContent=Number(s.watchdogResets||0);let g=document.getElementById('rs'+i+'diag');if(g)g.textContent=diagText(s);})}catch(e){}}setInterval(rsStatus,1000);rsStatus();</script>");
   appendPageFooter(html);
   server.send(200, "text/html", html);
+}
+
+static void handleFirmwarePage() {
+  if (!webAuth()) return;
+  String html;
+  html.reserve(9000);
+  appendPageHeader(html, "Обновление прошивок");
+  html += F("<div class='card'><h2>ESP32</h2>");
+  html += F("<form method='post' action='/firmware/esp32' enctype='multipart/form-data' onsubmit=\"return confirm('Обновить ESP32? Не отключайте питание во время записи.')\">");
+  html += F("<label>Файл ESP32 .wota</label><input name='firmware' type='file' accept='.wota,application/octet-stream' required>");
+  html += F("<button type='submit'>Обновить ESP32</button></form>");
+  html += F("<p class='muted'>После установки версии v1.7 и новее используйте только защищенный `.wota`. Сырой `.bin` нужен только для первого перехода со старой версии.</p>");
+  html += F("<form method='post' action='/firmware/esp32/rollback' onsubmit=\"return confirm('Откатить ESP32 на предыдущий OTA-раздел?')\"><button class='danger' type='submit'>Откатить ESP32</button></form></div>");
+
+  html += F("<div class='card'><h2>RP2040</h2>");
+  html += F("<form method='post' action='/firmware/rp2040' enctype='multipart/form-data' onsubmit=\"return confirm('Обновить выбранную RP2040? Во время прошивки питание отключать нельзя.')\">");
+  html += F("<label>Контроллер RP2040</label><select name='target'>");
+  for (uint8_t i = 0; i < LOCAL_RP_COUNT; ++i) {
+    html += F("<option value='local");
+    html += String(i);
+    html += F("'>");
+    html += htmlEscape(localRp[i].name);
+    html += F(" UART</option>");
+  }
+  for (uint8_t i = 0; i < RS485_NODE_COUNT; ++i) {
+    if (!rs485Nodes[i].enabled) continue;
+    html += F("<option value='rs");
+    html += String(i);
+    html += F("'>");
+    html += htmlEscape(rs485Nodes[i].name);
+    html += F(" RS-485 addr ");
+    html += String(rs485Nodes[i].address);
+    html += F("</option>");
+  }
+  html += F("</select>");
+  html += F("<label>Файл RP2040 OTA .bin</label><input name='firmware' type='file' accept='.bin,application/octet-stream' required>");
+  html += F("<button type='submit'>Обновить RP2040</button></form>");
+  html += F("<p class='muted'>Используйте только app-slot `.bin`, собранный под адрес `0x10040000`, например `RP2040_RS485_Window_Node_4A_ota_v1.6.bin`. Обычный `.uf2` сюда загружать нельзя.</p>");
+  html += F("<p class='muted'>Перед обновлением ESP32 отправит `BOOTLOADER`, затем передаст файл страницами по 256 байт. Если файл не похож на app-slot прошивку, запись не начнется.</p></div>");
+  html += F("<p><a class='btn' href='/config'>Назад в настройки</a></p>");
+  appendPageFooter(html);
+  server.send(200, "text/html; charset=utf-8", html);
 }
 
 static void handleBackupExport() {
@@ -1753,6 +1861,431 @@ static void handleBackupImport() {
   }
   server.sendHeader("Location", "/config");
   server.send(303);
+}
+
+static uint32_t crc32Update(uint32_t crc, const uint8_t *data, size_t len) {
+  crc = ~crc;
+  for (size_t i = 0; i < len; ++i) {
+    crc ^= data[i];
+    for (uint8_t bit = 0; bit < 8; ++bit) {
+      crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+    }
+  }
+  return ~crc;
+}
+
+static String otaHeaderValue(const String &header, const String &key) {
+  const String needle = key + "=";
+  int pos = header.indexOf(needle);
+  if (pos < 0) return "";
+  pos += needle.length();
+  int end = header.indexOf('\n', pos);
+  if (end < 0) end = header.length();
+  String value = header.substring(pos, end);
+  value.trim();
+  return value;
+}
+
+static bool parseEsp32OtaHeader() {
+  String header;
+  header.reserve(ESP32_OTA_HEADER_SIZE);
+  for (size_t i = 0; i < ESP32_OTA_HEADER_SIZE && esp32OtaHeader[i] != 0; ++i) {
+    header += static_cast<char>(esp32OtaHeader[i]);
+  }
+  if (!header.startsWith(ESP32_OTA_MAGIC)) {
+    esp32UpdateError = "Файл не является защищенным OTA-контейнером ESP32";
+    return false;
+  }
+  const String target = otaHeaderValue(header, "TARGET");
+  if (target != ESP32_OTA_TARGET) {
+    esp32UpdateError = "OTA-файл предназначен не для этого контроллера";
+    return false;
+  }
+  const String sizeText = otaHeaderValue(header, "SIZE");
+  const String crcText = otaHeaderValue(header, "CRC32");
+  if (sizeText.length() == 0 || crcText.length() == 0) {
+    esp32UpdateError = "В OTA-заголовке нет размера или CRC32";
+    return false;
+  }
+  esp32OtaExpectedSize = static_cast<uint32_t>(strtoul(sizeText.c_str(), nullptr, 10));
+  esp32OtaExpectedCrc = static_cast<uint32_t>(strtoul(crcText.c_str(), nullptr, 16));
+  esp32OtaVersion = otaHeaderValue(header, "VERSION");
+  if (esp32OtaExpectedSize < 4096 || esp32OtaExpectedSize > ESP.getFreeSketchSpace()) {
+    esp32UpdateError = "Недопустимый размер OTA-прошивки";
+    return false;
+  }
+  if (!Update.begin(esp32OtaExpectedSize)) {
+    esp32UpdateError = "Update.begin error ";
+    esp32UpdateError += String(Update.getError());
+    return false;
+  }
+  esp32OtaUpdateStarted = true;
+  esp32OtaHeaderOk = true;
+  esp32OtaWritten = 0;
+  esp32OtaCrc = 0;
+  return true;
+}
+
+static void writeEsp32OtaPayload(const uint8_t *data, size_t len) {
+  if (esp32UpdateError.length() || len == 0) return;
+  if (!esp32OtaHeaderOk) {
+    esp32UpdateError = "OTA payload before valid header";
+    return;
+  }
+  if (esp32OtaWritten + len > esp32OtaExpectedSize) {
+    esp32UpdateError = "OTA-файл больше заявленного размера";
+    return;
+  }
+  if (Update.write(const_cast<uint8_t *>(data), len) != len) {
+    esp32UpdateError = "Update.write error ";
+    esp32UpdateError += String(Update.getError());
+    return;
+  }
+  esp32OtaCrc = crc32Update(esp32OtaCrc, data, len);
+  esp32OtaWritten += len;
+}
+
+static void processEsp32OtaChunk(const uint8_t *data, size_t len) {
+  size_t offset = 0;
+  if (!esp32OtaHeaderOk) {
+    const size_t need = ESP32_OTA_HEADER_SIZE - esp32OtaHeaderLen;
+    const size_t take = min(need, len);
+    memcpy(esp32OtaHeader + esp32OtaHeaderLen, data, take);
+    esp32OtaHeaderLen += take;
+    offset += take;
+    if (esp32OtaHeaderLen == ESP32_OTA_HEADER_SIZE && !parseEsp32OtaHeader()) return;
+  }
+  if (offset < len) writeEsp32OtaPayload(data + offset, len - offset);
+}
+
+static void setEsp32OtaPending(bool pending) {
+  prefs.begin("ota", false);
+  prefs.putBool("pending", pending);
+  prefs.putUInt("started", pending ? millis() : 0);
+  prefs.putString("version", pending ? esp32OtaVersion : "");
+  prefs.end();
+}
+
+static void confirmEsp32OtaBoot() {
+  prefs.begin("ota", false);
+  const bool pending = prefs.getBool("pending", false);
+  if (pending) {
+    prefs.putBool("pending", false);
+    prefs.putString("version", "");
+  }
+  prefs.end();
+  esp_ota_mark_app_valid_cancel_rollback();
+}
+
+static void handleEsp32FirmwareUpload() {
+  if (!server.authenticate(WEB_USER, WEB_PASSWORD)) return;
+  HTTPUpload &upload = server.upload();
+  if (upload.status == UPLOAD_FILE_START) {
+    esp32UpdateOk = false;
+    esp32UpdateError = "";
+    esp32OtaHeaderOk = false;
+    esp32OtaUpdateStarted = false;
+    esp32OtaHeaderLen = 0;
+    esp32OtaExpectedSize = 0;
+    esp32OtaExpectedCrc = 0;
+    esp32OtaWritten = 0;
+    esp32OtaCrc = 0;
+    esp32OtaVersion = "";
+    memset(esp32OtaHeader, 0, sizeof(esp32OtaHeader));
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (esp32UpdateError.length() == 0) processEsp32OtaChunk(upload.buf, upload.currentSize);
+  } else if (upload.status == UPLOAD_FILE_END) {
+    if (esp32UpdateError.length() == 0 && !esp32OtaHeaderOk) {
+      esp32UpdateError = "OTA-заголовок не получен";
+    }
+    if (esp32UpdateError.length() == 0 && esp32OtaWritten != esp32OtaExpectedSize) {
+      esp32UpdateError = "Размер прошивки не совпал с OTA-заголовком";
+    }
+    if (esp32UpdateError.length() == 0 && esp32OtaCrc != esp32OtaExpectedCrc) {
+      esp32UpdateError = "CRC32 прошивки не совпал";
+    }
+    if (esp32UpdateError.length() == 0 && Update.end(true)) {
+      esp32UpdateOk = true;
+      setEsp32OtaPending(true);
+    } else if (esp32UpdateError.length() == 0) {
+      esp32UpdateError = "Update.end error ";
+      esp32UpdateError += String(Update.getError());
+    }
+    if (esp32UpdateError.length() && esp32OtaUpdateStarted) Update.abort();
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    Update.abort();
+    esp32UpdateError = "Загрузка прервана";
+  }
+}
+
+static void handleEsp32FirmwareUpdate() {
+  if (!webAuth()) return;
+  if (!esp32UpdateOk) {
+    String msg = esp32UpdateError.length() ? esp32UpdateError : "Файл прошивки не был принят";
+    server.send(400, "text/plain; charset=utf-8", "Ошибка обновления ESP32: " + msg);
+    return;
+  }
+  server.send(200, "text/html; charset=utf-8", "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'></head><body><h2>ESP32 обновлена</h2><p>Контроллер перезагружается. Через 20-30 секунд обновите страницу.</p></body></html>");
+  delay(700);
+  ESP.restart();
+}
+
+static void handleEsp32Rollback() {
+  if (!webAuth()) return;
+  if (!Update.canRollBack()) {
+    server.send(409, "text/plain; charset=utf-8", "Откат ESP32 недоступен: нет предыдущего OTA-раздела");
+    return;
+  }
+  sendRpCommandAllLocal("CMD STOP");
+  for (uint8_t i = 0; i < RS485_NODE_COUNT; ++i) {
+    if (rs485Nodes[i].enabled) sendRs485LineReliable("@" + String(rs485Nodes[i].address) + " CMD STOP");
+  }
+  if (!Update.rollBack()) {
+    server.send(500, "text/plain; charset=utf-8", "Ошибка запуска rollback ESP32");
+    return;
+  }
+  setEsp32OtaPending(false);
+  server.send(200, "text/html; charset=utf-8", "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'></head><body><h2>ESP32 откатывается</h2><p>Контроллер перезагружается на предыдущую прошивку.</p></body></html>");
+  delay(700);
+  ESP.restart();
+}
+
+static void freeRp2040OtaBuffer() {
+  if (rp2040OtaData) {
+    free(rp2040OtaData);
+    rp2040OtaData = nullptr;
+  }
+  rp2040OtaSize = 0;
+  rp2040OtaCapacity = 0;
+}
+
+static bool reserveRp2040OtaBuffer(size_t needed) {
+  if (needed <= rp2040OtaCapacity) return true;
+  size_t next = rp2040OtaCapacity ? rp2040OtaCapacity : 8192;
+  while (next < needed) next *= 2;
+  if (next > RP2040_OTA_MAX_SIZE) return false;
+  uint8_t *newData = static_cast<uint8_t *>(heap_caps_realloc(rp2040OtaData, next, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  if (!newData) newData = static_cast<uint8_t *>(realloc(rp2040OtaData, next));
+  if (!newData) return false;
+  rp2040OtaData = newData;
+  rp2040OtaCapacity = next;
+  return true;
+}
+
+static HardwareSerial *rp2040OtaLocalPort(const String &target) {
+  if (!target.startsWith("local")) return nullptr;
+  const int idx = target.substring(5).toInt();
+  if (idx < 0 || idx >= LOCAL_RP_COUNT) return nullptr;
+  return localRpSerial(static_cast<uint8_t>(idx));
+}
+
+static int rp2040OtaRs485Index(const String &target) {
+  if (!target.startsWith("rs")) return -1;
+  const int idx = target.substring(2).toInt();
+  if (idx < 0 || idx >= RS485_NODE_COUNT || !rs485Nodes[idx].enabled) return -1;
+  return idx;
+}
+
+static bool rp2040OtaIsRs485(const String &target) {
+  return rp2040OtaRs485Index(target) >= 0;
+}
+
+static void clearRp2040OtaInput(const String &target) {
+  HardwareSerial *local = rp2040OtaLocalPort(target);
+  if (local) {
+    while (local->available()) local->read();
+    return;
+  }
+  while (rs485Serial.available()) rs485Serial.read();
+}
+
+static void sendRp2040OtaLine(const String &target, const String &payload) {
+  HardwareSerial *local = rp2040OtaLocalPort(target);
+  if (local) {
+    local->print(payload);
+    local->print('\n');
+    local->flush();
+    return;
+  }
+  const int idx = rp2040OtaRs485Index(target);
+  if (idx >= 0) sendRs485Line("@" + String(rs485Nodes[idx].address) + " " + payload);
+}
+
+static bool waitRp2040OtaLine(const String &target, String &line, uint32_t timeoutMs) {
+  line = "";
+  const uint32_t start = millis();
+  HardwareSerial *local = rp2040OtaLocalPort(target);
+  while (millis() - start < timeoutMs) {
+    HardwareSerial *port = local ? local : &rs485Serial;
+    while (port->available()) {
+      const char c = static_cast<char>(port->read());
+      if (c == '\n' || c == '\r') {
+        line.trim();
+        if (line.length()) {
+          if (!local) {
+            const int idx = rp2040OtaRs485Index(target);
+            if (idx < 0) return false;
+            const String prefix = "@" + String(rs485Nodes[idx].address) + " ";
+            if (!line.startsWith(prefix)) {
+              line = "";
+              continue;
+            }
+            line = line.substring(prefix.length());
+            line.trim();
+          } else if (line.startsWith("@")) {
+            const int space = line.indexOf(' ');
+            if (space >= 0) {
+              line = line.substring(space + 1);
+              line.trim();
+            }
+          }
+          return true;
+        }
+      } else if (line.length() < 720) {
+        line += c;
+      }
+    }
+    delay(1);
+  }
+  return false;
+}
+
+static bool sendRp2040OtaCommandWait(const String &target, const String &payload, const char *expected, uint32_t timeoutMs) {
+  clearRp2040OtaInput(target);
+  sendRp2040OtaLine(target, payload);
+  String line;
+  if (!waitRp2040OtaLine(target, line, timeoutMs)) {
+    rp2040UpdateError = "Нет ответа RP2040 на ";
+    rp2040UpdateError += payload;
+    return false;
+  }
+  if (!line.startsWith(expected)) {
+    rp2040UpdateError = "RP2040 ответила: ";
+    rp2040UpdateError += line;
+    return false;
+  }
+  return true;
+}
+
+static String bytesToHexLine(const uint8_t *data, size_t len) {
+  static const char hex[] = "0123456789ABCDEF";
+  String out;
+  out.reserve(len * 2);
+  for (size_t i = 0; i < len; ++i) {
+    out += hex[data[i] >> 4];
+    out += hex[data[i] & 0x0F];
+  }
+  return out;
+}
+
+static bool rp2040ImageLooksBootable(const uint8_t *data, size_t len) {
+  constexpr size_t vectorOffset = 0x100;
+  if (!data || len < vectorOffset + 8 || len > RP2040_OTA_MAX_SIZE) return false;
+  const uint8_t *vector = data + vectorOffset;
+  const uint32_t stack = static_cast<uint32_t>(vector[0]) |
+                         (static_cast<uint32_t>(vector[1]) << 8) |
+                         (static_cast<uint32_t>(vector[2]) << 16) |
+                         (static_cast<uint32_t>(vector[3]) << 24);
+  const uint32_t reset = static_cast<uint32_t>(vector[4]) |
+                         (static_cast<uint32_t>(vector[5]) << 8) |
+                         (static_cast<uint32_t>(vector[6]) << 16) |
+                         (static_cast<uint32_t>(vector[7]) << 24);
+  const bool stackOk = stack >= 0x20000000u && stack < 0x20042000u;
+  const bool resetOk = reset >= 0x10040000u && reset < (0x10040000u + RP2040_OTA_MAX_SIZE);
+  return stackOk && resetOk;
+}
+
+static bool runRp2040OtaUpdate(const String &target) {
+  rp2040UpdateError = "";
+  if (!rp2040ImageLooksBootable(rp2040OtaData, rp2040OtaSize)) {
+    rp2040UpdateError = "Файл RP2040 не похож на app-slot прошивку 0x10040000";
+    return false;
+  }
+  const uint32_t crc = crc32Update(0, rp2040OtaData, rp2040OtaSize);
+
+  sendRp2040OtaLine(target, "CMD STOP");
+  delay(60);
+  sendRp2040OtaLine(target, "BOOTLOADER");
+  delay(900);
+
+  bool bootloaderOk = false;
+  for (uint8_t attempt = 0; attempt < 12 && !bootloaderOk; ++attempt) {
+    clearRp2040OtaInput(target);
+    sendRp2040OtaLine(target, "PING");
+    String line;
+    if (waitRp2040OtaLine(target, line, 500) && line.startsWith("OK BOOTLOADER")) bootloaderOk = true;
+    else delay(250);
+  }
+  if (!bootloaderOk) {
+    rp2040UpdateError = "RP2040 не перешла в загрузчик";
+    return false;
+  }
+
+  if (!sendRp2040OtaCommandWait(target, "BEGIN " + String(rp2040OtaSize), "OK BEGIN", 15000)) return false;
+
+  for (size_t offset = 0; offset < rp2040OtaSize; offset += RP2040_OTA_PAGE_SIZE) {
+    const size_t len = min(static_cast<size_t>(RP2040_OTA_PAGE_SIZE), rp2040OtaSize - offset);
+    String cmd = "DATA ";
+    cmd += String(offset);
+    cmd += ' ';
+    cmd += bytesToHexLine(rp2040OtaData + offset, len);
+    if (!sendRp2040OtaCommandWait(target, cmd, "OK DATA", 4000)) return false;
+    delay(2);
+  }
+
+  String endCmd = "END ";
+  char crcText[9];
+  snprintf(crcText, sizeof(crcText), "%08lX", static_cast<unsigned long>(crc));
+  endCmd += crcText;
+  if (!sendRp2040OtaCommandWait(target, endCmd, "OK REBOOT", 20000)) return false;
+  return true;
+}
+
+static void handleRp2040FirmwareUpload() {
+  if (!server.authenticate(WEB_USER, WEB_PASSWORD)) return;
+  HTTPUpload &upload = server.upload();
+  if (upload.status == UPLOAD_FILE_START) {
+    freeRp2040OtaBuffer();
+    rp2040UpdateError = "";
+    rp2040UploadTooLarge = false;
+    rp2040OtaTarget = server.arg("target");
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (rp2040UploadTooLarge || rp2040UpdateError.length()) return;
+    if (rp2040OtaSize + upload.currentSize > RP2040_OTA_MAX_SIZE || !reserveRp2040OtaBuffer(rp2040OtaSize + upload.currentSize)) {
+      rp2040UploadTooLarge = true;
+      rp2040UpdateError = "Файл RP2040 слишком большой";
+      return;
+    }
+    memcpy(rp2040OtaData + rp2040OtaSize, upload.buf, upload.currentSize);
+    rp2040OtaSize += upload.currentSize;
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    rp2040UpdateError = "Загрузка RP2040 прервана";
+    freeRp2040OtaBuffer();
+  }
+}
+
+static void handleRp2040FirmwareUpdate() {
+  if (!webAuth()) return;
+  if (rp2040OtaTarget.length() == 0) rp2040OtaTarget = server.arg("target");
+  if (!rp2040OtaData || rp2040OtaSize == 0 || rp2040UpdateError.length()) {
+    String msg = rp2040UpdateError.length() ? rp2040UpdateError : "Файл RP2040 не был принят";
+    freeRp2040OtaBuffer();
+    server.send(400, "text/plain; charset=utf-8", "Ошибка обновления RP2040: " + msg);
+    return;
+  }
+  if (!rp2040OtaLocalPort(rp2040OtaTarget) && rp2040OtaRs485Index(rp2040OtaTarget) < 0) {
+    freeRp2040OtaBuffer();
+    server.send(400, "text/plain; charset=utf-8", "Ошибка обновления RP2040: неверная цель");
+    return;
+  }
+  const bool ok = runRp2040OtaUpdate(rp2040OtaTarget);
+  String msg = ok ? "RP2040 обновлена. Узел перезагружается." : ("Ошибка обновления RP2040: " + rp2040UpdateError);
+  freeRp2040OtaBuffer();
+  if (!ok) {
+    server.send(500, "text/plain; charset=utf-8", msg);
+    return;
+  }
+  server.send(200, "text/html; charset=utf-8", "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'></head><body><h2>RP2040 обновлена</h2><p>Узел перезагружается. Через 10-20 секунд обновите страницу.</p><p><a href='/config'>Вернуться</a></p></body></html>");
 }
 
 static void handleStatusApi() {
@@ -1884,18 +2417,21 @@ static void handleWindowCommand() {
   const String mode = server.arg("mode");
   const String target = server.hasArg("target") ? server.arg("target") : "local";
   strlcpy(mainWindowTarget, target.c_str(), sizeof(mainWindowTarget));
-  uint8_t command = 0;
-  if (mode == "open") command = 1;
-  else if (mode == "closed") command = 2;
-  else if (mode == "vent") command = 3;
-  else if (mode == "stop") command = 4;
-  const bool ok = enqueueWindowTargetCommand(target, windowCommandLine(command));
+  const bool ok = enqueueWindowTargetCommand(target, windowModeLine(mode));
   if (ok) processPendingWebCommand();
   if (server.hasArg("ajax")) {
     server.send(ok ? 200 : 400, "text/plain; charset=utf-8", ok ? "OK" : "ERR");
     return;
   }
   server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+static void handleRp2040WatchdogReset() {
+  if (!webAuth()) return;
+  const String target = server.hasArg("target") ? server.arg("target") : "local0";
+  sendWindowTargetCommand(target, "RESETWDT", false);
+  server.sendHeader("Location", "/config");
   server.send(303);
 }
 
@@ -1953,15 +2489,18 @@ static void handleWindowApi() {
     }
   }
   if (status.startsWith("{") && status.endsWith("}")) {
+    const String rawFault = jsonStringValue(status, "fault");
     body = status;
     body.remove(body.length() - 1);
     body += F(",\"name\":\"");
     body += htmlEscape(name);
+    body += F("\",\"faultText\":\"");
+    body += htmlEscape(faultTextRu(rawFault));
     body += F("\",\"ageMs\":");
     body += String(ageMs);
     body += F("}");
   } else {
-    body = F("{\"state\":\"unknown\",\"target\":\"none\",\"position\":\"none\",\"fault\":\"no_rp2040\",\"faultActuator\":0,\"current\":[],\"reed\":[],\"inaOk\":[],\"cap\":0,\"name\":\"");
+    body = F("{\"state\":\"unknown\",\"target\":\"none\",\"position\":\"none\",\"fault\":\"no_rp2040\",\"faultText\":\"нет связи с RP2040\",\"faultActuator\":0,\"current\":[],\"reed\":[],\"inaOk\":[],\"cap\":0,\"lastOp\":\"unknown\",\"lastSensor\":0,\"bootWatchdogOp\":\"unknown\",\"bootWatchdogSensor\":0,\"name\":\"");
     body += htmlEscape(name);
     body += F("\",\"ageMs\":0}");
   }
@@ -1978,6 +2517,7 @@ static void handleRs485Command() {
   else if (mode == "vent") sendRs485Line("@" + String(addr) + " CMD VENT");
   else if (mode == "stop") sendRs485Line("@" + String(addr) + " CMD STOP");
   else if (mode == "status") sendRs485Line("@" + String(addr) + " STATUS");
+  else if (mode == "resetwdt") sendRs485Line("@" + String(addr) + " RESETWDT");
   server.sendHeader("Location", "/config");
   server.send(303);
 }
@@ -2181,10 +2721,15 @@ static void beginWeb() {
   server.on("/wifi", HTTP_POST, handleWifiSave);
   server.on("/api/status", HTTP_GET, handleStatusApi);
   server.on("/config", HTTP_GET, handleConfig);
+  server.on("/firmware", HTTP_GET, handleFirmwarePage);
   server.on("/backup/export", HTTP_GET, handleBackupExport);
   server.on("/backup/import", HTTP_POST, handleBackupImport, handleBackupImportUpload);
+  server.on("/firmware/esp32", HTTP_POST, handleEsp32FirmwareUpdate, handleEsp32FirmwareUpload);
+  server.on("/firmware/esp32/rollback", HTTP_POST, handleEsp32Rollback);
+  server.on("/firmware/rp2040", HTTP_POST, handleRp2040FirmwareUpdate, handleRp2040FirmwareUpload);
   server.on("/window/cmd", HTTP_POST, handleWindowCommand);
   server.on("/window/cmd", HTTP_OPTIONS, handleApiCorsOptions);
+  server.on("/rp2040/resetwdt", HTTP_GET, handleRp2040WatchdogReset);
   server.on("/window/save", HTTP_POST, handleWindowSave);
   server.on("/api/window", HTTP_GET, handleWindowApi);
   server.on("/api/window", HTTP_OPTIONS, handleApiCorsOptions);
@@ -2339,6 +2884,7 @@ void setup() {
     DBG_PRINTLN("[WARN] CC1101 not found, RF remotes are disabled");
   }
   beginWeb();
+  confirmEsp32OtaBoot();
   sendWindowConfigToRp2040();
   sendRpCommandAllLocal("STATUS");
   sendRs485Line("@0 DISCOVER");

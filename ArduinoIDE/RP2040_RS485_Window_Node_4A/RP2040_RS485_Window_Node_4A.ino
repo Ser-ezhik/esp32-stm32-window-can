@@ -4,9 +4,10 @@
 #include <Adafruit_CAP1188.h>
 #include "drivers/FlashIAP.h"
 #include <hardware/watchdog.h>
+#include <hardware/structs/watchdog.h>
 
-static const char *FW_VERSION = "v1.1-safety-fixes";
-static const char *FW_BUILD_DATE = "2026-07-08";
+static const char *FW_VERSION = "v1.7-diagnostics";
+static const char *FW_BUILD_DATE = "2026-07-09";
 
 // RP2040 RS-485 window node: 4 actuators, 4 INA219, CAP1188, reeds, backup buttons.
 // RS-485 protocol is line based, 3.3 V UART through an external MAX3485/SP3485 module.
@@ -46,7 +47,7 @@ constexpr uint8_t I2C_SDA_PIN = 8;
 constexpr uint8_t I2C_SCL_PIN = 9;
 constexpr uint32_t I2C_CLOCK_HZ = 100000;
 constexpr uint32_t INA_RETRY_MS = 2000;
-constexpr uint32_t WATCHDOG_TIMEOUT_MS = 10000;
+constexpr uint32_t WATCHDOG_TIMEOUT_MS = 3000;
 constexpr uint8_t INA_ADDRS[ACTUATORS] = {0x40, 0x41, 0x44, 0x45};
 
 constexpr uint8_t CAP1188_ADDR = 0x29;
@@ -56,11 +57,27 @@ constexpr uint32_t DEFAULT_CAP1188_CONFIRM_MS = 50;
 
 constexpr uint32_t CONFIG_MAGIC = 0x52343835u; // R485
 constexpr uint16_t CONFIG_VERSION = 2;
+constexpr uint32_t OTA_MAGIC = 0x52504F54u; // RPOT
+constexpr uint32_t OTA_META_ADDR = 0x101FE000u;
+constexpr uint32_t DIAG_MAGIC = 0x57444947u; // WDIG
 
 enum TargetMode : uint8_t { TARGET_NONE, TARGET_OPEN, TARGET_CLOSED, TARGET_VENT };
 enum RunState : uint8_t { STATE_IDLE, STATE_MOVING, STATE_FAULT };
 enum Direction : uint8_t { DIR_NONE, DIR_EXTEND, DIR_RETRACT };
 enum GroupKind : uint8_t { GROUP_TOP, GROUP_BOTTOM };
+enum DiagOp : uint8_t {
+  DIAG_BOOT = 1,
+  DIAG_LOOP,
+  DIAG_READ_CAP,
+  DIAG_INIT_INA,
+  DIAG_READ_INA,
+  DIAG_FLASH_SAVE,
+  DIAG_FLASH_LOAD,
+  DIAG_COMMAND,
+  DIAG_REEDS,
+  DIAG_MOVEMENT,
+  DIAG_UART,
+};
 
 struct PersistedConfig {
   uint32_t magic;
@@ -80,6 +97,18 @@ struct PersistedConfig {
   uint32_t capConfirmMs;
   float maxCurrentMa[ACTUATORS];
   float zeroCurrentMa[ACTUATORS];
+  uint32_t checksum;
+};
+
+struct OtaBootMeta {
+  uint32_t magic;
+  uint32_t appSize;
+  uint32_t appCrc;
+  uint32_t backupSize;
+  uint32_t backupCrc;
+  uint32_t flags;
+  uint32_t trialBoot;
+  uint32_t reserved[8];
   uint32_t checksum;
 };
 
@@ -169,7 +198,14 @@ int faultActuator = 0;
 uint32_t moveStartedAt = 0;
 uint32_t lastSensorPollAt = 0;
 uint32_t lastStatusPrintAt = 0;
+uint32_t watchdogResetCount = 0;
 String rxLine;
+uint32_t lastDiagOp = DIAG_BOOT;
+uint32_t lastDiagSensor = 0;
+uint32_t lastDiagMs = 0;
+uint32_t bootWatchdogOp = 0;
+uint32_t bootWatchdogSensor = 0;
+uint32_t bootWatchdogMs = 0;
 
 static uint8_t actIndex(uint8_t group, uint8_t local) {
   return group * ACTUATORS_PER_GROUP + local;
@@ -177,6 +213,33 @@ static uint8_t actIndex(uint8_t group, uint8_t local) {
 
 static void onCapIrq() {
   capIrqSeen = true;
+}
+
+static const char *diagName(uint32_t op) {
+  switch (op) {
+    case DIAG_BOOT: return "boot";
+    case DIAG_LOOP: return "loop";
+    case DIAG_READ_CAP: return "read_cap1188";
+    case DIAG_INIT_INA: return "init_ina219";
+    case DIAG_READ_INA: return "read_ina219";
+    case DIAG_FLASH_SAVE: return "flash_save";
+    case DIAG_FLASH_LOAD: return "flash_load";
+    case DIAG_COMMAND: return "command";
+    case DIAG_REEDS: return "read_reeds";
+    case DIAG_MOVEMENT: return "movement";
+    case DIAG_UART: return "uart";
+    default: return "unknown";
+  }
+}
+
+static void diagSet(uint32_t op, uint32_t sensor = 0) {
+  lastDiagOp = op;
+  lastDiagSensor = sensor;
+  lastDiagMs = millis();
+  watchdog_hw->scratch[0] = DIAG_MAGIC;
+  watchdog_hw->scratch[1] = op;
+  watchdog_hw->scratch[2] = sensor;
+  watchdog_hw->scratch[3] = lastDiagMs;
 }
 
 static void setRs485Tx(bool enabled) {
@@ -290,17 +353,38 @@ static uint32_t flashConfigAddress(mbed::FlashIAP &flash) {
   return start + size - sectorSize;
 }
 
+static uint32_t configWatchdogCount(const PersistedConfig &cfg) {
+  return static_cast<uint32_t>(cfg.reserved[0]) |
+         (static_cast<uint32_t>(cfg.reserved[1]) << 8) |
+         (static_cast<uint32_t>(cfg.reserved[2]) << 16) |
+         ((static_cast<uint32_t>(cfg.reserved2) & 0xFFu) << 24);
+}
+
+static void setConfigWatchdogCount(PersistedConfig &cfg, uint32_t value) {
+  cfg.reserved[0] = static_cast<uint8_t>(value & 0xFFu);
+  cfg.reserved[1] = static_cast<uint8_t>((value >> 8) & 0xFFu);
+  cfg.reserved[2] = static_cast<uint8_t>((value >> 16) & 0xFFu);
+  cfg.reserved2 = static_cast<uint16_t>((value >> 24) & 0xFFu);
+}
+
+static uint32_t clampU32(uint32_t value, uint32_t low, uint32_t high) {
+  if (value < low) return low;
+  if (value > high) return high;
+  return value;
+}
+
 static void applyConfig(const PersistedConfig &cfg) {
   nodeAddress = constrain(cfg.address, 1, 247);
+  watchdogResetCount = configWatchdogCount(cfg);
   overCurrentConfirmMs = constrain(cfg.overCurrentConfirmMs, 10ul, 5000ul);
   endstopConfirmMs = constrain(cfg.endstopConfirmMs, 20ul, 10000ul);
-  startIgnoreEndstopMs = constrain(cfg.startIgnoreEndstopMs, 0ul, 10000ul);
+  startIgnoreEndstopMs = clampU32(cfg.startIgnoreEndstopMs, 0ul, 10000ul);
   noCurrentFaultMs = constrain(cfg.noCurrentFaultMs, 100ul, 60000ul);
   maxMoveMs = constrain(cfg.maxMoveMs, 1000ul, 180000ul);
   sensorPollMs = constrain(cfg.sensorPollMs, 2ul, 1000ul);
   capProtectionEnabled = cfg.capEnabled != 0;
   capStopMask = cfg.capStopMask;
-  capConfirmMs = constrain(cfg.capConfirmMs, 0ul, 5000ul);
+  capConfirmMs = clampU32(cfg.capConfirmMs, 0ul, 5000ul);
   for (uint8_t i = 0; i < ACTUATORS; ++i) {
     maxCurrentMa[i] = constrain(cfg.maxCurrentMa[i], 100.0f, 10000.0f);
     zeroCurrentMa[i] = constrain(cfg.zeroCurrentMa[i], 1.0f, 1000.0f);
@@ -321,6 +405,7 @@ static void makeConfig(PersistedConfig &cfg) {
   cfg.sensorPollMs = sensorPollMs;
   cfg.capEnabled = capProtectionEnabled ? 1 : 0;
   cfg.capStopMask = capStopMask;
+  setConfigWatchdogCount(cfg, watchdogResetCount);
   cfg.capConfirmMs = capConfirmMs;
   for (uint8_t i = 0; i < ACTUATORS; ++i) {
     cfg.maxCurrentMa[i] = maxCurrentMa[i];
@@ -330,6 +415,7 @@ static void makeConfig(PersistedConfig &cfg) {
 }
 
 static bool loadConfigFromFlash() {
+  diagSet(DIAG_FLASH_LOAD);
   mbed::FlashIAP flash;
   if (flash.init() != 0) return false;
   PersistedConfig cfg;
@@ -344,6 +430,7 @@ static bool loadConfigFromFlash() {
 }
 
 static bool saveConfigToFlash() {
+  diagSet(DIAG_FLASH_SAVE);
   watchdog_update();
   mbed::FlashIAP flash;
   if (flash.init() != 0) return false;
@@ -366,7 +453,70 @@ static bool saveConfigToFlash() {
   return ok;
 }
 
+static uint32_t checksumOtaMeta(const OtaBootMeta &meta) {
+  const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&meta);
+  const size_t len = sizeof(OtaBootMeta) - sizeof(meta.checksum);
+  uint32_t hash = 2166136261u;
+  for (size_t i = 0; i < len; ++i) {
+    hash ^= bytes[i];
+    hash *= 16777619u;
+  }
+  return hash;
+}
+
+static bool readOtaMeta(OtaBootMeta &meta) {
+  mbed::FlashIAP flash;
+  if (flash.init() != 0) return false;
+  const int result = flash.read(&meta, OTA_META_ADDR, sizeof(meta));
+  flash.deinit();
+  if (result != 0 || meta.magic != OTA_MAGIC) return false;
+  return meta.checksum == checksumOtaMeta(meta);
+}
+
+static bool writeOtaMeta(const OtaBootMeta &input) {
+  watchdog_update();
+  mbed::FlashIAP flash;
+  if (flash.init() != 0) return false;
+  OtaBootMeta meta = input;
+  meta.magic = OTA_MAGIC;
+  meta.checksum = checksumOtaMeta(meta);
+  const uint32_t sectorSize = flash.get_sector_size(OTA_META_ADDR);
+  const uint32_t pageSize = flash.get_page_size();
+  const uint32_t writeSize = ((sizeof(OtaBootMeta) + pageSize - 1) / pageSize) * pageSize;
+  if (writeSize > 4096 || sectorSize > 4096) {
+    flash.deinit();
+    return false;
+  }
+  static uint8_t buffer[4096];
+  memset(buffer, flash.get_erase_value(), sizeof(buffer));
+  memcpy(buffer, &meta, sizeof(meta));
+  const bool ok = (flash.erase(OTA_META_ADDR, sectorSize) == 0) &&
+                  (flash.program(buffer, OTA_META_ADDR, writeSize) == 0);
+  flash.deinit();
+  watchdog_update();
+  return ok;
+}
+
+static void confirmOtaBoot() {
+  OtaBootMeta meta;
+  if (!readOtaMeta(meta)) return;
+  if ((meta.flags & 0x02u) == 0 && meta.trialBoot == 0) return;
+  meta.flags &= ~0x02u; // pending confirm
+  meta.trialBoot = 0;
+  writeOtaMeta(meta);
+}
+
+static bool requestBootloaderMode() {
+  OtaBootMeta meta;
+  if (!readOtaMeta(meta)) memset(&meta, 0, sizeof(meta));
+  meta.magic = OTA_MAGIC;
+  meta.reserved[0] = nodeAddress;
+  meta.flags |= 0x01u; // stay in bootloader
+  return writeOtaMeta(meta);
+}
+
 static void readReeds() {
+  diagSet(DIAG_REEDS);
   reeds[0] = digitalRead(REED_MID_PIN) == REED_ACTIVE_LEVEL;
   reeds[1] = digitalRead(REED_VENT_PIN) == REED_ACTIVE_LEVEL;
   reeds[2] = digitalRead(REED_CLOSED_PIN) == REED_ACTIVE_LEVEL;
@@ -381,6 +531,7 @@ static uint8_t readCapTouchedNow() {
     capActiveSince = 0;
     return 0;
   }
+  diagSet(DIAG_READ_CAP);
   capTouched = cap1188.touched();
   capActiveTouched = capProtectionEnabled ? (capTouched & capStopMask) : 0;
   if (capActiveTouched != 0) {
@@ -396,6 +547,7 @@ static void initIna(uint8_t index) {
   const uint32_t now = millis();
   if (now - lastInaInitAttempt[index] < INA_RETRY_MS) return;
   lastInaInitAttempt[index] = now;
+  diagSet(DIAG_INIT_INA, index + 1);
   inaOk[index] = ina[index].begin(&sensorBus);
   if (inaOk[index]) ina[index].setCalibration_32V_2A();
 }
@@ -488,6 +640,7 @@ static void pollCurrents(uint32_t now) {
       currentMa[i] = 0;
       continue;
     }
+    diagSet(DIAG_READ_INA, i + 1);
     const float measured = ina[i].getCurrent_mA();
     if (!isfinite(measured) || !ina[i].success()) {
       inaOk[i] = false;
@@ -542,6 +695,7 @@ static void finishGroup(uint8_t group) {
 
 static void updateMovement(uint32_t now) {
   if (state != STATE_MOVING) return;
+  diagSet(DIAG_MOVEMENT);
   if (now - moveStartedAt > maxMoveMs) {
     stopAll("timeout", 0, true);
     return;
@@ -549,6 +703,14 @@ static void updateMovement(uint32_t now) {
   readReeds();
   if (reeds[0] && reeds[1]) {
     stopAll("reed_conflict", 0, true);
+    return;
+  }
+
+  if ((target == TARGET_OPEN && reeds[0]) ||
+      (target == TARGET_VENT && reeds[1]) ||
+      (target == TARGET_CLOSED && reeds[2])) {
+    estimatedPosition = target;
+    stopAll("none", 0, false);
     return;
   }
 
@@ -599,14 +761,14 @@ static String escapeJson(const String &value) {
 static String statusJson() {
   readReeds();
   String json;
-  json.reserve(760);
+  json.reserve(980);
   json += F("{\"addr\":");
   json += String(nodeAddress);
   json += F(",\"fw\":\"");
   json += FW_VERSION;
   json += F("\",\"build\":\"");
   json += FW_BUILD_DATE;
-  json += F(",\"uid\":\"");
+  json += F("\",\"uid\":\"");
   json += escapeJson(nodeUid);
   json += F("\",\"state\":\"");
   json += stateName(state);
@@ -618,6 +780,20 @@ static String statusJson() {
   json += escapeJson(fault);
   json += F("\",\"faultActuator\":");
   json += String(faultActuator);
+  json += F(",\"watchdogResets\":");
+  json += String(watchdogResetCount);
+  json += F(",\"lastOp\":\"");
+  json += diagName(lastDiagOp);
+  json += F("\",\"lastSensor\":");
+  json += String(lastDiagSensor);
+  json += F(",\"lastOpMs\":");
+  json += String(lastDiagMs);
+  json += F(",\"bootWatchdogOp\":\"");
+  json += diagName(bootWatchdogOp);
+  json += F("\",\"bootWatchdogSensor\":");
+  json += String(bootWatchdogSensor);
+  json += F(",\"bootWatchdogMs\":");
+  json += String(bootWatchdogMs);
   json += F(",\"cap\":");
   json += String(capTouched);
   json += F(",\"capActive\":");
@@ -688,6 +864,7 @@ static void replyAck(const String &payload, bool direct = false) {
 }
 
 static void handleCommand(String payload, bool broadcast, bool direct = false) {
+  diagSet(DIAG_COMMAND);
   payload.trim();
   payload.toUpperCase();
   Serial.print(F("[RX] "));
@@ -725,8 +902,19 @@ static void handleCommand(String payload, bool broadcast, bool direct = false) {
   } else if (payload == "CMD STOP") {
     stopAll("stopped", 0, false);
     ack = true;
-  }
-  else if (payload == "STATUS") {
+  } else if (payload == "RESETWDT" || payload == "RESETWATCHDOG") {
+    watchdogResetCount = 0;
+    configSaved = saveConfigToFlash();
+    ack = true;
+  } else if (payload == "BOOTLOADER") {
+    stopAll("bootloader", 0, false);
+    const bool ok = requestBootloaderMode();
+    replyAck(ok ? "BOOTLOADER" : "BOOTLOADER_FAIL", direct);
+    replyStatus(direct);
+    delay(50);
+    watchdog_reboot(0, 0, 0);
+    return;
+  } else if (payload == "STATUS") {
     replyStatus(direct);
     return;
   } else if (payload.startsWith("CFG ")) {
@@ -747,7 +935,8 @@ static void handleCommand(String payload, bool broadcast, bool direct = false) {
     noCurrentFaultMs = valueAfter(payload, "NOCURRENTMS=", noCurrentFaultMs);
     capProtectionEnabled = valueAfter(payload, "CAPEN=", capProtectionEnabled ? 1 : 0) != 0;
     capStopMask = static_cast<uint8_t>(constrain(valueAfter(payload, "CAPMASK=", capStopMask), 0, 255));
-    capConfirmMs = constrain(static_cast<uint32_t>(valueAfter(payload, "CAPMS=", capConfirmMs)), 0ul, 5000ul);
+    const int capMsValue = valueAfter(payload, "CAPMS=", static_cast<int>(capConfirmMs));
+    capConfirmMs = clampU32(capMsValue < 0 ? 0ul : static_cast<uint32_t>(capMsValue), 0ul, 5000ul);
     configSaved = saveConfigToFlash();
     ack = true;
   }
@@ -770,6 +959,7 @@ static void parseRs485Line(String line) {
 }
 
 static void readRs485() {
+  diagSet(DIAG_UART);
   while (Serial1.available()) {
     const char c = static_cast<char>(Serial1.read());
     if (c == '\n' || c == '\r') {
@@ -805,10 +995,18 @@ static String readUid() {
 }
 
 static void feedWatchdog() {
+  diagSet(DIAG_LOOP);
   watchdog_update();
 }
 
 void setup() {
+  const bool watchdogRebooted = watchdog_caused_reboot();
+  if (watchdogRebooted && watchdog_hw->scratch[0] == DIAG_MAGIC) {
+    bootWatchdogOp = watchdog_hw->scratch[1];
+    bootWatchdogSensor = watchdog_hw->scratch[2];
+    bootWatchdogMs = watchdog_hw->scratch[3];
+  }
+  diagSet(DIAG_BOOT);
   watchdog_enable(WATCHDOG_TIMEOUT_MS, true);
   pinMode(RS485_DE_RE_PIN, OUTPUT);
   setRs485Tx(false);
@@ -836,6 +1034,11 @@ void setup() {
   nodeUid = readUid();
   configLoaded = loadConfigFromFlash();
   configSaved = configLoaded;
+  if (watchdogRebooted) {
+    ++watchdogResetCount;
+    configSaved = saveConfigToFlash();
+  }
+  confirmOtaBoot();
 
   sensorBus.begin();
   sensorBus.setClock(I2C_CLOCK_HZ);
