@@ -17,7 +17,7 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 
 ## Current development status
 
-The current releases are STM32 `0.1.0-alpha.2` and ESP32-S3 `0.1.0-alpha.3`:
+The current releases are STM32 `0.1.0-alpha.2` and ESP32-S3 `0.1.0-alpha.4`:
 
 - hardware bxCAN at 500 kbit/s;
 - three hardware UART links at 250 kbit/s with CRC16 frames;
@@ -41,6 +41,12 @@ because the CAN protocol gained a calibration-reset command.
 ESP32 `alpha.3` fixes mobile-width overflow found during Chrome testing. The
 wide actuator table now scrolls inside its own container without widening the page.
 
+ESP32 `alpha.4` targets the tested ESP32-S3 N16R8 module: 16 MB quad Flash,
+PSRAM disabled (the firmware does not need it), and a 3 MB application partition. It also prints startup diagnostics
+at 115200 baud. This hardware is verified with Arduino-ESP32 core `3.0.7`;
+do not use core `3.3.8` for it because Wi-Fi startup is unstable on the tested board.
+Generic 4 MB images remain archived under their original tags.
+
 ## Build STM32 firmware
 
 Install Arduino CLI and the official STM32 core, then run:
@@ -60,7 +66,10 @@ does not rely on unofficial 128 KiB clone behaviour.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\embed-web.ps1
-arduino-cli compile --fqbn "esp32:esp32:esp32s3" --libraries libraries `
+arduino-cli core install esp32:esp32@3.0.7
+arduino-cli compile `
+  --fqbn "esp32:esp32:esp32s3:FlashMode=dio,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=disabled" `
+  --libraries libraries `
   --export-binaries ArduinoIDE\ESP32_CC1101_CAN_Master
 ```
 

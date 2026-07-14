@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.3";
-constexpr uint8_t FW_BUILD = 3;
+constexpr char FW_VERSION[] = "0.1.0-alpha.4";
+constexpr uint8_t FW_BUILD = 4;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
@@ -23,7 +23,6 @@ constexpr int PIN_RF_CS = 10;
 constexpr int PIN_RF_GDO0 = 4;
 constexpr int PIN_RF_GDO2 = 5;
 constexpr int PIN_LEARN_BUTTON = 9;
-constexpr int STATUS_RGB_PIN = 48;
 constexpr int PIN_CAN_RX = 38;
 constexpr int PIN_CAN_TX = 39;
 
@@ -802,11 +801,20 @@ void pollLearnButton() {
 }  // namespace
 
 void setup() {
-  pinMode(PIN_LEARN_BUTTON, INPUT_PULLUP); pinMode(STATUS_RGB_PIN, OUTPUT); rgbLedWrite(STATUS_RGB_PIN, 0, 0, 0);
+  Serial.begin(115200);
+  delay(100);
+  Serial.printf("\nWindow CAN ESP32 %s\n", FW_VERSION);
+  pinMode(PIN_LEARN_BUTTON, INPUT_PULLUP);
   loadSystemSettings(); loadObjects(); loadRemotes();
-  canReady = beginCan(); radioReady = beginRadio(); beginNetwork(); beginWeb();
+  beginNetwork();
+  beginWeb();
+  canReady = beginCan();
+  radioReady = beginRadio();
   appendEvent(0xFF, 0, 0, "ESP32 запущена");
-  rgbLedWrite(STATUS_RGB_PIN, canReady ? 0 : 50, canReady ? 35 : 0, radioReady ? 10 : 0);
+  Serial.printf("CAN: %s, CC1101: %s\n", canReady ? "ready" : "offline", radioReady ? "ready" : "offline");
+  Serial.printf("Network: %s, IP: %s\n", setupApMode ? "WindowControl-Setup" : wifiSsid,
+                setupApMode ? WiFi.softAPIP().toString().c_str() : WiFi.localIP().toString().c_str());
+  Serial.println("Web: http://192.168.4.1 (AP mode) or http://window-control.local");
 }
 
 void loop() {
