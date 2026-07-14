@@ -17,7 +17,7 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 
 ## Current development status
 
-`0.1.0-alpha.2` contains buildable universal STM32 and ESP32-S3 firmware:
+The current releases are STM32 `0.1.0-alpha.2` and ESP32-S3 `0.1.0-alpha.3`:
 
 - hardware bxCAN at 500 kbit/s;
 - three hardware UART links at 250 kbit/s with CRC16 frames;
@@ -37,6 +37,9 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 
 The `alpha.1` STM32 binaries and tag remain unchanged. `alpha.2` is a new release
 because the CAN protocol gained a calibration-reset command.
+
+ESP32 `alpha.3` fixes mobile-width overflow found during Chrome testing. The
+wide actuator table now scrolls inside its own container without widening the page.
 
 ## Build STM32 firmware
 

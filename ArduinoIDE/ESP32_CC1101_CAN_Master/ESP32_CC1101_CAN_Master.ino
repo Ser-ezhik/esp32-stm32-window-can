@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.2";
-constexpr uint8_t FW_BUILD = 2;
+constexpr char FW_VERSION[] = "0.1.0-alpha.3";
+constexpr uint8_t FW_BUILD = 3;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
