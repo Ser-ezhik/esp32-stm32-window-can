@@ -23,6 +23,11 @@ Commands carry a sequence counter. A motor command is accepted only after a rece
 ARM command or with an explicit armed flag. While moving, ESP32 repeats the active
 command as a heartbeat. Loss of a valid command for 300 ms stops the cabinet.
 
+The command set includes open, close, stop, clear fault, separate open/close
+calibration and calibration reset. A full calibration cycle is coordinated by
+ESP32 as two position-aware single-direction calibration commands. Provisioning
+stores cabinet ID, object type, slave count and the three-bit D-M9P polarity mask.
+
 ## Local UART
 
 Master-to-slave links use 250000 8N1 and a binary frame:

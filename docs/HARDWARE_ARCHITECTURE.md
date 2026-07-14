@@ -57,6 +57,10 @@ JTAG must be disabled while SWD remains enabled to release PB3 and PB4. Native
 USB is not used because PA11/PA12 are assigned to CAN. The board CH340 connection
 on PA9/PA10 is not used as the control UART.
 
+PC14 and PC15 can only be used for `SLOT_ID` if the mini-board does not populate
+the 32.768 kHz LSE crystal on those pins. Verify the actual board before making
+the carrier PCB; otherwise move the two slot straps to free GPIO pins.
+
 ## Power and signal rules
 
 - 12 V motor power and logic DC/DC branches are fused separately.
@@ -64,7 +68,11 @@ on PA9/PA10 is not used as the control UART.
 - Motor returns and logic ground meet at the cabinet power entry, not through a
   development-board ground trace.
 - VNH inputs have external pull-downs so reset cannot start an actuator.
-- D-M9N sensors are powered from 5 V and use external 4.7-10 kOhm pull-ups to 3.3 V.
+- D-M9N and D-M9P sensors may be powered from 3.3 V when that voltage has been
+  verified on the exact sensors. D-M9N inputs use pull-ups; D-M9P inputs use
+  pull-downs. A three-bit polarity mask is stored in the cabinet EEPROM, so the
+  replaceable STM32 firmware remains universal. Do not power a sensor output from
+  5 V when it is connected directly to an STM32 input.
 - CAP1188 `ADDR_COMM` is tied to GND for normal 4-wire SPI mode.
 - CAN uses 120 Ohm termination only at the two physical ends of the complete bus.
 - The final carrier must include transient suppression and reverse-polarity protection.

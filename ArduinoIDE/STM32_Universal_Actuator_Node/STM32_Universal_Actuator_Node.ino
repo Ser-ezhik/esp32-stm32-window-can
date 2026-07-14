@@ -202,6 +202,16 @@ void stopLocal() {
   for (uint8_t i = 0; i < 2; ++i) stopActuator(i);
 }
 
+void refreshCalibrationFlags() {
+  for (uint8_t i = 0; i < 2; ++i) {
+    if (config.lastOpenMs[i] != 0 && config.lastCloseMs[i] != 0) {
+      actuators[i].flags |= ACTUATOR_CALIBRATED;
+    } else {
+      actuators[i].flags &= static_cast<uint8_t>(~ACTUATOR_CALIBRATED);
+    }
+  }
+}
+
 void startActuator(uint8_t index, Direction direction, uint16_t pwmPermille) {
   stopActuator(index);
   delay(hw::DIRECTION_DEADTIME_MS);
@@ -215,6 +225,9 @@ void startActuator(uint8_t index, Direction direction, uint16_t pwmPermille) {
   actuators[index].moving = true;
   actuators[index].finished = false;
   actuators[index].flags = ACTUATOR_MOVING | ACTUATOR_DIAG_OK;
+  if (config.lastOpenMs[index] != 0 && config.lastCloseMs[index] != 0) {
+    actuators[index].flags |= ACTUATOR_CALIBRATED;
+  }
   if (direction == Direction::Extend) actuators[index].flags |= ACTUATOR_EXTEND;
   writePwm(index, pwmPermille);
 }
@@ -298,6 +311,31 @@ void executeCommand(Command command, uint8_t flags, uint16_t argument, bool from
     if (isMaster()) forwardCommandToSlaves(command, flags, argument);
     return;
   }
+  if (command == Command::ResetCalibration) {
+    stopLocal();
+    memset(config.lastOpenMs, 0, sizeof(config.lastOpenMs));
+    memset(config.lastCloseMs, 0, sizeof(config.lastCloseMs));
+    for (uint8_t i = 0; i < 2; ++i) {
+      config.pwmOpenPermille[i] = hw::PWM_MAX;
+      config.pwmClosePermille[i] = hw::PWM_MAX;
+    }
+    ++config.revision;
+    saveConfig();
+    if (isMaster()) {
+      for (uint8_t slot = 0; slot < carrier.slaveCount; ++slot) {
+        for (uint8_t i = 0; i < 2; ++i) {
+          slaveConfigs[slot].pwmOpenPermille[i] = hw::PWM_MAX;
+          slaveConfigs[slot].pwmClosePermille[i] = hw::PWM_MAX;
+        }
+        ++slaveConfigs[slot].revision;
+      }
+    }
+    refreshCalibrationFlags();
+    activeCommand = Command::None;
+    runState = RunState::Idle;
+    if (isMaster() && !fromMaster) forwardCommandToSlaves(command, flags, argument);
+    return;
+  }
   if (command == Command::Arm) {
     armedUntil = now + hw::COMMAND_ARM_WINDOW_MS;
     if (runState == RunState::Safe) runState = RunState::Idle;
@@ -338,6 +376,7 @@ void finishActuatorAtEndstop(uint8_t index, uint32_t now) {
   if (actuators[index].direction == Direction::Extend) config.lastOpenMs[index] = stored;
   else if (actuators[index].direction == Direction::Retract) config.lastCloseMs[index] = stored;
   actuators[index].flags |= ACTUATOR_ENDSTOP;
+  refreshCalibrationFlags();
   actuators[index].finished = true;
   stopActuator(index);
 }
@@ -443,6 +482,7 @@ void applyCalibration() {
   }
   ++config.revision;
   saveConfig();
+  refreshCalibrationFlags();
   for (uint8_t slot = 0; slot < carrier.slaveCount; ++slot) sendConfigToSlave(slot);
 }
 
@@ -456,10 +496,18 @@ void completeMovementIfReady() {
   runState = RunState::Idle;
 }
 
+void configureReedInputs() {
+  for (uint8_t i = 0; i < 3; ++i) {
+    const bool activeHigh = carrierConfigured && (carrier.reserved & (1u << i)) != 0;
+    pinMode(hw::REED_PINS[i], activeHigh ? INPUT_PULLDOWN : INPUT_PULLUP);
+  }
+}
+
 void readMasterSensors() {
   uint8_t nextReeds = 0;
   for (uint8_t i = 0; i < 3; ++i) {
-    if (digitalRead(hw::REED_PINS[i]) == LOW) nextReeds |= 1u << i;
+    const bool activeHigh = (carrier.reserved & (1u << i)) != 0;
+    if ((digitalRead(hw::REED_PINS[i]) == HIGH) == activeHigh) nextReeds |= 1u << i;
   }
   reedMask = nextReeds;
   if ((reedMask & 0x03u) == 0x03u) {
@@ -561,10 +609,12 @@ void handleProvision(const CanProvisionFrame &request) {
   next.cabinetId = request.cabinetId;
   next.objectType = request.objectType;
   next.slaveCount = request.slaveCount;
+  next.reserved = request.flags & 0x07u;
   next.configRevision = 1;
   if (carrierStore.save(next)) {
     carrier = next;
     carrierConfigured = carrierStore.load(carrier);
+    configureReedInputs();
     clearFault();
     sendDiscovery();
   }
@@ -666,10 +716,10 @@ void initializePins() {
 }
 
 void initializeMaster() {
-  for (uint8_t i = 0; i < 3; ++i) pinMode(hw::REED_PINS[i], INPUT_PULLUP);
   pinMode(hw::CAP_IRQ, INPUT_PULLUP);
   carrierStore.begin();
   carrierConfigured = carrierStore.load(carrier);
+  configureReedInputs();
   capOnline = cap1188.begin();
   const LocalConfigPayload defaults = makeConfigPayload();
   for (uint8_t i = 0; i < 3; ++i) slaveConfigs[i] = defaults;
@@ -677,6 +727,7 @@ void initializeMaster() {
   canOnline = canBus.begin(hw::CAN_BITRATE);
   clearFault();
   if (!carrierConfigured) setFault(Fault::NotConfigured);
+  else if (!capOnline) setFault(Fault::Cap1188Offline);
 }
 
 void initializeSlave() {

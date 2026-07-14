@@ -17,7 +17,7 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 
 ## Current development status
 
-`0.1.0-alpha.1` contains the first buildable universal STM32 firmware:
+`0.1.0-alpha.2` contains buildable universal STM32 and ESP32-S3 firmware:
 
 - hardware bxCAN at 500 kbit/s;
 - three hardware UART links at 250 kbit/s with CRC16 frames;
@@ -29,8 +29,14 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 - per-direction full-stroke calibration data and PWM equalization;
 - carrier provisioning/discovery protocol;
 - watchdog and safe outputs at boot.
+- ESP32-S3 CAN coordinator with CC1101 receiver and configuration stored in NVS;
+- object-based web UI for up to 64 windows/doors, actuator telemetry, events and emergency stop;
+- editable 433 MHz button assignments;
+- separate open/close calibration, position-aware full-cycle calibration and calibration reset;
+- per-input D-M9N/D-M9P polarity stored in the cabinet carrier EEPROM.
 
-ESP32 CAN coordinator and the object-based web interface are under active development.
+The `alpha.1` STM32 binaries and tag remain unchanged. `alpha.2` is a new release
+because the CAN protocol gained a calibration-reset command.
 
 ## Build STM32 firmware
 
@@ -46,6 +52,18 @@ arduino-cli compile `
 
 The project deliberately targets the real 64 KiB capacity of STM32F103C8T6 and
 does not rely on unofficial 128 KiB clone behaviour.
+
+## Build ESP32-S3 firmware
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\embed-web.ps1
+arduino-cli compile --fqbn "esp32:esp32:esp32s3" --libraries libraries `
+  --export-binaries ArduinoIDE\ESP32_CC1101_CAN_Master
+```
+
+The current web interface intentionally exposes only full open, full close and
+stop. A partial ventilation command will be added only after its position rule
+or dedicated sensor is defined and bench-tested.
 
 ## Documentation
 

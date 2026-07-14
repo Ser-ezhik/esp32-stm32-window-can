@@ -50,6 +50,7 @@ enum class Command : uint8_t {
   CalibrateFull = 9,
   ServiceExtend = 10,
   ServiceRetract = 11,
+  ResetCalibration = 12,
 };
 
 enum class RunState : uint8_t {
