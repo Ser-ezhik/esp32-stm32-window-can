@@ -9,9 +9,11 @@ approved universal one-board-per-cabinet architecture. It presently contains:
 - mechanically checked placement for S1 through S4 and the photographed
   plug-in modules.
 
-It is deliberately a placement-stage source, not a fabrication release. No
-Gerbers, component coordinates, copper, schematic netlist or routing are
-released until the physical module footprints have been verified at 1:1 scale.
+It is deliberately a design-stage source, not a fabrication release. The v0.4
+board contains the repeated VNH passive blocks, slot straps and named power,
+motor, control, diagnostic and current-sense nets. Routing and the complete
+KiCad schematic are not released until the physical module footprints have
+been verified at 1:1 scale.
 
 The placement already uses KiCad's verified `ST_MultiPowerSO-30` footprint for
 all eight VNH5019A-E devices, `Phoenix MKDS-3-2-5.08` two-way power terminals,
@@ -19,6 +21,11 @@ and one-piece 4x10 / 2.54 mm socket footprints for each STM32 module. Each VNH
 has one dedicated fused 12 V terminal and one actuator-output terminal. The 26 mm
 heatsink-hole pair is above and below its VNH, avoiding overlap with a
 neighbouring channel.
+
+Each VNH now has three 100 Ohm input resistors, reset-safe pull-downs, a 4.7
+kOhm diagnostic pull-up, CS_DIS pull-down, 1 kOhm current-sense load, protected
+and filtered ADC input, 470 uF local bulk capacitor and 100 nF ceramic bypass.
+The PB2/PA7 slot straps are also present and match the universal firmware.
 
 All 16 motor terminals are on the top edge. STM32 USB-C connectors face the
 bottom service edge, both ESP32-S3 USB connectors face the left edge, the

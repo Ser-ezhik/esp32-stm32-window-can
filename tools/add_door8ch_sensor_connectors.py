@@ -86,7 +86,7 @@ if hole is not None:
     hole.SetPosition(pcbnew.VECTOR2I_MM(243, 152))
 hole = board.FindFootprintByReference("H2")
 if hole is not None:
-    hole.SetPosition(pcbnew.VECTOR2I_MM(208, 75))
+    hole.SetPosition(pcbnew.VECTOR2I_MM(208, 90))
 
 # Eight independent twisted-pair entries. Pin 1 is SENSOR, pin 2 is GND.
 top = 14.0

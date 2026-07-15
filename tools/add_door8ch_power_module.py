@@ -38,6 +38,7 @@ def add(reference, value, library, name, x_mm, y_mm, rotation=0):
     item = load(library, name)
     item.SetReference(reference)
     item.SetValue(value)
+    item.Reference().SetVisible(False)
     item.Value().SetVisible(False)
     item.SetPosition(pcbnew.VECTOR2I_MM(x_mm, y_mm))
     item.SetOrientationDegrees(rotation)
@@ -55,27 +56,27 @@ add(
 add(
     "F230", "1A_SLOW_5X20", KICAD_FOOTPRINTS / "Fuse.pretty",
     "Fuseholder_Clip-5x20mm_Bel_FC-203-22_Lateral_P17.80x5.00mm_D1.17mm_Horizontal",
-    17, 67,
+    84, 88,
 )
 add(
     "D230", "SS54_REVERSE_POLARITY", KICAD_FOOTPRINTS / "Diode_SMD.pretty",
-    "D_SMB", 42, 67,
+    "D_SMB", 110, 88,
 )
 add(
     "D231", "SMBJ16A_TVS", KICAD_FOOTPRINTS / "Diode_SMD.pretty",
-    "D_SMB", 54, 67,
+    "D_SMB", 118, 88,
 )
 add(
     "C230", "470UF_50V", KICAD_FOOTPRINTS / "Capacitor_THT.pretty",
-    "CP_Radial_D10.0mm_P5.00mm", 68, 68,
+    "CP_Radial_D10.0mm_P5.00mm", 128, 100,
 )
 add(
     "C231", "1UF_50V", KICAD_FOOTPRINTS / "Capacitor_SMD.pretty",
-    "C_1206_3216Metric", 81, 66,
+    "C_1206_3216Metric", 126, 88,
 )
 add(
     "C232", "100NF_50V", KICAD_FOOTPRINTS / "Capacitor_SMD.pretty",
-    "C_0603_1608Metric", 87, 66,
+    "C_0603_1608Metric", 131, 88,
 )
 
 # Socketed/soldered module in the quiet central zone. Oversized carrier pads
@@ -83,20 +84,19 @@ add(
 # against the nominal 22.3 x 17 mm body before Gerber release.
 add(
     "DC1", "MP1584_FIXED_5V", PROJECT_LIBRARY,
-    "MP1584_Fixed5V_Module_22.3x17mm", 100, 65,
+    "MP1584_Fixed5V_Module_22.3x17mm", 138, 85,
 )
 add(
     "C233", "220UF_10V", KICAD_FOOTPRINTS / "Capacitor_THT.pretty",
-    "CP_Radial_D8.0mm_P3.50mm", 128, 68,
+    "CP_Radial_D8.0mm_P3.50mm", 169, 100,
 )
 add(
     "C234", "10UF_10V", KICAD_FOOTPRINTS / "Capacitor_SMD.pretty",
-    "C_1206_3216Metric", 140, 66,
+    "C_1206_3216Metric", 165, 88,
 )
 add(
     "C235", "100NF_16V", KICAD_FOOTPRINTS / "Capacitor_SMD.pretty",
-    "C_0603_1608Metric", 146, 66,
+    "C_0603_1608Metric", 171, 88,
 )
 
 pcbnew.SaveBoard(str(BOARD_PATH), board)
-

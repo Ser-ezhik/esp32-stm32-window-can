@@ -4,15 +4,16 @@
 
 namespace hw {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.3";
-constexpr uint32_t FW_BUILD = 3;
+constexpr char FW_VERSION[] = "0.1.0-alpha.4";
+constexpr uint32_t FW_BUILD = 4;
 
 constexpr uint8_t ACTUATOR_COUNT = 2;
 constexpr uint8_t SLAVE_COUNT = 3;
 
-// Slot identity is provided by the cabinet carrier, not by the replaceable module.
-constexpr PinName SLOT_ID0 = PC_14;
-constexpr PinName SLOT_ID1 = PC_15;
+// Slot identity is provided by the carrier. PA7 is sampled before SPI starts;
+// only slave slots that do not use CAP1188 strap it low.
+constexpr PinName SLOT_ID0 = PB_2;
+constexpr PinName SLOT_ID1 = PA_7;
 
 // VNH5019A-E current sense inputs.
 constexpr PinName CURRENT_PINS[ACTUATOR_COUNT] = {PA_0, PA_1};

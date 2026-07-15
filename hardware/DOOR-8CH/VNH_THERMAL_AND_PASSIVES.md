@@ -12,12 +12,16 @@ for normal operation.
 | Bridge enable / fault readback | 1 pull-up | 4.7 kOhm to 3.3 V, shared by ENA/DIAGA and ENB/DIAGB |
 | Current-sense enable | 1 pull-down | 10 kOhm from CS_DIS to GND |
 | Current-sense load | 1 resistor | 1.00 kOhm, 1% from CS to GND |
-| Current-sense divider | 2 resistors | 68 kOhm and 100 kOhm, 1% |
-| ADC anti-noise filter | 1 resistor + 1 capacitor | 1 kOhm + 100 nF at PA0/PA1 |
+| ADC input protection | 1 resistor + 1 dual diode | 10 kOhm series plus BAT54S clamps to 3.3 V and GND |
+| ADC anti-noise filter | 1 capacitor | 100 nF at PA0/PA1 |
 | VNH local power decoupling | 1 electrolytic + 1 ceramic | 470 uF / 35 V low-ESR + 100 nF / 50 V X7R |
 
-The capacitor pair is placed directly beside the VNH power pins. The CS divider
-and ADC filter sit in the low-noise area near the corresponding STM32 socket.
+The capacitor pair is placed directly beside the VNH power pins. The CS load
+remains at the VNH. The 10 kOhm ADC resistor, BAT54S clamp and filter capacitor
+sit in the low-noise area toward the corresponding STM32 socket. This preserves
+useful resolution around the actuator's 2.5 A working current while limiting
+current into the 3.3 V ADC if the VNH sense output rises toward its specified
+5 V maximum.
 Every component reference and value is present in the future KiCad schematic;
 no firmware pull-up is used as a substitute for these safety parts.
 

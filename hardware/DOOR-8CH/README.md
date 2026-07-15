@@ -23,6 +23,12 @@ always MASTER. S2 through S4 are SLAVEs when populated. This preserves the
 repair rule: any programmed STM32 mini board can replace any other STM32 mini
 board after inserting it in the same slot.
 
+The carrier identifies the slot with two board straps sampled on PB2 and PA7
+before peripheral initialisation. See
+[`kicad/STM32_MODULE_PINMAP.md`](kicad/STM32_MODULE_PINMAP.md). This replaces
+the earlier PC14/PC15 proposal, because both pins are not available on the
+photographed module.
+
 ## Internal UART routing
 
 No UART cable leaves the board. The following tracks are routed directly on the
