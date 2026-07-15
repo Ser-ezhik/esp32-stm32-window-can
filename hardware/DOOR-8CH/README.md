@@ -37,11 +37,23 @@ DOOR-8CH PCB, with a shared signal-ground plane:
 Place 100 Ohm series resistors at each transmitter, as specified in the BOM.
 These links are short PCB traces within one cabinet and operate at 250 kbit/s.
 
-## CAN, sensors and storage
+## On-board modules
 
-Only S1 has the CAN interface, 25LC256, 12 V power-good comparator, reed input
-header and CAP1188 header. CAN enters the board at its edge through TVS and a
-common-mode choke, then connects to the selected SN65HVD230 prototype module.
+All selected off-the-shelf modules plug directly into headers on the DOOR-8CH
+board. There are no loose SPI, CAN or UART jumpers between them.
+
+| Zone / module | Fitted on | Board connection |
+| --- | --- | --- |
+| MASTER CAN: SN65HVD230 | Every board, S1 zone | PA12 CTX, PA11 CRX, CANH/CANL trunk |
+| ESP32-S3 board | Double-door board only | 5 V, GND, its CAN and CC1101 signals |
+| ESP CAN: SN65HVD230 | Double-door board only | GPIO39 CTX, GPIO38 CRX, same CAN trunk |
+| CC1101 433 MHz | Double-door board only | GPIO10-13, GPIO4, GPIO5, 3.3 V |
+| CAP1188 SPI breakout | Every door board; window only when required | PA4-PA7, PB9, PB13, 3.3 V |
+| 25LC256 EEPROM | Every board, S1 zone | PA15 plus shared SPI pins |
+| Reeds and power-good comparator | Every board, S1 zone | PB0, PB1, PB8, PC13 |
+
+CAN enters the S1 edge through TVS and a common-mode choke, then branches only
+to the S1 CAN module and, on the double-door board, to the ESP CAN module.
 S2-S4 have no CAN components or external sensor connectors.
 
 ## Power architecture
@@ -67,8 +79,8 @@ power bottleneck while eliminating inter-board UART and logic-power wiring.
 - Four VNH zones along the long actuator-connector edge; each zone has two
   actuator terminal blocks and two separately fused power-input pairs.
 - Four STM32 sockets form the low-voltage centre strip.
-- CAN, CAP1188, reeds, SWD and the ESP32 cabinet connector sit at the opposite
-  edge, far from motor-current loops.
+- CAN, CAP1188, reeds, SWD, ESP32-S3, CC1101 and both CAN-module sockets sit at
+  the opposite edge, far from motor-current loops.
 - Four layers, 2 oz external copper. VNH exposed pads receive thermal via arrays
   to internal copper areas.
 

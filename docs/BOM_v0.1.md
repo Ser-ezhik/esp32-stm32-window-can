@@ -37,22 +37,22 @@ mechanism.
 
 | Item | Quantity | Notes |
 | --- | ---: | --- |
-| ESP32-S3 N16R8 | 1 | Central controller, installed in the double-door cabinet. |
-| CC1101, 433 MHz, 3.3 V module | 1 | Radio receiver for existing remotes. Include an antenna matched for 433 MHz. |
+| ESP32-S3 N16R8 | 1 | Central controller, socketed directly on the double-door DOOR-8CH board. |
+| CC1101, 433 MHz, 3.3 V module | 1 | Socketed directly on the double-door DOOR-8CH board. Include an antenna matched for 433 MHz. |
 | STM32F103C8T6 mini board | 11 | Same firmware on every board. Buy 1 spare. |
 | Universal DOOR-8CH PCB | 5 | One board per physical object. It has four two-channel slots; populate 4/2/1 slots for double door/single door/window. |
 | VNH5019A-E IC | 22 | Two ICs in every populated two-channel slot. Buy at least 4 spare ICs from a traceable supplier. |
 | CAP1188, SPI-capable breakout | 4 | One per door: double door plus three single doors. |
 | CAP1188, optional | 1 | Add for the window only when it also needs an anti-pinch touch perimeter. |
 | D-M9N / D-M9P reed sensor | 15 recommended, 14 minimum | Three per door and two for window OPEN/CLOSED. Add the fifteenth sensor when the window also needs its third position. |
-| 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 5 | One on each MASTER carrier. SLAVE boards receive the configuration from their MASTER over UART. |
-| MCP2562-E/SN CAN transceiver | 5 | One on the MASTER carrier in each physical cabinet. SLAVE STM32 boards use only local UART and do not need a CAN transceiver. |
-| MCP2562-E/SN CAN transceiver | 1 | ESP32 CAN interface. |
+| 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 5 | One in S1 MASTER zone of each DOOR-8CH board. SLAVE slots receive configuration from S1 over internal UART. |
+| SN65HVD230, 3.3 V CAN transceiver module | 5 | Socketed in the S1 MASTER zone of every DOOR-8CH board. SLAVE STM32 slots use only internal UART. |
+| SN65HVD230, 3.3 V CAN transceiver module | 1 | Socketed in the ESP32 zone of the double-door board. |
 | 12 V to 5 V DC/DC converter, **MP1584 5 V module** | 5 + 2 spare | Practical selected module when Mean Well is unavailable. Fit the fixed 5 V version; its actual 5 V load is below 1 A per cabinet. The double-door cabinet also powers the ESP32. |
 | 12 V actuator power supply | 5 or 1 central supply | Size from actual actuator current as described below. Separate cabinet supplies are preferred for easier fault isolation. |
 | SWD programmer, ST-Link V2 or V3 | 1 | For STM32 commissioning and recovery. |
 
-VNH5019A-E is an active ST product with 3 V CMOS-compatible inputs, current sense and PWM operation up to 20 kHz. It is used as a bare IC on the custom carrier, so the CS scaling and 3.3 V ADC protection are defined by our own schematic rather than by an unknown breakout board. [ST product page](https://www.st.com/en/motor-drivers/vnh5019a-e.html)
+VNH5019A-E is an active ST product with 3 V CMOS-compatible inputs, current sense and PWM operation up to 20 kHz. It is used as a bare IC on the custom DOOR-8CH board, so the CS scaling and 3.3 V ADC protection are defined by our own schematic rather than by an unknown breakout board. [ST product page](https://www.st.com/en/motor-drivers/vnh5019a-e.html)
 
 ## Cabinet allocation
 
@@ -103,12 +103,10 @@ For each VNH5019A-E, tie its two open-drain `DIAG/EN` pins into the one diagnost
 
 These parts are fitted only beside slot S1 on the five DOOR-8CH boards. A failed MASTER STM32 is replaced by inserting the same spare STM32 board into slot S1, so the spare board itself does not need a CAN transceiver.
 
-| Purpose | Component and nominal | Per MASTER carrier | Total |
+| Purpose | Component and nominal | Per S1 MASTER zone | Total |
 | --- | --- | ---: | ---: |
-| CAN transceiver | MCP2562-E/SN | 1 | 5 |
-| CAN transceiver 5 V decoupling | 100 nF, 16 V, X7R + 1 uF, 16 V, X7R | 1 + 1 | 5 + 5 |
-| CAN transceiver 3.3 VIO decoupling | 100 nF, 16 V, X7R | 1 | 5 |
-| MCP2562 STBY normal-mode pull-down | 10 kOhm, 1%, 0.125 W | 1 | 5 |
+| CAN module socket | 1x6, 2.54 mm female header for SN65HVD230 | 1 | 5 |
+| CAN module 3.3 V bypass | 100 nF, 16 V, X7R + 1 uF, 16 V, X7R | 1 + 1 | 5 + 5 |
 | CAN TX series resistor | 47 Ohm, 0.125 W | 1 | 5 |
 | EEPROM | 25LC256-I/P or 25LC256-I/SN | 1 | 5 |
 | EEPROM VCC decoupling | 100 nF, 16 V, X7R | 1 | 5 |
@@ -121,10 +119,8 @@ The ESP32 is in the double-door cabinet and is connected internally to the same 
 
 | Purpose | Component and nominal | Quantity |
 | --- | --- | ---: |
-| ESP32 CAN transceiver | MCP2562-E/SN | 1 |
-| MCP2562 5 V decoupling | 100 nF, 16 V, X7R + 1 uF, 16 V, X7R | 1 + 1 |
-| MCP2562 VIO decoupling | 100 nF, 16 V, X7R | 1 |
-| MCP2562 STBY normal-mode pull-down | 10 kOhm, 1%, 0.125 W | 1 |
+| ESP32 CAN module socket | 1x6, 2.54 mm female header for SN65HVD230 | 1 |
+| ESP32 CAN module 3.3 V bypass | 100 nF, 16 V, X7R + 1 uF, 16 V, X7R | 1 + 1 |
 | ESP32 CAN TX series resistor | 47 Ohm, 0.125 W | 1 |
 | CC1101 supply bypass at its connector | 100 nF, 16 V, X7R + 10 uF, 10 V, X5R | 1 + 1 |
 
@@ -134,7 +130,7 @@ For each VNH5019A-E use this fixed connection: `CS -> 1.00 kOhm -> GND`; the CS 
 
 The divider ratio is 0.595. With the typical VNH5019 current ratio of about 7030 and the 1.00 kOhm CS load, the STM32 ADC sees approximately **84.6 mV/A**: about 0.42 V at the 5 A design current and about 2.54 V at 30 A. Thus the 3.3 V ADC stays protected even if the bridge is driven far above the normal 5 A operating current. `CS_DIS` is held low through its listed 10 kOhm resistor so current sense remains enabled.
 
-The VNH5019 current-sense ratio has production and temperature tolerance, therefore this circuit is for repeatable measurement, not an absolute current meter. After the first carrier is assembled, measure one known load current, calibrate `CURRENT_MA_PER_ADC_COUNT_NUM` in the STM32 firmware, then set the per-actuator over-current limit to **5 A** in the cabinet configuration.
+The VNH5019 current-sense ratio has production and temperature tolerance, therefore this circuit is for repeatable measurement, not an absolute current meter. After the first DOOR-8CH board is assembled, measure one known load current, calibrate `CURRENT_MA_PER_ADC_COUNT_NUM` in the STM32 firmware, then set the per-actuator over-current limit to **5 A** in the cabinet configuration.
 
 ## Master-only sensor and UART parts
 
@@ -161,7 +157,7 @@ For every reed location fit **one**, not both, 4.7 kOhm pull directions. D-M9N a
 | Dual CAN TVS protector | 5 | Automotive CAN-rated dual-line protector, for example SM24CANB class, at each cabinet cable entry. |
 | CAN cable | As measured | 120 Ohm twisted pair plus reference ground; use shielded cable in electrically noisy routes. |
 
-The system total is **six CAN transceivers**: five on MASTER carriers and one at the ESP32. The MCP2562 has a 5 V supply and a separate 1.8 to 5 V `VIO` digital I/O supply, so it connects directly to 3.3 V STM32/ESP32 logic. It also disconnects unpowered nodes from the bus, which is useful during cabinet service. [MCP2562 product data](https://www.microchip.com/en-us/product/MCP2562)
+The system total is **six CAN transceiver modules**: five in S1 MASTER zones and one beside the ESP32. The selected SN65HVD230 module uses 3.3 V logic directly, matching STM32 and ESP32 GPIO. Its `CANH` and `CANL` pins still require the board-level TVS, common-mode choke and correct two-end termination described above.
 
 ## 12 V cabinet power entry and protection
 
@@ -229,7 +225,7 @@ above 7.5 A for long enough to blow the fuse, increase the fuse only after confi
 the cable, connectors, VNH thermal design and programmed current limit remain protected.
 
 The current 8 A firmware default is a commissioning placeholder. It must be changed to
-5 A only after VNH5019 CS calibration is verified on the finished carrier.
+5 A only after VNH5019 CS calibration is verified on the finished DOOR-8CH board.
 
 ## Enclosures, wiring and installation hardware
 

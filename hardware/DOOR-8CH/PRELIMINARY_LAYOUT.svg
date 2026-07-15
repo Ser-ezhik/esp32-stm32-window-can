@@ -35,14 +35,19 @@
   <text x="342" y="578" font-family="Arial, sans-serif" font-size="14" fill="#ffffff">UART 3</text>
 
   <rect x="792" y="158" width="336" height="490" fill="#ffffff" stroke="#143f30" stroke-width="2"/>
-  <text x="843" y="194" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#17251d">Board-edge connectors</text>
-  <text x="825" y="234" font-family="Arial, sans-serif" font-size="17" fill="#33443a">16 actuator terminals (8 pairs)</text>
-  <text x="825" y="266" font-family="Arial, sans-serif" font-size="17" fill="#33443a">16 fused 12 V/GND channel inputs</text>
-  <text x="825" y="298" font-family="Arial, sans-serif" font-size="17" fill="#33443a">One 5 V logic input from MP1584</text>
-  <text x="825" y="330" font-family="Arial, sans-serif" font-size="17" fill="#33443a">CANH / CANL / GND / shield</text>
-  <text x="825" y="362" font-family="Arial, sans-serif" font-size="17" fill="#33443a">CAP1188 and reed connectors</text>
-  <line x1="820" y1="390" x2="1100" y2="390" stroke="#b7c7bd" stroke-width="2"/>
-  <text x="825" y="426" font-family="Arial, sans-serif" font-size="17" fill="#33443a">No board-wide 40 A trace</text>
-  <text x="825" y="458" font-family="Arial, sans-serif" font-size="17" fill="#33443a">Each VNH gets its own fused pair</text>
-  <text x="825" y="490" font-family="Arial, sans-serif" font-size="17" fill="#33443a">All UART routes stay on the PCB</text>
+  <text x="843" y="194" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#17251d">On-board modules</text>
+  <rect x="820" y="216" width="130" height="58" fill="#d9eaf3" stroke="#1d6c9c" stroke-width="2"/>
+  <text x="844" y="250" font-family="Arial, sans-serif" font-size="18" fill="#17394d">ESP32-S3</text>
+  <rect x="972" y="216" width="130" height="58" fill="#d9eaf3" stroke="#1d6c9c" stroke-width="2"/>
+  <text x="998" y="250" font-family="Arial, sans-serif" font-size="18" fill="#17394d">CC1101</text>
+  <text x="838" y="293" font-family="Arial, sans-serif" font-size="13" fill="#33443a">Fit only in double-door cabinet</text>
+  <rect x="820" y="316" width="282" height="54" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="841" y="349" font-family="Arial, sans-serif" font-size="18" fill="#17251d">2 x SN65HVD230 CAN module sockets</text>
+  <rect x="820" y="394" width="282" height="54" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="866" y="427" font-family="Arial, sans-serif" font-size="18" fill="#17251d">CAP1188 socket</text>
+  <text x="825" y="485" font-family="Arial, sans-serif" font-size="17" fill="#33443a">16 actuator terminals (8 pairs)</text>
+  <text x="825" y="517" font-family="Arial, sans-serif" font-size="17" fill="#33443a">16 fused 12 V/GND channel inputs</text>
+  <text x="825" y="549" font-family="Arial, sans-serif" font-size="17" fill="#33443a">One 5 V logic input from MP1584</text>
+  <text x="825" y="581" font-family="Arial, sans-serif" font-size="17" fill="#33443a">CANH / CANL / GND / shield and reeds</text>
+  <text x="825" y="621" font-family="Arial, sans-serif" font-size="15" fill="#33443a">No board-wide 40 A trace; UART remains internal.</text>
 </svg>

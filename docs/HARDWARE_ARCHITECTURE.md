@@ -27,8 +27,8 @@ USB-C connector is not required by the control system.
 
 | Function | ESP32-S3 GPIO | Connection |
 | --- | ---: | --- |
-| CAN RX | 38 | MCP2562 `RXD` |
-| CAN TX | 39 | MCP2562 `TXD`, through 47 Ohm |
+| CAN RX | 38 | ESP-zone SN65HVD230 `CRX` |
+| CAN TX | 39 | ESP-zone SN65HVD230 `CTX`, through 47 Ohm |
 | CC1101 SCK / MISO / MOSI / CS | 12 / 13 / 11 / 10 | CC1101 SPI bus |
 | CC1101 GDO0 / GDO2 | 4 / 5 | CC1101 digital outputs |
 | Learn button | 9 | Button to GND, use internal pull-up |
@@ -59,13 +59,13 @@ this connector. Mount the supplied 433 MHz spring antenna vertically, keep it
 away from the CAN cable and motor wiring, and do not place it against a metal
 wall of the cabinet.
 
-### CAN prototype module
+### CAN module
 
 The pictured six-pin `3V3 / GND / CTX / CRX / CANH / CANL` module is the common
 `SN65HVD230` 3.3 V CAN-transceiver board. It is electrically compatible with
-the 500 kbit/s project CAN bus and may be used for the first prototype instead
-of the carrier's MCP2562 footprint. It is a transceiver, not a CAN controller;
-the ESP32-S3 and STM32F103 provide the CAN controller themselves.
+the 500 kbit/s project CAN bus and plugs into the DOOR-8CH board. It is a
+transceiver, not a CAN controller; the ESP32-S3 and STM32F103 provide the CAN
+controller themselves.
 
 | Module pin | STM32 MASTER | ESP32 controller |
 | --- | --- | --- |
@@ -114,7 +114,9 @@ configuration is explicitly added to the firmware.
 
 ## Replaceable module identity
 
-Every STM32 module carries the same firmware and interface circuit. Two carrier
+signals select the role at boot:
+Every STM32 module carries the same firmware and interface circuit. Two DOOR-8CH
+slot signals select the role at boot:
 signals select the role at boot:
 
 | SLOT_ID1 | SLOT_ID0 | Role |
