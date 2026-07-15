@@ -7,14 +7,34 @@ Each physical object is one CAN node regardless of actuator count.
 ```text
 CAN_H / CAN_L / GND
         |
-        +-- universal STM32 in MASTER slot -- 2 x VNH2SP30
-                   |-- UART 1 -- universal STM32 SLAVE1 -- 2 x VNH2SP30
-                   |-- UART 2 -- universal STM32 SLAVE2 -- 2 x VNH2SP30
-                   `-- UART 3 -- universal STM32 SLAVE3 -- 2 x VNH2SP30
+        +-- universal STM32 in MASTER slot -- 2 x VNH5019A-E
+                   |-- UART 1 -- universal STM32 SLAVE1 -- 2 x VNH5019A-E
+                   |-- UART 2 -- universal STM32 SLAVE2 -- 2 x VNH5019A-E
+                   `-- UART 3 -- universal STM32 SLAVE3 -- 2 x VNH5019A-E
 ```
 
 A window uses master only. A four-actuator door uses master plus one slave. An
 eight-actuator double door uses master plus all three slaves.
+
+## ESP32 controller board
+
+The selected board is the two-USB-C `ESP32-S3-WROOM-1` development board shown
+in the project photo. It is compatible with the ESP32 firmware in this repository.
+Use its USB-UART port for initial flashing and serial diagnostics; the second
+USB-C connector is not required by the control system.
+
+| Function | ESP32-S3 GPIO | Connection |
+| --- | ---: | --- |
+| CAN RX | 38 | MCP2562 `RXD` |
+| CAN TX | 39 | MCP2562 `TXD`, through 47 Ohm |
+| CC1101 SCK / MISO / MOSI / CS | 12 / 13 / 11 / 10 | CC1101 SPI bus |
+| CC1101 GDO0 / GDO2 | 4 / 5 | CC1101 digital outputs |
+| Learn button | 9 | Button to GND, use internal pull-up |
+
+Supply the board with regulated **5 V** from the cabinet DC/DC converter through
+its `5V` pin and connect a common GND. Never feed the 12 V actuator supply into
+the ESP32 board. The onboard RGB LED on GPIO47/48 is not used by the controller
+firmware and remains free.
 
 ## Replaceable module identity
 
