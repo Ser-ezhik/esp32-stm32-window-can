@@ -28,7 +28,7 @@ This is a low-voltage 12 V DC design. Do not connect mains voltage to any board,
 | CAP1188, optional | 1 | Add for the window only when it also needs an anti-pinch touch perimeter. |
 | D-M9N / D-M9P reed sensor | 15 | Three per physical object, including the window: OPEN, CLOSED and door/leaf position. If the window does not need the third state, populate 2 instead. |
 | 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 11 | One on every carrier so a replacement STM32 remains interchangeable. |
-| MCP2562-E/SN CAN transceiver | 11 | Universal-carrier option. Its VDD is 5 V and VIO is 3.3 V. Only the five MASTER carrier CAN connectors are wired to the bus. |
+| MCP2562-E/SN CAN transceiver | 5 | One on the MASTER carrier in each physical cabinet. SLAVE STM32 boards use only local UART and do not need a CAN transceiver. |
 | MCP2562-E/SN CAN transceiver | 1 | ESP32 CAN interface. |
 | 12 V to 5 V DC/DC converter, regulated, 3 A minimum | 5 | One in each cabinet. Use the same model everywhere. The double-door cabinet also powers the ESP32. |
 | 12 V actuator power supply | 5 or 1 central supply | Size from actual actuator current as described below. Separate cabinet supplies are preferred for easier fault isolation. |
@@ -60,10 +60,6 @@ Quantities in this table are **per carrier**. Multiply by 11 for the total purch
 | VNH local ceramic capacitor | 100 nF, 50 V, X7R | 2 | 22 |
 | VNH CS ADC filter | 1 kOhm series plus 100 nF, 16 V, X7R at PA0/PA1 | 2 + 2 | 22 + 22 |
 | VNH CS divider, **only when CS can reach 5 V** | 10 kOhm upper + 20 kOhm lower, both 1% | 2 + 2 | 22 + 22 |
-| CAN transceiver 5 V decoupling | 100 nF, 16 V, X7R + 1 uF, 16 V, X7R | 1 + 1 | 11 + 11 |
-| CAN transceiver 3.3 VIO decoupling | 100 nF, 16 V, X7R | 1 | 11 |
-| MCP2562 STBY normal-mode pull-down | 10 kOhm, 1%, 0.125 W | 1 | 11 |
-| CAN TX series resistor | 47 Ohm, 0.125 W | 1 | 11 |
 | EEPROM VCC decoupling | 100 nF, 16 V, X7R | 1 | 11 |
 | EEPROM /WP and /HOLD | 10 kOhm, 1%, 0.125 W pull-up to 3.3 V | 2 | 22 |
 | EEPROM CS default inactive | 10 kOhm, 1%, 0.125 W pull-up to 3.3 V | 1 | 11 |
@@ -76,6 +72,18 @@ Quantities in this table are **per carrier**. Multiply by 11 for the total purch
 | Carrier 3.3 V local decoupling | 100 nF, 16 V, X7R | 4 | 44 |
 
 The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Confirm its exact trip and release voltage on the finished carrier before enabling actuator motion.
+
+## MASTER-carrier CAN parts only
+
+These parts are fitted only to the five MASTER carriers. A failed MASTER STM32 is replaced by inserting the same spare STM32 board into its existing MASTER carrier, so the spare board itself does not need a CAN transceiver.
+
+| Purpose | Component and nominal | Per MASTER carrier | Total |
+| --- | --- | ---: | ---: |
+| CAN transceiver | MCP2562-E/SN | 1 | 5 |
+| CAN transceiver 5 V decoupling | 100 nF, 16 V, X7R + 1 uF, 16 V, X7R | 1 + 1 | 5 + 5 |
+| CAN transceiver 3.3 VIO decoupling | 100 nF, 16 V, X7R | 1 | 5 |
+| MCP2562 STBY normal-mode pull-down | 10 kOhm, 1%, 0.125 W | 1 | 5 |
+| CAN TX series resistor | 47 Ohm, 0.125 W | 1 | 5 |
 
 ### VNH2SP30 CS warning
 
@@ -112,7 +120,7 @@ For every reed location fit **one**, not both, 4.7 kOhm pull directions. D-M9N a
 | Dual CAN TVS protector | 5 | Automotive CAN-rated dual-line protector, for example SM24CANB class, at each cabinet cable entry. |
 | CAN cable | As measured | 120 Ohm twisted pair plus reference ground; use shielded cable in electrically noisy routes. |
 
-The MCP2562 has a 5 V supply and a separate 1.8 to 5 V `VIO` digital I/O supply, so it connects directly to 3.3 V STM32/ESP32 logic. It also disconnects unpowered nodes from the bus, which is useful during cabinet service. [MCP2562 product data](https://www.microchip.com/en-us/product/MCP2562)
+The system total is **six CAN transceivers**: five on MASTER carriers and one at the ESP32. The MCP2562 has a 5 V supply and a separate 1.8 to 5 V `VIO` digital I/O supply, so it connects directly to 3.3 V STM32/ESP32 logic. It also disconnects unpowered nodes from the bus, which is useful during cabinet service. [MCP2562 product data](https://www.microchip.com/en-us/product/MCP2562)
 
 ## 12 V cabinet power entry and protection
 
