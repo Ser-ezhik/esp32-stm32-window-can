@@ -48,7 +48,7 @@ mechanism.
 | 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 5 | One on each MASTER carrier. SLAVE boards receive the configuration from their MASTER over UART. |
 | MCP2562-E/SN CAN transceiver | 5 | One on the MASTER carrier in each physical cabinet. SLAVE STM32 boards use only local UART and do not need a CAN transceiver. |
 | MCP2562-E/SN CAN transceiver | 1 | ESP32 CAN interface. |
-| 12 V to 5 V DC/DC converter, **Mean Well RSD-30G-5** | 5 | Recommended: 9 to 36 V input, 5 V / 6 A output. One in each cabinet; use the same model everywhere. The double-door cabinet also powers the ESP32. |
+| 12 V to 5 V DC/DC converter, **MP1584 5 V module** | 5 + 2 spare | Practical selected module when Mean Well is unavailable. Fit the fixed 5 V version; its actual 5 V load is below 1 A per cabinet. The double-door cabinet also powers the ESP32. |
 | 12 V actuator power supply | 5 or 1 central supply | Size from actual actuator current as described below. Separate cabinet supplies are preferred for easier fault isolation. |
 | SWD programmer, ST-Link V2 or V3 | 1 | For STM32 commissioning and recovery. |
 
@@ -165,7 +165,8 @@ Its stated 5 to 15 V input range leaves no practical margin for motor-supply
 transients on a nominal 12 V line. It is acceptable only on a clean bench supply
 for a short test.
 
-For each cabinet, select a fixed 5 V buck module with all of the following:
+For a preferred long-term DC/DC part, select a fixed 5 V buck module with all
+of the following:
 
 - input operating range of 9 to 36 V or wider;
 - regulated 5.0 V output, 3 A continuous rating or higher;
@@ -174,11 +175,12 @@ For each cabinet, select a fixed 5 V buck module with all of the following:
 
 Install it after the cabinet's reverse-polarity circuit and main fuse. The listed
 input TVS and capacitors remain mandatory: a wide-range converter does not remove
-the need to suppress motor transients at the 12 V entry.
+the need to suppress motor transients at the 12 V entry. The MP1584 exception
+below is permitted only with its stricter listed protection parts.
 
-**Selected part:** `Mean Well RSD-30G-5`, five pieces. Its specified 9 to 36 V
-input and 5 V / 6 A output leave ample margin for the actual low-voltage load
-while remaining within the protected 12 V cabinet branch. [Manufacturer data sheet](https://www.meanwell.com/Upload/PDF/RSD-30/RSD-30-spec.pdf)
+**Preferred part when available:** `Mean Well RSD-30G-5`, five pieces. Its
+specified 9 to 36 V input and 5 V / 6 A output leave ample margin for the actual
+low-voltage load while remaining within the protected 12 V cabinet branch. [Manufacturer data sheet](https://www.meanwell.com/Upload/PDF/RSD-30/RSD-30-spec.pdf)
 
 **Compact alternative:** `Pololu D24V50F5`, when its small PCB form factor is
 more important than a screw-terminal enclosed converter. It accepts 6 to 38 V,
@@ -186,17 +188,30 @@ delivers a typical 5 A continuous at fixed 5 V, and includes reverse-voltage,
 over-current, short-circuit and thermal protection. It still requires the same
 cabinet TVS, fuse and secure mounting. [Pololu specifications](https://www.pololu.com/product/2851)
 
+**Available selected part:** the pictured `MP1584` 5 V / 3 A mini-module. Buy
+seven modules: five installed and two spares. It is acceptable because the actual
+5 V load in every cabinet is below 1 A, but it is not a 3 A continuous thermal
+design. Select the fixed **5 V** version, solder the wires to its pads, add
+strain relief and mount it on an insulated carrier; do not use Dupont jumpers.
+
+The original MP1584 specifies 28 V maximum operating input and 30 V absolute
+maximum. Its seller marking of 30 V is therefore not a design target. Use it
+only behind the listed `SMBJ16A` TVS and a branch fuse, which keep the protected
+logic branch below the operating limit during short motor transients. [MP1584 data sheet](https://www.digikey.com/en/htmldatasheets/production/1785679/0/0/1/mp1584.html)
+
 | Item | Quantity | Specification |
 | --- | ---: | --- |
 | Main cabinet fuse holder | 5 | DIN-rail or automotive blade type. |
 | Main cabinet fuse | 1 x 50 A, 3 x 25 A, 1 x 15 A | Slow-blow or automotive blade. |
+| Logic DC/DC branch fuse holder | 5 | One after the reverse-polarity circuit, before the MP1584 input. |
+| Logic DC/DC branch fuse | 5 x 1 A | Slow-blow or automotive blade. |
 | Per-actuator fuse holder | 22 | One per VNH5019A-E motor supply. |
 | Per-actuator fuse | 22 x 7.5 A | Slow-blow or automotive blade. |
 | Reverse-polarity MOSFET | 5 | P-channel, >=40 V, low Rds(on), current rating above cabinet peak; IRF4905 class or a proper ideal-diode controller solution. |
 | Gate resistor / gate pull-up | 100 Ohm + 100 kOhm, 0.125 W | 5 + 5 |
 | Gate-source zener | 12 V, 0.5 W | 5 |
-| 12 V transient suppressor | SMBJ18A, 600 W, unidirectional | 5 |
-| DC/DC input bulk capacitor | 470 uF, 25 V, low-ESR, >=105 C | 5 |
+| 12 V transient suppressor | SMBJ16A, 600 W, unidirectional | 5 | Required when using an MP1584 module; its approximate 26 V clamp preserves margin below the converter's 28 V operating maximum. |
+| DC/DC input bulk capacitor | 470 uF, **50 V**, low-ESR, >=105 C | 5 |
 | DC/DC input ceramic | 1 uF, 50 V, X7R + 100 nF, 50 V, X7R | 5 + 5 |
 | DC/DC output bulk capacitor | 220 uF, 10 V, low-ESR | 5 |
 | DC/DC output ceramic | 10 uF, 10 V, X5R + 100 nF, 16 V, X7R | 5 + 5 |
