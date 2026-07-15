@@ -48,7 +48,7 @@ mechanism.
 | 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 5 | One on each MASTER carrier. SLAVE boards receive the configuration from their MASTER over UART. |
 | MCP2562-E/SN CAN transceiver | 5 | One on the MASTER carrier in each physical cabinet. SLAVE STM32 boards use only local UART and do not need a CAN transceiver. |
 | MCP2562-E/SN CAN transceiver | 1 | ESP32 CAN interface. |
-| 12 V to 5 V DC/DC converter, regulated, 3 A minimum | 5 | One in each cabinet. Input range must include **9 to 36 V or wider**; use the same model everywhere. The double-door cabinet also powers the ESP32. |
+| 12 V to 5 V DC/DC converter, **Mean Well RSD-30G-5** | 5 | Recommended: 9 to 36 V input, 5 V / 6 A output. One in each cabinet; use the same model everywhere. The double-door cabinet also powers the ESP32. |
 | 12 V actuator power supply | 5 or 1 central supply | Size from actual actuator current as described below. Separate cabinet supplies are preferred for easier fault isolation. |
 | SWD programmer, ST-Link V2 or V3 | 1 | For STM32 commissioning and recovery. |
 
@@ -175,6 +175,16 @@ For each cabinet, select a fixed 5 V buck module with all of the following:
 Install it after the cabinet's reverse-polarity circuit and main fuse. The listed
 input TVS and capacitors remain mandatory: a wide-range converter does not remove
 the need to suppress motor transients at the 12 V entry.
+
+**Selected part:** `Mean Well RSD-30G-5`, five pieces. Its specified 9 to 36 V
+input and 5 V / 6 A output leave ample margin for the actual low-voltage load
+while remaining within the protected 12 V cabinet branch. [Manufacturer data sheet](https://www.meanwell.com/Upload/PDF/RSD-30/RSD-30-spec.pdf)
+
+**Compact alternative:** `Pololu D24V50F5`, when its small PCB form factor is
+more important than a screw-terminal enclosed converter. It accepts 6 to 38 V,
+delivers a typical 5 A continuous at fixed 5 V, and includes reverse-voltage,
+over-current, short-circuit and thermal protection. It still requires the same
+cabinet TVS, fuse and secure mounting. [Pololu specifications](https://www.pololu.com/product/2851)
 
 | Item | Quantity | Specification |
 | --- | ---: | --- |
