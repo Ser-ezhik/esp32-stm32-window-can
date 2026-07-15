@@ -8,7 +8,7 @@ Two modules must be measured before their final KiCad footprints are added:
 
 | Module | Needed measurements | Why |
 | --- | --- | --- |
-| STM32F103C8T6 mini | centre-to-centre distance of the two 1x15 header rows; board outline | the socket currently uses the known 20.32 mm row spacing, but this must be confirmed on the purchased revision |
+| STM32F103C8T6 mini | confirm 20.32 mm between the outer rows, 2.54 mm within each pair, and the 32 x 22.86 mm outline | the photographed board has four 1x10 rows, not two 1x15 rows; a single 40-pin footprint is used |
 | ESP32-S3 board | pin count per side, row spacing, full width and length, USB overhang | several ESP32-S3 boards look alike but do not share a footprint |
 | CAP1188 breakout | left/right header row spacing, pin count, full outline, mounting-hole positions | the supplied photo shows a vendor-specific breakout with more than the minimum SPI pins |
 

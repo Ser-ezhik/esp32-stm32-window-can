@@ -30,19 +30,24 @@ the project's "any STM32 board can replace any STM32 board" repair rule.
 
 ## Carrier footprint
 
-The carrier uses two 1x15 female sockets:
+The carrier uses four 1x10 female sockets. The module has two parallel pin
+rows on each long side, as visible on both the supplier drawing and the
+front/back photographs:
 
 | Parameter | Value |
 | --- | --- |
-| Contacts | 2 rows x 15 |
+| Contacts | 4 rows x 10, 40 contacts total |
 | Contact pitch along row | 2.54 mm |
-| Row centre-to-centre spacing | 20.32 mm |
-| Nominal module envelope | 38.1 x 22.86 mm |
+| Outer-row centre-to-centre spacing | 20.32 mm |
+| Spacing within each two-row side | 2.54 mm |
+| Nominal module envelope | 32 x 22.86 mm |
 | Mounting | Socketed; USB-C must face a board edge for service access |
 
-Before Gerber release, compare this footprint with one physical purchased board
-using a 1:1 print. Low-cost listings sometimes change the USB-C daughter layout
-or fit an LSE crystal without changing the listing photo.
+The KiCad footprint is one indivisible 4x10 module footprint, not four
+independently positioned connector references. Before Gerber release, compare
+it with one physical purchased board using a 1:1 print. Low-cost listings
+sometimes change the USB-C daughter layout or fit an LSE crystal without
+changing the listing photo.
 
 ## LSE and slot straps
 

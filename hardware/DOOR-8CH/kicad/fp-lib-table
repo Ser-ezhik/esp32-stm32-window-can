@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "DOOR-8CH")(type "KiCad")(uri "${KIPRJMOD}/DOOR-8CH.pretty")(options "")(descr "Project-specific verified module footprints"))
+)
