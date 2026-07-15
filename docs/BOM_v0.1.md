@@ -232,7 +232,8 @@ The current 8 A firmware default is a commissioning placeholder. It must be chan
 | IP-rated control cabinet | 5 | One per physical object. Choose size after heat and cable-entry layout. |
 | DIN rail | 5 sets | For fuses, DC/DC, terminals and power distribution. |
 | 12 V distribution terminal blocks | 5 sets | Separate motor positive distribution and star ground point. |
-| 2-pin actuator terminal blocks | 22 | Rated above actuator maximum current. |
+| 2-pin actuator terminal blocks | 22 | **Phoenix Contact MKDS 1,5/ 2-5,08, 1715721**; 5.08 mm pitch, 17.5 A. Search-compatible substitute: KF2EDG 5.08-2P straight, >=10 A, >=1.0 mm2. |
+| 4-pin carrier motor-power terminal blocks | 11 | 5.08 mm pitch; MKDS 1,5/ 4-5,08 or KF2EDG 5.08-4P. Carries separately fused CH1 and CH2 inputs. |
 | 3-pin sensor terminals | 14 minimum, 15 recommended | 3.3 V, signal, GND. |
 | 8-pin CAP1188 terminals/headers | 4 | 3.3 V, GND, CS, SCK, MISO, MOSI, IRQ, RESET. |
 | 4-pin UART cable assemblies | 6 | TX, RX, 3.3 V reference, GND. Buy 12 matching headers, one at each end. Keep inside cabinet and under 30 cm. |

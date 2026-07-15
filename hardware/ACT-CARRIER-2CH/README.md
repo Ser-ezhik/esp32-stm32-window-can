@@ -112,7 +112,7 @@ reserved for CAN. PC14/PC15 can be occupied by an LSE crystal on some variants.
 | Ref | Part / function | Fit on |
 | --- | --- | --- |
 | J1 | `MOTOR_12V_CH1`, GND, `MOTOR_12V_CH2`, GND; 4-pin locking power input | Every carrier. Each 12 V pin comes after its own 7.5 A fuse. |
-| J2, J3 | 2-pin actuator output, >=10 A per contact | Every carrier |
+| J2, J3 | 2-pin, 5.08 mm-pitch actuator output, >=10 A per contact | Every carrier; selected terminal is documented in [TERMINAL_BLOCK_SELECTION.md](TERMINAL_BLOCK_SELECTION.md). |
 | J4 | `LOGIC_5V`, `SIGNAL_GND`, 2-pin locking input | Every carrier |
 | J5 | SWD: 3.3 V, SWDIO, SWCLK, GND, NRST | Every carrier |
 | J6 | Upstream UART: TX, RX, GND, 3.3 V reference | Every carrier |
@@ -151,8 +151,8 @@ Before generating Gerbers, complete all four checks:
    including continuity of PA9/PA10, PC14 and PC15 to its USB/LSE circuitry.
 2. Obtain one genuine VNH5019A-E sample and confirm its MultiPowerSO-30 land
    pattern against the ST recommended footprint.
-3. Confirm the exact actuator-output terminal block: pitch, pin diameter,
-   current rating and wire entry direction.
+3. Obtain the selected 5.08 mm actuator-output terminal and confirm pin diameter
+   and body outline against the carrier footprint.
 4. Review the resulting KiCad schematic with ERC, then check the 3D/1:1 print
    of connector and module placement before ordering boards.
 
