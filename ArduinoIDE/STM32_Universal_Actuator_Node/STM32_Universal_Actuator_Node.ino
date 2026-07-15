@@ -235,6 +235,7 @@ void startActuator(uint8_t index, Direction direction, uint16_t pwmPermille) {
 }
 
 void sendStopToSlaves();
+void configureReedInputs();
 
 void setFault(Fault value, uint8_t actuator = 0) {
   stopLocal();
@@ -255,6 +256,7 @@ void clearFault() {
 
 void applyConfigPayload(const LocalConfigPayload &payload) {
   carrier.reserved = payload.reedPolarityMask & 0x07u;
+  configureReedInputs();
   config.revision = payload.revision;
   config.minTravelMs = payload.minTravelMs;
   config.endstopConfirmMs = payload.endstopConfirmMs;

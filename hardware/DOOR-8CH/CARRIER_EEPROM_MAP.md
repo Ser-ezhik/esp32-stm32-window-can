@@ -1,0 +1,85 @@
+# Carrier SPI EEPROM data
+
+The DOOR-8CH board uses an external SPI EEPROM on the carrier PCB so the
+socketed STM32 modules remain universal. A replacement STM32 board only needs
+the common firmware; cabinet identity stays on the carrier board.
+
+## Device
+
+Default part: `25LC256` in SOIC-8.
+
+Compatible non-volatile SPI parts may be used later if they support the same
+basic commands used by the firmware:
+
+- `0x03` read;
+- `0x02` page write;
+- `0x05` read status;
+- `0x06` write enable.
+
+## Pinout
+
+| EEPROM pin | Net | STM32 S1 |
+| ---: | --- | --- |
+| 1 `/CS` | `EEPROM_CS` with 10 kOhm pull-up | PA15 |
+| 2 `SO` | `CAP_MISO` | PA6 |
+| 3 `/WP` | `EEPROM_WP` with 10 kOhm pull-up | - |
+| 4 `VSS` | `GND` | - |
+| 5 `SI` | `CAP_MOSI` | PA7 |
+| 6 `SCK` | `CAP_SCK` | PA5 |
+| 7 `/HOLD` | `EEPROM_HOLD` with 10 kOhm pull-up | - |
+| 8 `VCC` | `LOGIC_3V3`, 100 nF nearby | - |
+
+The EEPROM shares SPI with CAP1188. Its chip-select is separate from CAP1188.
+
+## Address 0x0000 layout
+
+The firmware structure is packed and little-endian.
+
+| Offset | Size | Field | Value |
+| ---: | ---: | --- | --- |
+| `0x00` | 4 | `magic` | `0x314E4957`, ASCII `WIN1` |
+| `0x04` | 1 | `version` | `1` |
+| `0x05` | 1 | `cabinetId` | CAN cabinet id, `0..63` |
+| `0x06` | 1 | `objectType` | `0` window, `1` single door, `2` double door |
+| `0x07` | 1 | `slaveCount` | `0` window, `1` single door, `3` double door |
+| `0x08` | 2 | `configRevision` | start from `1` |
+| `0x0A` | 2 | `reserved` | reed polarity mask, see below |
+| `0x0C` | 2 | `crc` | CRC-16/CCITT over this structure with `crc=0` |
+
+## Reed polarity mask
+
+`reserved` currently stores the D-M9 sensor polarity mask.
+
+Bit value:
+
+- `0` = active-low sensor, normal for D-M9N/NPN with STM32 pull-up;
+- `1` = active-high sensor, use for D-M9P/PNP if wired for 3.3 V output.
+
+Bit assignment:
+
+| Bit | Sensor |
+| ---: | --- |
+| 0 | leaf A open |
+| 1 | leaf A closed |
+| 2 | leaf A in-place |
+| 3 | leaf B open |
+| 4 | leaf B closed |
+| 5 | leaf B in-place |
+
+For a single door or window only bits 0..2 are used. For a double door S1 uses
+bits 0..2 and sends bits 3..5 to S2 over the internal UART.
+
+## Default project images
+
+The generator `tools/generate_carrier_eeprom_images.py` creates the default
+images in `firmware_releases/carrier_eeprom/default_project/`:
+
+| File | cabinetId | objectType | slaveCount | reed mask |
+| --- | ---: | ---: | ---: | ---: |
+| `cabinet_01_double_door.bin` | 1 | 2 | 3 | `0x00` |
+| `cabinet_02_single_door_1.bin` | 2 | 1 | 1 | `0x00` |
+| `cabinet_03_single_door_2.bin` | 3 | 1 | 1 | `0x00` |
+| `cabinet_04_single_door_3.bin` | 4 | 1 | 1 | `0x00` |
+| `cabinet_05_window.bin` | 5 | 0 | 0 | `0x00` |
+
+Change only the reed mask if the installed D-M9 sensors are PNP/active-high.

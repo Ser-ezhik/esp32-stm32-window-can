@@ -55,6 +55,7 @@ board. There are no loose SPI, CAN or UART jumpers between them.
 | ESP CAN: SN65HVD230 | Double-door board only | GPIO39 CTX, GPIO38 CRX, same CAN trunk |
 | CC1101 433 MHz | Double-door board only | GPIO10-13, GPIO4, GPIO5, 3.3 V |
 | CAP1188 SPI breakout | Every board, including the window | PA4-PA7, PB9, PB13, 5 V VIN; eight C/GND field connectors |
+| 25LC256 carrier EEPROM | Every board, S1 zone | PA15 CS plus shared SPI pins PA5, PA6, PA7 |
 | Reeds A | Every board, S1 zone | S1 PB0, PB1, PB8 |
 | Reeds B | Double-door build only | S2 PB0, PB1, PB8, reported to S1 over UART |
 | Power-good comparator | Every board, S1 zone | PC13 |
@@ -73,6 +74,11 @@ The board generates one `LOGIC_3V3` rail from `LOGIC_5V` with a local AMS1117
 style regulator for CAN, CC1101 and other plug-in module supplies. STM32 mini
 board 3.3 V pins remain local to their own slot and are not tied together.
 Each STM32 mini board receives 5 V from the protected logic rail.
+
+The external SPI EEPROM stores the cabinet identity, object type, slave count
+and reed polarity mask. See [CARRIER_EEPROM_MAP.md](CARRIER_EEPROM_MAP.md).
+This keeps the STM32 firmware universal: a replacement STM32 module reads the
+same carrier data after installation.
 
 Motor power is intentionally not bussed across the PCB:
 

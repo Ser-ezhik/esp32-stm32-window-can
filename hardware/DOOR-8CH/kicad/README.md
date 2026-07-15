@@ -29,7 +29,7 @@ and filtered ADC input, 470 uF local bulk capacitor and 100 nF ceramic bypass.
 The PB2/PA7 slot straps are also present and match the universal firmware.
 The low-voltage stage also includes the MP1584 input/output nets, a carrier
 3.3 V regulator, CAN trunk connector with choke/ESD/optional termination,
-both SN65HVD230 modules, CAP1188 SPI and field-sensor nets, six reed
+both SN65HVD230 modules, 25LC256 carrier EEPROM, CAP1188 SPI and field-sensor nets, six reed
 connectors, ESP32-S3 power/CAN, CC1101 SPI/GDO lines and the internal UART
 links between S1 and S2-S4.
 
