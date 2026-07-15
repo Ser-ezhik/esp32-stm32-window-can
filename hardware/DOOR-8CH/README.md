@@ -60,9 +60,10 @@ board. There are no loose SPI, CAN or UART jumpers between them.
 | Reeds B | Double-door build only | S2 PB0, PB1, PB8, reported to S1 over UART |
 | Power-good comparator | Every board, S1 zone | PC13 |
 
-CAN enters the S1 edge through TVS and a common-mode choke, then branches only
-to the S1 CAN module and, on the double-door board, to the ESP CAN module.
-S2-S4 have no CAN components or external sensor connectors.
+CAN enters at the quiet lower service edge next to the optional ESP CAN module
+`CAN2`. The connector is followed by TVS protection, a common-mode choke and
+optional 120 Ohm termination, then branches to both `CAN1` and `CAN2`. S2-S4
+have no CAN transceivers or external CAN connectors.
 
 ## Power architecture
 
@@ -106,7 +107,9 @@ small external heatsink. See [VNH_THERMAL_AND_PASSIVES.md](VNH_THERMAL_AND_PASSI
   actuator terminal blocks and two separately fused power-input pairs.
 - Four STM32 sockets form the low-voltage centre strip.
 - CAN, CAP1188, reeds, SWD, ESP32-S3, CC1101 and both CAN-module sockets sit at
-  the opposite edge, far from motor-current loops.
+  the lower/right service edges, away from the top motor-current terminals.
+- S3 / `MOD3` is shifted right to keep the CAN trunk connector and protection
+  physically close to `CAN2`.
 - Eight separate 2-pin `CSx/GND` connectors for CAP1188 twisted pairs sit at a
   board edge. Firmware selects any active subset; unused channels remain disabled.
 - Six three-pin reed connectors sit at the same field-connector edge: 3V3,

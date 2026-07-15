@@ -9,7 +9,7 @@ approved universal one-board-per-cabinet architecture. It presently contains:
 - mechanically checked placement for S1 through S4 and the photographed
   plug-in modules.
 
-It is deliberately a design-stage source, not a fabrication release. The v0.5
+It is deliberately a design-stage source, not a fabrication release. The v0.7
 board contains the repeated VNH passive blocks, slot straps, named power,
 motor, control, diagnostic, current-sense and low-voltage communication nets.
 Routing and the complete
@@ -31,7 +31,9 @@ The low-voltage stage also includes the MP1584 input/output nets, a carrier
 3.3 V regulator, CAN trunk connector with choke/ESD/optional termination,
 both SN65HVD230 modules, 25LC256 carrier EEPROM, CAP1188 SPI and field-sensor nets, six reed
 connectors, ESP32-S3 power/CAN, CC1101 SPI/GDO lines and the internal UART
-links between S1 and S2-S4.
+links between S1 and S2-S4. In v0.7 the CAN trunk entry and its protection
+parts are moved to the lower service area beside `CAN2`, and `MOD3` is shifted
+right to keep that CAN area away from the actuator power terminals.
 
 All 16 motor terminals are on the top edge. STM32 USB-C connectors face the
 bottom service edge, both ESP32-S3 USB connectors face the left edge, the

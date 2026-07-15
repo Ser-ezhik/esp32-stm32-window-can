@@ -97,12 +97,14 @@ add("C239", "100NF_16V_3V3_OUT", "Capacitor_SMD.pretty", "C_0603_1608Metric", 19
 # default and is populated only on the two physical ends of the CAN line.
 add(
     "J240", "CANH_CANL_GND_SHIELD", "TerminalBlock_Phoenix.pretty",
-    "TerminalBlock_Phoenix_PT-1,5-4-3.5-H_1x04_P3.50mm_Horizontal", 5, 28, 90,
+    "TerminalBlock_Phoenix_PT-1,5-4-3.5-H_1x04_P3.50mm_Horizontal", 142, 142, 90,
 )
-add("L240", "CMC_CAN", "Inductor_SMD.pretty", "L_CommonModeChoke_Coilcraft_1812CAN", 40, 28, 0)
-add("D240", "PESD1CAN_CANH", "Diode_SMD.pretty", "D_SOD-323", 66, 26, 90)
-add("D241", "PESD1CAN_CANL", "Diode_SMD.pretty", "D_SOD-323", 66, 30, 90)
-add("R240", "120R_CAN_TERM_DNP", "Resistor_SMD.pretty", "R_1206_3216Metric", 72, 28, 0)
+add("L240", "CMC_CAN", "Inductor_SMD.pretty", "L_CommonModeChoke_Coilcraft_1812CAN", 142, 124, 90)
+add("D240", "PESD1CAN_CANH", "Diode_SMD.pretty", "D_SOD-323", 136, 124, 0)
+add("D241", "PESD1CAN_CANL", "Diode_SMD.pretty", "D_SOD-323", 148, 124, 0)
+add("R240", "120R_CAN_TERM_DNP", "Resistor_SMD.pretty", "R_1206_3216Metric", 142, 116, 90)
+for reference in ("L240", "D240", "D241", "R240"):
+    fp(reference).Reference().SetVisible(False)
 
 # Internal UART series resistors, one at each transmitter.
 for index, (reference, x_mm, y_mm) in enumerate((
@@ -110,7 +112,8 @@ for index, (reference, x_mm, y_mm) in enumerate((
     ("R252", 104, 118), ("R253", 108, 118),
     ("R254", 134, 118), ("R255", 138, 118),
 )):
-    add(reference, "100R_UART_TX", "Resistor_SMD.pretty", "R_0603_1608Metric", x_mm, y_mm, 0)
+    item = add(reference, "100R_UART_TX", "Resistor_SMD.pretty", "R_0603_1608Metric", x_mm, y_mm, 0)
+    item.Reference().SetVisible(False)
 
 # Protected MP1584 input and output.
 connect("J230", (1,), "LOGIC_12V_IN")
