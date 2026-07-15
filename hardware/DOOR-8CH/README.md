@@ -73,6 +73,14 @@ Motor power is intentionally not bussed across the PCB:
 This keeps the double-door's eight-channel current out of a single board-wide
 power bottleneck while eliminating inter-board UART and logic-power wiring.
 
+## Mandatory VNH passives and heatsink provision
+
+Every VNH5019 receives its complete passive network: reset-safe input pull-downs,
+series resistors, diagnostic pull-up, CS_DIS pull-down, calibrated current-sense
+resistors, ADC filter and local 470 uF / 35 V plus 100 nF power decoupling.
+Each VNH zone also has a 30 x 30 mm heatsink keepout and two M3 holes for a
+small external heatsink. See [VNH_THERMAL_AND_PASSIVES.md](VNH_THERMAL_AND_PASSIVES.md).
+
 ## Preliminary mechanical plan
 
 - One board, maximum initial outline: 260 x 160 mm.

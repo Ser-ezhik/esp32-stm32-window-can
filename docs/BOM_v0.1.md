@@ -42,6 +42,10 @@ mechanism.
 | STM32F103C8T6 mini board | 11 | Same firmware on every board. Buy 1 spare. |
 | Universal DOOR-8CH PCB | 5 | One board per physical object. It has four two-channel slots; populate 4/2/1 slots for double door/single door/window. |
 | VNH5019A-E IC | 22 | Two ICs in every populated two-channel slot. Buy at least 4 spare ICs from a traceable supplier. |
+| VNH heatsink mounting provision | 22 zones | Two M3 non-plated holes and a 30 x 30 mm top-side keepout per VNH on the DOOR-8CH PCB. |
+| Optional VNH heatsink | 22 maximum | 20 x 20 x 10 mm finned aluminium, fit after thermal test or in poorly ventilated cabinets. |
+| Electrically insulating thermal pad | 22 maximum | Silicone/Sil-Pad or Kapton thermal pad, 0.2 to 0.5 mm; mandatory when a VNH heatsink is fitted. |
+| Nylon M3 screw and spacer set | 22 maximum | One set per optional VNH heatsink; avoids electrical connection to the live thermal slugs. |
 | CAP1188, SPI-capable breakout | 4 | One per door: double door plus three single doors. |
 | CAP1188, optional | 1 | Add for the window only when it also needs an anti-pinch touch perimeter. |
 | D-M9N / D-M9P reed sensor | 15 recommended, 14 minimum | Three per door and two for window OPEN/CLOSED. Add the fifteenth sensor when the window also needs its third position. |
