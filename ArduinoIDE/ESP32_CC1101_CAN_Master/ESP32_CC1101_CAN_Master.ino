@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.4";
-constexpr uint8_t FW_BUILD = 4;
+constexpr char FW_VERSION[] = "0.1.0-alpha.5";
+constexpr uint8_t FW_BUILD = 5;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
@@ -62,6 +62,7 @@ struct ObjectConfig {
   uint8_t actuatorCount;
   uint8_t slaveCount;
   char name[NAME_LENGTH];
+  uint8_t capEnabledMask;
 };
 
 struct RemoteRecord {
@@ -241,11 +242,11 @@ void setDefaultObjects() {
   memset(objects, 0, sizeof(objects));
   objectCount = 5;
   const ObjectConfig defaults[5] = {
-    {1, 0, 1, static_cast<uint8_t>(ObjectType::DoubleDoor), 8, 3, "Двойная дверь"},
-    {1, 1, 2, static_cast<uint8_t>(ObjectType::SingleDoor), 4, 1, "Одинарная дверь 1"},
-    {1, 2, 3, static_cast<uint8_t>(ObjectType::SingleDoor), 4, 1, "Одинарная дверь 2"},
-    {1, 3, 4, static_cast<uint8_t>(ObjectType::SingleDoor), 4, 1, "Одинарная дверь 3"},
-    {1, 4, 5, static_cast<uint8_t>(ObjectType::Window), 2, 0, "Окно"},
+    {1, 0, 1, static_cast<uint8_t>(ObjectType::DoubleDoor), 8, 3, "Двойная дверь", 0x3F},
+    {1, 1, 2, static_cast<uint8_t>(ObjectType::SingleDoor), 4, 1, "Одинарная дверь 1", 0x07},
+    {1, 2, 3, static_cast<uint8_t>(ObjectType::SingleDoor), 4, 1, "Одинарная дверь 2", 0x07},
+    {1, 3, 4, static_cast<uint8_t>(ObjectType::SingleDoor), 4, 1, "Одинарная дверь 3", 0x07},
+    {1, 4, 5, static_cast<uint8_t>(ObjectType::Window), 2, 0, "Окно", 0x07},
   };
   memcpy(objects, defaults, sizeof(defaults));
 }
@@ -353,6 +354,17 @@ void sendObjectCommand(uint8_t index, Command command) {
   state.nextHeartbeat = millis() + CAN_HEARTBEAT_MS;
 }
 
+void sendCapConfiguration(uint8_t index) {
+  if (index >= objectCount || !objects[index].enabled) return;
+  ObjectRuntime &state = runtime[index];
+  CanCommandFrame frame = {
+    PROTOCOL_VERSION, ++state.commandSequence,
+    static_cast<uint8_t>(Command::ConfigureCap1188), 0,
+    objects[index].capEnabledMask, 0
+  };
+  sendCan(CAN_COMMAND_BASE + objects[index].cabinetId, &frame, sizeof(frame));
+}
+
 void updateHeartbeats() {
   const uint32_t now = millis();
   for (uint8_t i = 0; i < objectCount; ++i) {
@@ -389,6 +401,7 @@ void processStatus(uint8_t cabinetId, const CanStatusFrame &frame) {
   const int index = objectIndexByCabinet(cabinetId);
   if (index < 0 || frame.version != PROTOCOL_VERSION) return;
   ObjectRuntime &state = runtime[index];
+  const bool needsConfiguration = !state.online || state.bootId != frame.bootId;
   const uint8_t oldFault = state.fault;
   state.online = true;
   state.lastSeen = millis();
@@ -399,6 +412,7 @@ void processStatus(uint8_t cabinetId, const CanStatusFrame &frame) {
   state.faultActuator = frame.faultActuator;
   state.slaveMask = frame.slaveMask;
   state.bootId = frame.bootId;
+  if (needsConfiguration) sendCapConfiguration(index);
   if (state.pendingCalibration != Command::None) {
     if (state.state == static_cast<uint8_t>(RunState::Calibrating)) state.calibrationSawMotion = true;
     if (state.fault != 0) {
@@ -493,6 +507,7 @@ String objectSummaryJson(uint8_t index) {
   json += F(",\"name\":\""); json += jsonEscape(object.name); json += '"';
   json += F(",\"type\":"); json += object.type;
   json += F(",\"actuatorCount\":"); json += object.actuatorCount;
+  json += F(",\"capEnabledMask\":"); json += object.capEnabledMask;
   json += F(",\"online\":"); json += state.online ? F("true") : F("false");
   json += F(",\"state\":"); json += state.state;
   json += F(",\"position\":"); json += state.position;
@@ -521,6 +536,7 @@ void handleObjectApi() {
   String json = objectSummaryJson(index); json.remove(json.length() - 1);
   json += F(",\"reeds\":"); json += state.reedMask;
   json += F(",\"cap\":"); json += state.capMask;
+  json += F(",\"capNoise\":"); json += (state.sensorFlags & 4u) ? F("true") : F("false");
   json += F(",\"powerGood\":"); json += (state.sensorFlags & 2u) ? F("true") : F("false");
   json += F(",\"faultActuator\":"); json += state.faultActuator;
   json += F(",\"actuators\":[");
@@ -534,6 +550,20 @@ void handleObjectApi() {
     json += F("\",\"calibrated\":"); json += (a.flags & ACTUATOR_CALIBRATED) ? F("true") : F("false"); json += '}';
   }
   json += F("],\"maxCurrent\":"); json += maxCurrent; json += '}'; sendJson(json);
+}
+
+void handleCapConfiguration() {
+  if (!webAuth()) return;
+  const int index = objectIndexById(server.arg("id").toInt());
+  if (index < 0) {
+    server.send(404, "application/json", "{\"error\":\"not_found\"}");
+    return;
+  }
+  objects[index].capEnabledMask = static_cast<uint8_t>(
+    constrain(server.arg("mask").toInt(), 0, 255));
+  saveObjects();
+  sendCapConfiguration(index);
+  sendJson("{\"ok\":true}");
 }
 
 void handleObjectCommand() {
@@ -769,6 +799,7 @@ void beginWeb() {
   server.on("/setup", HTTP_GET, handleSetupPage); server.on("/setup/save", HTTP_POST, handleSetupSave);
   server.on("/api/objects", HTTP_GET, handleObjectsApi); server.on("/api/object", HTTP_GET, handleObjectApi);
   server.on("/api/object/command", HTTP_POST, handleObjectCommand); server.on("/api/object/calibrate", HTTP_POST, handleCalibration);
+  server.on("/api/object/cap", HTTP_POST, handleCapConfiguration);
   server.on("/api/stop-all", HTTP_POST, handleStopAll); server.on("/api/events", HTTP_GET, handleEvents);
   server.on("/api/events/clear", HTTP_POST, handleClearEvents); server.on("/api/discover", HTTP_POST, handleDiscoveryStart);
   server.on("/api/discovery", HTTP_GET, handleDiscoveryList); server.on("/api/provision", HTTP_POST, handleProvision);

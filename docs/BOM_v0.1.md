@@ -46,13 +46,12 @@ mechanism.
 | Optional VNH heatsink | 22 maximum | 20 x 20 x 10 mm finned aluminium, fit after thermal test or in poorly ventilated cabinets. |
 | Electrically insulating thermal pad | 22 maximum | Silicone/Sil-Pad or Kapton thermal pad, 0.2 to 0.5 mm; mandatory when a VNH heatsink is fitted. |
 | Nylon M3 screw and spacer set | 22 maximum | One set per optional VNH heatsink; avoids electrical connection to the live thermal slugs. |
-| CAP1188, SPI-capable breakout | 4 | One per door: double door plus three single doors. |
-| CAP1188, optional | 1 | Add for the window only when it also needs an anti-pinch touch perimeter. |
-| D-M9N / D-M9P reed sensor | 15 recommended, 14 minimum | Three per door and two for window OPEN/CLOSED. Add the fifteenth sensor when the window also needs its third position. |
+| CAP1188, SPI-capable breakout | 5 | One per physical object, including the window. All eight channels are routed to field connectors. |
+| D-M9N / D-M9P reed sensor | 18 recommended, 17 minimum | Three per single door, six on the double door (three per leaf), and two for the window. Add the eighteenth sensor when the window also needs its third position. |
 | 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 5 | One in S1 MASTER zone of each DOOR-8CH board. SLAVE slots receive configuration from S1 over internal UART. |
 | SN65HVD230, 3.3 V CAN transceiver module | 5 | Socketed in the S1 MASTER zone of every DOOR-8CH board. SLAVE STM32 slots use only internal UART. |
 | SN65HVD230, 3.3 V CAN transceiver module | 1 | Socketed in the ESP32 zone of the double-door board. |
-| 12 V to 5 V DC/DC converter, **MP1584 5 V module** | 5 + 2 spare | Practical selected module when Mean Well is unavailable. Fit the fixed 5 V version; its actual 5 V load is below 1 A per cabinet. The double-door cabinet also powers the ESP32. |
+| 12 V to 5 V DC/DC converter, **MP1584 5 V module** | 5 + 2 spare | Plugs or solders directly to the DOOR-8CH PCB. Fit the fixed 5 V version; its actual 5 V load is below 1 A per cabinet. The double-door cabinet also powers the ESP32. |
 | 12 V actuator power supply | 5 or 1 central supply | Size from actual actuator current as described below. Separate cabinet supplies are preferred for easier fault isolation. |
 | SWD programmer, ST-Link V2 or V3 | 1 | For STM32 commissioning and recovery. |
 
@@ -62,12 +61,12 @@ VNH5019A-E is an active ST product with 3 V CMOS-compatible inputs, current sens
 
 | Cabinet | STM32 MASTER | STM32 SLAVE | VNH5019A-E | CAP1188 | Reeds | Local UART links |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Double door | 1 | 3 | 8 | 1 | 3 | 3 |
+| Double door | 1 | 3 | 8 | 1 | 6 | 3 |
 | Single door 1 | 1 | 1 | 4 | 1 | 3 | 1 |
 | Single door 2 | 1 | 1 | 4 | 1 | 3 | 1 |
 | Single door 3 | 1 | 1 | 4 | 1 | 3 | 1 |
-| Window | 1 | 0 | 2 | 0 | 2 minimum, 3 recommended | 0 |
-| **Total** | **5** | **6** | **22** | **4** | **14 minimum, 15 recommended** | **6** |
+| Window | 1 | 0 | 2 | 1 | 2 minimum, 3 recommended | 0 |
+| **Total** | **5** | **6** | **22** | **5** | **17 minimum, 18 recommended** | **6** |
 
 ## One populated two-actuator slot: mandatory passive parts
 
@@ -140,16 +139,24 @@ The VNH5019 current-sense ratio has production and temperature tolerance, theref
 
 | Purpose | Component and nominal | Quantity for system |
 | --- | --- | ---: |
-| CAP1188 INT pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 4 |
-| CAP1188 RESET pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 4 |
-| CAP1188 supply bypass near connector | 100 nF, 16 V, X7R + 4.7 uF, 10 V, X5R | 4 + 4 |
-| Reed input pull resistor | 4.7 kOhm, 1%, 0.125 W; fit to 3.3 V for D-M9N or GND for D-M9P | 14 minimum, 15 recommended |
-| Reed input series resistor | 1 kOhm, 0.125 W | 14 minimum, 15 recommended |
-| Reed input noise filter | 100 nF, 16 V, X7R at the STM32 connector | 14 minimum, 15 recommended |
+| CAP1188 INT pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 5 |
+| CAP1188 RESET pull-down | 10 kOhm, 1%, 0.125 W to GND; RESET is active high | 5 |
+| CAP1188 supply bypass near connector | 100 nF, 16 V, X7R + 4.7 uF, 10 V, X5R | 5 + 5 |
+| CAP1188 field connector | 2-pin, 3.5 mm pitch, SENSOR/GND, one per channel | 40 |
+| CAP1188 sensor-line series resistor | 1 kOhm, 0.125 W initial value; provide 0 Ohm tuning option | 40 |
+| Reed input pull resistor | 4.7 kOhm, 1%, 0.125 W; fit to 3.3 V for D-M9N or GND for D-M9P | 17 minimum, 18 recommended |
+| Reed input series resistor | 1 kOhm, 0.125 W | 17 minimum, 18 recommended |
+| Reed input noise filter | 100 nF, 16 V, X7R at the STM32 connector | 17 minimum, 18 recommended |
 | UART TX series resistor | 100 Ohm, 0.125 W, one at each end of each link | 12 |
 | SLOT_ID low strap | 10 kOhm, 1%, 0.125 W to GND | 7 |
 
 For every reed location fit **one**, not both, 4.7 kOhm pull directions. D-M9N and D-M9P polarity is then selected in the cabinet configuration. Use screened or twisted sensor cable when it leaves the cabinet.
+
+Each CAP1188 channel has its own two-pin edge connector. Connect one twisted-pair
+conductor to `SENSOR` and the other to `GND`; the GND conductor is a nearby return
+or shield and must not be electrically joined to the isolated touch electrode.
+Populate only the connectors needed by the installation, while retaining all eight
+channels on every universal board.
 
 ## CAN bus and cable entry
 

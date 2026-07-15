@@ -1,0 +1,2 @@
+31f6f3f58cf2811e3a0d44379f78cde0fe811ae3c47b8ba34fd8a36d46545bdd  ESP32_CC1101_CAN_Master_v0.1.0-alpha.5-n16r8.bin
+6ca8f75d5dad2f3f4c9f35e01c187b1f043640f6b77b330ab57fcbbfa12be5c9  ESP32_CC1101_CAN_Master_v0.1.0-alpha.5-n16r8-merged.bin

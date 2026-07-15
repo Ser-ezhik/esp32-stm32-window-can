@@ -48,7 +48,7 @@ board. There are no loose SPI, CAN or UART jumpers between them.
 | ESP32-S3 board | Double-door board only | 5 V, GND, its CAN and CC1101 signals |
 | ESP CAN: SN65HVD230 | Double-door board only | GPIO39 CTX, GPIO38 CRX, same CAN trunk |
 | CC1101 433 MHz | Double-door board only | GPIO10-13, GPIO4, GPIO5, 3.3 V |
-| CAP1188 SPI breakout | Every door board; window only when required | PA4-PA7, PB9, PB13, 3.3 V |
+| CAP1188 SPI breakout | Every board, including the window | PA4-PA7, PB9, PB13, 3.3 V; eight CS/GND field connectors |
 | 25LC256 EEPROM | Every board, S1 zone | PA15 plus shared SPI pins |
 | Reeds and power-good comparator | Every board, S1 zone | PB0, PB1, PB8, PC13 |
 
@@ -58,7 +58,10 @@ S2-S4 have no CAN components or external sensor connectors.
 
 ## Power architecture
 
-The cabinet MP1584 produces one protected `LOGIC_5V` feed for the whole board.
+The selected MP1584 module plugs or solders directly into the DOOR-8CH board and
+produces one protected `LOGIC_5V` feed for the whole board. Its dedicated edge
+input, 1 A branch fuse, reverse-polarity diode, SMBJ16A and input/output filters
+are all on the same PCB; no loose DC/DC wiring is used.
 The board generates one `LOGIC_3V3` rail for all module headers and VNH DIAG
 pull-ups. Each STM32 mini board receives 5 V through its own protected branch.
 
@@ -89,6 +92,8 @@ small external heatsink. See [VNH_THERMAL_AND_PASSIVES.md](VNH_THERMAL_AND_PASSI
 - Four STM32 sockets form the low-voltage centre strip.
 - CAN, CAP1188, reeds, SWD, ESP32-S3, CC1101 and both CAN-module sockets sit at
   the opposite edge, far from motor-current loops.
+- Eight separate 2-pin `CSx/GND` connectors for CAP1188 twisted pairs sit at a
+  board edge. Firmware selects any active subset; unused channels remain disabled.
 - Four layers, 2 oz external copper. VNH exposed pads receive thermal via arrays
   to internal copper areas.
 

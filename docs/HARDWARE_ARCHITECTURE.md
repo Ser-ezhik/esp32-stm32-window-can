@@ -101,7 +101,7 @@ LEDs are indication outputs and do not replace the capacitive inputs `C1...C8`.
 | SCK | PA5 | SPI clock. |
 | MISO | PA6 | SPI data from CAP1188. |
 | MOSI | PA7 | SPI data to CAP1188. |
-| RST | PB9 | Reset, pulled up to 3.3 V. |
+| RST | PB9 | Active-high reset, pulled down to GND with 10 kOhm. |
 | IRQ | PB13 | Interrupt, pulled up to 3.3 V. |
 | C1...C8 | Touch perimeter electrodes | Every reported touch is treated as a safety-edge event while closing. |
 
@@ -109,8 +109,17 @@ Keep the breakout and the cable to its touch electrodes away from 12 V motor
 wiring and PWM tracks. For a long perimeter, use one conductor per electrode
 with a nearby GND reference or screened cable; final sensitivity is adjusted
 during commissioning with the actual door and cable installed. Connect every
-enabled channel to a real electrode; reserve unused channels only after their
-configuration is explicitly added to the firmware.
+enabled channel to a real electrode. Route all eight inputs to separate two-pin
+edge connectors labelled `CS1/GND` through `CS8/GND`, so one twisted pair serves
+each electrode without splices. The GND conductor is a reference/shield beside
+the isolated electrode and is never shorted to the sensor conductor.
+
+The enabled-channel mask is stored per cabinet and is configurable from the web
+interface. Default profiles enable three channels for a window or single door
+and six channels for a double door, but any subset of CS1...CS8 can be selected.
+Disabled channels are removed from the CAP1188 Sensor Input Enable and Interrupt
+Enable registers and cannot trigger a safety stop. Saving a new mask forces a
+recalibration of the enabled channels with the installed cable and electrodes.
 
 ## Replaceable module identity
 

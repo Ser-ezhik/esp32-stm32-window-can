@@ -48,6 +48,8 @@ while ($listener.IsListening) {
     $detail = @{} + $item
     $detail.reeds = if ($id -eq 0) { 2 } else { 0 }
     $detail.cap = if ($id -eq 4) { 1 } else { 0 }
+    $detail.capEnabledMask = if ($id -eq 0) { 63 } else { 7 }
+    $detail.capNoise = $id -eq 1
     $detail.powerGood = $true
     $detail.maxCurrent = 2370
     $detail.actuators = $actuators

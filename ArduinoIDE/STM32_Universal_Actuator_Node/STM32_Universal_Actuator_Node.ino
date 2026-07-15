@@ -15,7 +15,7 @@ using namespace windowbus;
 namespace {
 
 constexpr uint32_t CONFIG_MAGIC = 0x31474643u;  // CFG1
-constexpr uint8_t CONFIG_VERSION = 1;
+constexpr uint8_t CONFIG_VERSION = 2;
 
 enum class Direction : uint8_t { None, Extend, Retract };
 
@@ -24,6 +24,7 @@ struct NodeConfig {
   uint32_t magic;
   uint8_t version;
   uint8_t autoAdapt;
+  uint8_t capEnabledMask;
   uint16_t revision;
   uint16_t maxCurrentMa[2];
   uint16_t zeroCurrentMa[2];
@@ -103,6 +104,7 @@ void setDefaultConfig() {
   config.version = CONFIG_VERSION;
   config.revision = 1;
   config.autoAdapt = 1;
+  config.capEnabledMask = 0x07;
   for (uint8_t i = 0; i < 2; ++i) {
     config.maxCurrentMa[i] = hw::DEFAULT_MAX_CURRENT_MA;
     config.zeroCurrentMa[i] = hw::DEFAULT_ZERO_CURRENT_MA;
@@ -298,6 +300,15 @@ void sendStopToSlaves() {
 void executeCommand(Command command, uint8_t flags, uint16_t argument, bool fromMaster) {
   const uint32_t now = millis();
   lastCommandAt = now;
+
+  if (command == Command::ConfigureCap1188 && isMaster()) {
+    config.capEnabledMask = static_cast<uint8_t>(argument);
+    ++config.revision;
+    saveConfig();
+    if (capOnline) cap1188.setEnabledMask(config.capEnabledMask);
+    capMask &= config.capEnabledMask;
+    return;
+  }
 
   if (command == Command::Stop) {
     stopLocal();
@@ -518,7 +529,7 @@ void readMasterSensors() {
   else if (reedMask & 0x02u) position = Position::Closed;
   else position = Position::Intermediate;
 
-  if (capOnline) capMask = cap1188.touched();
+  if (capOnline) capMask = cap1188.touched() & config.capEnabledMask;
   if (capMask != 0 && commandDirection(activeCommand) == Direction::Retract) {
     setFault(Fault::SafetyEdge);
   }
@@ -676,7 +687,9 @@ void sendCanTelemetry() {
 
   CanSensorFrame sensors = {
     PROTOCOL_VERSION, reedMask, capMask,
-    static_cast<uint8_t>((capOnline ? 1u : 0u) | (digitalRead(hw::POWER_GOOD) == HIGH ? 2u : 0u)),
+    static_cast<uint8_t>((capOnline ? 1u : 0u) |
+                         (digitalRead(hw::POWER_GOOD) == HIGH ? 2u : 0u) |
+                         ((capOnline && (cap1188.noiseFlags() & config.capEnabledMask)) ? 4u : 0u)),
     0, static_cast<uint16_t>(min<uint32_t>(millis() / 1000u, 65535u))
   };
   canBus.send(CAN_SENSORS_BASE + carrier.cabinetId, &sensors, sizeof(sensors));
@@ -720,7 +733,7 @@ void initializeMaster() {
   carrierStore.begin();
   carrierConfigured = carrierStore.load(carrier);
   configureReedInputs();
-  capOnline = cap1188.begin();
+  capOnline = cap1188.begin(config.capEnabledMask);
   const LocalConfigPayload defaults = makeConfigPayload();
   for (uint8_t i = 0; i < 3; ++i) slaveConfigs[i] = defaults;
   for (uint8_t i = 0; i < 3; ++i) localLinks[i].begin(hw::LOCAL_UART_BAUD);

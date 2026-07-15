@@ -8,7 +8,7 @@ class Cap1188Spi {
   Cap1188Spi(PinName chipSelect, PinName resetPin)
       : cs_(chipSelect), reset_(resetPin) {}
 
-  bool begin() {
+  bool begin(uint8_t enabledMask) {
     pinMode(cs_, OUTPUT);
     digitalWrite(cs_, HIGH);
     pinMode(reset_, OUTPUT);
@@ -23,8 +23,7 @@ class Cap1188Spi {
     online_ = productId == 0x50;
     if (!online_) return false;
 
-    writeRegister(0x21, 0xFF);  // Enable all sensor inputs.
-    clearInterrupt();
+    setEnabledMask(enabledMask);
     return true;
   }
 
@@ -35,6 +34,18 @@ class Cap1188Spi {
     const uint8_t value = readRegister(0x03);
     clearInterrupt();
     return value;
+  }
+
+  uint8_t noiseFlags() {
+    return online_ ? readRegister(0x0A) : 0;
+  }
+
+  void setEnabledMask(uint8_t mask) {
+    if (!online_) return;
+    writeRegister(0x21, mask);  // Sensor Input Enable.
+    writeRegister(0x27, mask);  // Interrupt Enable.
+    if (mask != 0) writeRegister(0x26, mask);  // Recalibrate enabled inputs.
+    clearInterrupt();
   }
 
   void clearInterrupt() {

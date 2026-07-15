@@ -51,6 +51,7 @@ enum class Command : uint8_t {
   ServiceExtend = 10,
   ServiceRetract = 11,
   ResetCalibration = 12,
+  ConfigureCap1188 = 13,
 };
 
 enum class RunState : uint8_t {

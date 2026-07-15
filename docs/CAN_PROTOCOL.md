@@ -28,6 +28,13 @@ calibration and calibration reset. A full calibration cycle is coordinated by
 ESP32 as two position-aware single-direction calibration commands. Provisioning
 stores cabinet ID, object type, slave count and the three-bit D-M9P polarity mask.
 
+CAP1188 configuration is stored per cabinet as an eight-bit enabled-channel mask.
+The web interface edits individual CS1...CS8 switches and also displays the active
+channel count. ESP32 sends the mask through the configuration range; the cabinet
+MASTER writes it to CAP1188 Sensor Input Enable and Interrupt Enable, persists it,
+and recalibrates all newly enabled channels. A mask of zero disables touch sensing
+and must be shown as a deliberate maintenance state in the browser.
+
 ## Local UART
 
 Master-to-slave links use 250000 8N1 and a binary frame:

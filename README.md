@@ -17,7 +17,7 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 
 ## Current development status
 
-The current releases are STM32 `0.1.0-alpha.2` and ESP32-S3 `0.1.0-alpha.4`:
+The current releases are STM32 `0.1.0-alpha.3` and ESP32-S3 `0.1.0-alpha.5`:
 
 - hardware bxCAN at 500 kbit/s;
 - three hardware UART links at 250 kbit/s with CRC16 frames;
