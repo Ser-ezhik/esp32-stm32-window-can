@@ -57,6 +57,32 @@ this connector. Mount the supplied 433 MHz spring antenna vertically, keep it
 away from the CAN cable and motor wiring, and do not place it against a metal
 wall of the cabinet.
 
+### CAP1188 touch module
+
+The selected `CAP1188 8-Key CapTouch SPI/I2C w/LEDs` breakout is suitable. Use
+its **SPI** interface only; do not enable or connect I2C. Power its `VIN` pin
+from 3.3 V, connect `GND`, and leave its `3Vo` output unconnected. The eight
+LEDs are indication outputs and do not replace the capacitive inputs `C1...C8`.
+
+| CAP1188 label | STM32 MASTER pin | Notes |
+| --- | --- | --- |
+| VIN | 3.3V | Do not feed 5 V in this system. |
+| GND | GND | Common signal ground. |
+| CS | PA4 | SPI chip select. |
+| SCK | PA5 | SPI clock. |
+| MISO | PA6 | SPI data from CAP1188. |
+| MOSI | PA7 | SPI data to CAP1188. |
+| RST | PB9 | Reset, pulled up to 3.3 V. |
+| IRQ | PB13 | Interrupt, pulled up to 3.3 V. |
+| C1...C8 | Touch perimeter electrodes | Every reported touch is treated as a safety-edge event while closing. |
+
+Keep the breakout and the cable to its touch electrodes away from 12 V motor
+wiring and PWM tracks. For a long perimeter, use one conductor per electrode
+with a nearby GND reference or screened cable; final sensitivity is adjusted
+during commissioning with the actual door and cable installed. Connect every
+enabled channel to a real electrode; reserve unused channels only after their
+configuration is explicitly added to the firmware.
+
 ## Replaceable module identity
 
 Every STM32 module carries the same firmware and interface circuit. Two carrier
