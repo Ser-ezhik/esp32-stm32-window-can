@@ -10,6 +10,7 @@ Contact PT 1.5 family:
 | CAP1188 CS1...CS8 twisted pairs | `PT 1,5/2-3,5-H` | 3.5 mm | 8 |
 | D-M9N / D-M9P three-wire sensors | `PT 1,5/3-3,5-H` | 3.5 mm | 6 |
 | Dedicated logic 12 V input | `PT 1,5/2-3,5-H` | 3.5 mm | 1 |
+| CAN trunk input, CANH/CANL/GND/SHIELD | `PT 1,5/4-3,5-H` | 3.5 mm | 1 |
 
 These are fixed push-in terminals, so no mating plug is required. Lower-cost
 `KF350-2P` and `KF350-3P` parts may have the same 3.5 mm electrical pitch, but

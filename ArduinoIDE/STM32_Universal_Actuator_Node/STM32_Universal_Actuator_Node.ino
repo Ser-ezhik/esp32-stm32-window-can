@@ -254,6 +254,7 @@ void clearFault() {
 }
 
 void applyConfigPayload(const LocalConfigPayload &payload) {
+  carrier.reserved = payload.reedPolarityMask & 0x07u;
   config.revision = payload.revision;
   config.minTravelMs = payload.minTravelMs;
   config.endstopConfirmMs = payload.endstopConfirmMs;
@@ -273,6 +274,7 @@ LocalConfigPayload makeConfigPayload() {
   payload.minTravelMs = config.minTravelMs;
   payload.endstopConfirmMs = config.endstopConfirmMs;
   payload.maxTravelMs = config.maxTravelMs;
+  payload.reedPolarityMask = carrier.reserved & 0x07u;
   for (uint8_t i = 0; i < 2; ++i) {
     payload.maxCurrentMa[i] = config.maxCurrentMa[i];
     payload.zeroCurrentMa[i] = config.zeroCurrentMa[i];
@@ -459,7 +461,9 @@ bool cabinetMovementFinished() {
 
 void sendConfigToSlave(uint8_t slot) {
   if (slot >= carrier.slaveCount) return;
-  localLinks[slot].send(UartType::Config, ++slaveTxSequence[slot], &slaveConfigs[slot], sizeof(slaveConfigs[slot]));
+  LocalConfigPayload payload = slaveConfigs[slot];
+  payload.reedPolarityMask = static_cast<uint8_t>((carrier.reserved >> ((slot + 1u) * 3u)) & 0x07u);
+  localLinks[slot].send(UartType::Config, ++slaveTxSequence[slot], &payload, sizeof(payload));
 }
 
 void applyCalibration() {
@@ -514,20 +518,40 @@ void configureReedInputs() {
   }
 }
 
-void readMasterSensors() {
+uint8_t readLocalReeds() {
   uint8_t nextReeds = 0;
   for (uint8_t i = 0; i < 3; ++i) {
     const bool activeHigh = (carrier.reserved & (1u << i)) != 0;
     if ((digitalRead(hw::REED_PINS[i]) == HIGH) == activeHigh) nextReeds |= 1u << i;
   }
-  reedMask = nextReeds;
-  if ((reedMask & 0x03u) == 0x03u) {
+  return nextReeds;
+}
+
+void readMasterSensors() {
+  reedMask = readLocalReeds();
+  const bool doubleDoor = carrierConfigured &&
+                          carrier.objectType == static_cast<uint8_t>(ObjectType::DoubleDoor);
+  if (doubleDoor && carrier.slaveCount > 0 && millis() - slaveLastSeen[0] <= hw::SLAVE_TIMEOUT_MS) {
+    reedMask |= static_cast<uint8_t>((slaveStatus[0].reedMask & 0x07u) << 3);
+  }
+
+  const bool leafAConflict = (reedMask & 0x03u) == 0x03u;
+  const bool leafBConflict = doubleDoor && (reedMask & 0x18u) == 0x18u;
+  if (leafAConflict || leafBConflict) {
     setFault(Fault::SensorConflict);
     return;
   }
-  if (reedMask & 0x01u) position = Position::Open;
-  else if (reedMask & 0x02u) position = Position::Closed;
-  else position = Position::Intermediate;
+  if (doubleDoor) {
+    const bool bothOpen = (reedMask & 0x09u) == 0x09u;
+    const bool bothClosed = (reedMask & 0x12u) == 0x12u;
+    if (bothOpen) position = Position::Open;
+    else if (bothClosed) position = Position::Closed;
+    else position = Position::Intermediate;
+  } else {
+    if (reedMask & 0x01u) position = Position::Open;
+    else if (reedMask & 0x02u) position = Position::Closed;
+    else position = Position::Intermediate;
+  }
 
   if (capOnline) capMask = cap1188.touched() & config.capEnabledMask;
   if (capMask != 0 && commandDirection(activeCommand) == Direction::Retract) {
@@ -544,6 +568,7 @@ LocalStatusPayload makeLocalStatus() {
   status.fault = static_cast<uint8_t>(fault);
   status.faultActuator = faultActuator;
   status.bootId = bootId;
+  status.reedMask = reedMask & 0x07u;
   for (uint8_t i = 0; i < 2; ++i) {
     status.currentMa[i] = actuators[i].filteredCurrentMa;
     status.pwm[i] = static_cast<uint8_t>(actuators[i].pwmPermille / 4u);
@@ -620,7 +645,7 @@ void handleProvision(const CanProvisionFrame &request) {
   next.cabinetId = request.cabinetId;
   next.objectType = request.objectType;
   next.slaveCount = request.slaveCount;
-  next.reserved = request.flags & 0x07u;
+  next.reserved = request.flags & 0x3Fu;
   next.configRevision = 1;
   if (carrierStore.save(next)) {
     carrier = next;
@@ -748,6 +773,7 @@ void initializeMaster() {
 void initializeSlave() {
   localLinks[0].begin(hw::LOCAL_UART_BAUD);
   carrierConfigured = true;
+  configureReedInputs();
   clearFault();
 }
 
@@ -779,6 +805,7 @@ void loop() {
     lastSensorAt = now;
     for (uint8_t i = 0; i < 2; ++i) updateCurrent(i);
     if (isMaster()) readMasterSensors();
+    else reedMask = readLocalReeds();
   }
 
   if (now - lastControlAt >= hw::CONTROL_PERIOD_MS) {

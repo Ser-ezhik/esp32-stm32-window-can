@@ -9,9 +9,10 @@ approved universal one-board-per-cabinet architecture. It presently contains:
 - mechanically checked placement for S1 through S4 and the photographed
   plug-in modules.
 
-It is deliberately a design-stage source, not a fabrication release. The v0.4
-board contains the repeated VNH passive blocks, slot straps and named power,
-motor, control, diagnostic and current-sense nets. Routing and the complete
+It is deliberately a design-stage source, not a fabrication release. The v0.5
+board contains the repeated VNH passive blocks, slot straps, named power,
+motor, control, diagnostic, current-sense and low-voltage communication nets.
+Routing and the complete
 KiCad schematic are not released until the physical module footprints have
 been verified at 1:1 scale.
 
@@ -26,6 +27,11 @@ Each VNH now has three 100 Ohm input resistors, reset-safe pull-downs, a 4.7
 kOhm diagnostic pull-up, CS_DIS pull-down, 1 kOhm current-sense load, protected
 and filtered ADC input, 470 uF local bulk capacitor and 100 nF ceramic bypass.
 The PB2/PA7 slot straps are also present and match the universal firmware.
+The low-voltage stage also includes the MP1584 input/output nets, a carrier
+3.3 V regulator, CAN trunk connector with choke/ESD/optional termination,
+both SN65HVD230 modules, CAP1188 SPI and field-sensor nets, six reed
+connectors, ESP32-S3 power/CAN, CC1101 SPI/GDO lines and the internal UART
+links between S1 and S2-S4.
 
 All 16 motor terminals are on the top edge. STM32 USB-C connectors face the
 bottom service edge, both ESP32-S3 USB connectors face the left edge, the
@@ -37,11 +43,9 @@ ESP32-S3-DevKitC footprint. KiCad placement DRC reports zero violations.
 ## Next CAD stages
 
 1. Capture the electrical schematic for S1 and the repeatable S2-S4 slots.
-2. Add every VNH passive network, logic power protection, CAN protection and
-   external field connector to the schematic and PCB.
-3. Add the top-side heatsink keepout areas and thermal-via arrays around the
+2. Add the top-side heatsink keepout areas and thermal-via arrays around the
    existing VNH positions.
-4. Set net classes, route the four-layer board, run ERC/DRC and produce
+3. Set net classes, route the four-layer board, run ERC/DRC and produce
    1:1 mechanical prints for connector validation.
 
 The older `ACT-CARRIER-2CH` files remain an archived design study and must not

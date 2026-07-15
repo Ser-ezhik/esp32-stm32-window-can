@@ -189,6 +189,8 @@ struct LocalStatusPayload {
   uint8_t fault;
   uint8_t faultActuator;
   uint8_t bootId;
+  uint8_t reedMask;
+  uint8_t reserved;
   uint16_t currentMa[2];
   uint8_t pwm[2];
   uint8_t actuatorFlags[2];
@@ -204,6 +206,8 @@ struct LocalConfigPayload {
   uint16_t minTravelMs;
   uint16_t endstopConfirmMs;
   uint32_t maxTravelMs;
+  uint8_t reedPolarityMask;
+  uint8_t reserved;
 };
 
 #pragma pack(pop)
