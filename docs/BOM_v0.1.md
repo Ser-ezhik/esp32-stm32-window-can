@@ -11,9 +11,27 @@ This bill of materials covers these objects:
 | Window | 1 | 2 | 2 | 1 |
 | **Total** | **5** | - | **22** | **11** |
 
-One STM32 controls two VNH2SP30 channels. Only the MASTER STM32 of each cabinet is physically connected to CAN. Other STM32 boards use short, point-to-point 3.3 V UART links to the MASTER.
+One STM32 controls two VNH5019A-E channels. Only the MASTER STM32 of each cabinet is physically connected to CAN. Other STM32 boards use short, point-to-point 3.3 V UART links to the MASTER.
 
 This is a low-voltage 12 V DC design. Do not connect mains voltage to any board, signal connector or ESP32 input.
+
+## Design current basis
+
+The measured maximum actuator current is 2.5 A. This design uses a two-times reserve,
+therefore every actuator channel is designed and protected for **5 A**. VNH5019 carrier
+thermal design nevertheless keeps copper and heatsinking margin for a 10 A continuous
+channel, so 5 A operation is not at the edge of the board capability.
+
+| Cabinet | Actuators moving together | Design current | Recommended 12 V supply | Main fuse |
+| --- | ---: | ---: | ---: | ---: |
+| Double door | 8 | 40 A | 12 V, 50 A minimum | 50 A slow-blow / automotive blade |
+| Each single door | 4 | 20 A | 12 V, 25 A minimum | 25 A slow-blow / automotive blade |
+| Window | 2 | 10 A | 12 V, 15 A minimum | 15 A slow-blow / automotive blade |
+
+Use a **7.5 A slow-blow or automotive blade fuse** per actuator channel. It is above the
+5 A design current so brief startup current does not nuisance-trip it, while still protecting
+the VNH channel and cable. This value must be confirmed once with one fully assembled
+mechanism.
 
 ## Main modules
 
@@ -23,7 +41,7 @@ This is a low-voltage 12 V DC design. Do not connect mains voltage to any board,
 | CC1101, 433 MHz, 3.3 V module | 1 | Radio receiver for existing remotes. Include an antenna matched for 433 MHz. |
 | STM32F103C8T6 mini board | 11 | Same firmware on every board. Buy 1 spare. |
 | Carrier PCB for one STM32 plus two actuator channels | 11 | The carrier, not the removable STM32 board, holds the slot straps. The MASTER version also populates CAN, EEPROM and sensor circuitry. |
-| VNH2SP30 module | 22 | One module per actuator. Buy at least 2 identical spares. Provide airflow or metal mounting if the actual current requires it. |
+| VNH5019A-E IC | 22 | Two ICs on every custom carrier. Buy at least 4 spare ICs from a traceable supplier. |
 | CAP1188, SPI-capable breakout | 4 | One per door: double door plus three single doors. |
 | CAP1188, optional | 1 | Add for the window only when it also needs an anti-pinch touch perimeter. |
 | D-M9N / D-M9P reed sensor | 15 recommended, 14 minimum | Three per door and two for window OPEN/CLOSED. Add the fifteenth sensor when the window also needs its third position. |
@@ -34,11 +52,11 @@ This is a low-voltage 12 V DC design. Do not connect mains voltage to any board,
 | 12 V actuator power supply | 5 or 1 central supply | Size from actual actuator current as described below. Separate cabinet supplies are preferred for easier fault isolation. |
 | SWD programmer, ST-Link V2 or V3 | 1 | For STM32 commissioning and recovery. |
 
-The original VNH2SP30 is obsolete. The modules must be electrically tested before installation because cheap breakouts differ, especially at the CS current-sense output. ST describes the VNH2SP30 as a protected H-bridge with current sense and PWM operation up to 20 kHz; it does not make a random breakout electrically identical to another one. [ST product page](https://www.st.com/en/automotive-analog-and-power/vnh2sp30-e.html)
+VNH5019A-E is an active ST product with 3 V CMOS-compatible inputs, current sense and PWM operation up to 20 kHz. It is used as a bare IC on the custom carrier, so the CS scaling and 3.3 V ADC protection are defined by our own schematic rather than by an unknown breakout board. [ST product page](https://www.st.com/en/motor-drivers/vnh5019a-e.html)
 
 ## Cabinet allocation
 
-| Cabinet | STM32 MASTER | STM32 SLAVE | VNH2SP30 | CAP1188 | Reeds | Local UART links |
+| Cabinet | STM32 MASTER | STM32 SLAVE | VNH5019A-E | CAP1188 | Reeds | Local UART links |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Double door | 1 | 3 | 8 | 1 | 3 | 3 |
 | Single door 1 | 1 | 1 | 4 | 1 | 3 | 1 |
@@ -58,19 +76,21 @@ Quantities in this table are **per carrier**. Multiply by 11 for the total purch
 | VNH DIAG pull-up | 4.7 kOhm, 1%, 0.125 W to **3.3 V** | 2 | 22 |
 | VNH supply bulk capacitor | 470 uF, 25 V, low-ESR electrolytic, >=105 C | 2 | 22 |
 | VNH local ceramic capacitor | 100 nF, 50 V, X7R | 2 | 22 |
+| VNH CS load resistor | 1.00 kOhm, 1%, 0.125 W from CS to GND | 2 | 22 |
+| VNH CS ADC divider | 68 kOhm upper + 100 kOhm lower, both 1%, 0.125 W | 2 + 2 | 22 + 22 |
 | VNH CS ADC filter | 1 kOhm series plus 100 nF, 16 V, X7R at PA0/PA1 | 2 + 2 | 22 + 22 |
-| VNH CS divider, **only when CS can reach 5 V** | 10 kOhm upper + 20 kOhm lower, both 1% | 2 + 2 | 22 + 22 |
-| 12 V power-good comparator | TLV3012 or equivalent open-drain comparator with reference | 1 | 11 |
-| 12 V monitor divider | 100 kOhm upper + 15 kOhm lower, both 1%, 0.125 W | 1 + 1 | 11 + 11 |
-| Comparator input filter | 100 nF, 50 V, X7R | 1 | 11 |
-| Comparator hysteresis | 1 MOhm, 1%, 0.125 W | 1 | 11 |
-| PC13 pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 1 | 11 |
+| VNH CS_DIS default | 10 kOhm, 1%, 0.125 W pull-down to GND | 2 | 22 |
+| 12 V power-good comparator, MASTER only | TLV3012 or equivalent open-drain comparator with reference | 1 | 5 |
+| 12 V monitor divider, MASTER only | 100 kOhm upper + 15 kOhm lower, both 1%, 0.125 W | 1 + 1 | 5 + 5 |
+| Comparator input filter, MASTER only | 100 nF, 50 V, X7R | 1 | 5 |
+| Comparator hysteresis, MASTER only | 1 MOhm, 1%, 0.125 W | 1 | 5 |
+| PC13 pull-up, MASTER only | 10 kOhm, 1%, 0.125 W to 3.3 V | 1 | 5 |
 | Carrier 3.3 V bulk decoupling | 10 uF, 10 V, X5R/X7R | 2 | 22 |
 | Carrier 3.3 V local decoupling | 100 nF, 16 V, X7R | 4 | 44 |
 
-The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Confirm its exact trip and release voltage on the finished carrier before enabling actuator motion.
+The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Fit this circuit only on MASTER carriers: every cabinet has one shared 12 V supply, and its MASTER stops the local SLAVEs over UART on a low-supply event. Confirm its exact trip and release voltage on the finished carrier before enabling actuator motion.
 
-For a raw VNH2SP30, tie its two open-drain `DIAG/EN` pins into the one diagnostic node for that actuator, use the listed 4.7 kOhm pull-up and route that node to PB5 or PB12. This enables both bridge legs and lets either diagnostic pull the STM32 input low. If the purchased VNH breakout already contains that network, do not duplicate it; verify this with its schematic or a continuity test.
+For each VNH5019A-E, tie its two open-drain `DIAG/EN` pins into the one diagnostic node for that actuator, use the listed 4.7 kOhm pull-up and route that node to PB5 or PB12. This enables both bridge legs and lets either diagnostic pull the STM32 input low.
 
 ## MASTER-carrier CAN parts only
 
@@ -101,15 +121,13 @@ The ESP32 is in the double-door cabinet and is connected internally to the same 
 | ESP32 CAN TX series resistor | 47 Ohm, 0.125 W | 1 |
 | CC1101 supply bypass at its connector | 100 nF, 16 V, X7R + 10 uF, 10 V, X5R | 1 + 1 |
 
-### VNH2SP30 CS warning
+### VNH5019A-E CS interface
 
-Never connect an unknown module's `CS` pin directly to PA0 or PA1. First measure it with the actuator at maximum expected current.
+For each VNH5019A-E use this fixed connection: `CS -> 1.00 kOhm -> GND`; the CS node also goes through `68 kOhm` to the divider node, with `100 kOhm` from that node to GND. Then place `1 kOhm` in series to STM32 `PA0` or `PA1` and `100 nF` from the STM32 pin to GND. Keep the CS traces away from PWM and motor tracks.
 
-- If the module already provides a 0 to 3.3 V analog output, install only the 1 kOhm and 100 nF filter.
-- If it can reach 5 V, use the listed `10 kOhm / 20 kOhm` divider followed by the filter.
-- If it is the raw VNH current-source output, its load resistor must be selected from that module's exact schematic and the VNH datasheet. Do not fit a guessed resistor.
+The divider ratio is 0.595. With the typical VNH5019 current ratio of about 7030 and the 1.00 kOhm CS load, the STM32 ADC sees approximately **84.6 mV/A**: about 0.42 V at the 5 A design current and about 2.54 V at 30 A. Thus the 3.3 V ADC stays protected even if the bridge is driven far above the normal 5 A operating current. `CS_DIS` is held low through its listed 10 kOhm resistor so current sense remains enabled.
 
-After this measurement, calibrate `CURRENT_MA_PER_ADC_COUNT_NUM` in the STM32 firmware and set the per-actuator over-current limit in the cabinet configuration.
+The VNH5019 current-sense ratio has production and temperature tolerance, therefore this circuit is for repeatable measurement, not an absolute current meter. After the first carrier is assembled, measure one known load current, calibrate `CURRENT_MA_PER_ADC_COUNT_NUM` in the STM32 firmware, then set the per-actuator over-current limit to **5 A** in the cabinet configuration.
 
 ## Master-only sensor and UART parts
 
@@ -143,9 +161,9 @@ The system total is **six CAN transceivers**: five on MASTER carriers and one at
 | Item | Quantity | Specification |
 | --- | ---: | --- |
 | Main cabinet fuse holder | 5 | DIN-rail or automotive blade type. |
-| Main cabinet fuse | 5 | Select from actual simultaneous actuator current; see rule below. |
-| Per-actuator fuse holder | 22 | One per VNH2SP30 motor supply. |
-| Per-actuator fuse | 22 | Select from the exact actuator data and wire cross-section; see rule below. |
+| Main cabinet fuse | 1 x 50 A, 3 x 25 A, 1 x 15 A | Slow-blow or automotive blade. |
+| Per-actuator fuse holder | 22 | One per VNH5019A-E motor supply. |
+| Per-actuator fuse | 22 x 7.5 A | Slow-blow or automotive blade. |
 | Reverse-polarity MOSFET | 5 | P-channel, >=40 V, low Rds(on), current rating above cabinet peak; IRF4905 class or a proper ideal-diode controller solution. |
 | Gate resistor / gate pull-up | 100 Ohm + 100 kOhm, 0.125 W | 5 + 5 |
 | Gate-source zener | 12 V, 0.5 W | 5 |
@@ -155,14 +173,13 @@ The system total is **six CAN transceivers**: five on MASTER carriers and one at
 | DC/DC output bulk capacitor | 220 uF, 10 V, low-ESR | 5 |
 | DC/DC output ceramic | 10 uF, 10 V, X5R + 100 nF, 16 V, X7R | 5 + 5 |
 
-Fuse values cannot be selected safely without the actuator datasheet or a measured stall-current test.
+The `5 A` current limit and `7.5 A` fuse are based on the measured 2.5 A maximum with a
+two-times reserve. Before commissioning, record the short start current at 12 V. If it is
+above 7.5 A for long enough to blow the fuse, increase the fuse only after confirming that
+the cable, connectors, VNH thermal design and programmed current limit remain protected.
 
-1. Measure each actuator's maximum normal running current and short startup peak at 12 V.
-2. Choose each channel fuse around `1.25 x maximum normal current`, while staying below the safe current of the VNH module, the cable and its connectors.
-3. Choose each cabinet main fuse for `1.25 x` the sum of channels that may move simultaneously.
-4. Size the 12 V supply at least `1.3 x` that same simultaneous load. Do not size it from the average current only.
-
-The current 8 A firmware default is only a commissioning placeholder, not a fuse rating.
+The current 8 A firmware default is a commissioning placeholder. It must be changed to
+5 A only after VNH5019 CS calibration is verified on the finished carrier.
 
 ## Enclosures, wiring and installation hardware
 
@@ -188,7 +205,7 @@ Buy these in addition to the calculated total:
 | Item | Spare quantity |
 | --- | ---: |
 | STM32F103C8T6 board | 1 |
-| VNH2SP30 module | 2 |
+| VNH5019A-E IC | 4 |
 | CAN transceiver | 2 |
 | 25LC256 EEPROM | 2 |
 | CAP1188 module | 1 |

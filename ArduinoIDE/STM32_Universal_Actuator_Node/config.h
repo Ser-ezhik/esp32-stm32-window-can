@@ -68,7 +68,7 @@ constexpr uint16_t DEFAULT_PWM_PERMILLE = 1000;
 constexpr uint16_t MIN_CALIBRATION_PWM_PERMILLE = 600;
 constexpr uint16_t LOW_SUPPLY_MV = 9500;
 
-// Calibrate this value for the VNH2SP30 module's CS scaling and ADC divider.
+// Calibrate this value for the custom VNH5019A-E CS circuit and ADC divider.
 constexpr uint32_t CURRENT_MA_PER_ADC_COUNT_NUM = 20;
 constexpr uint32_t CURRENT_MA_PER_ADC_COUNT_DEN = 1;
 
