@@ -2,10 +2,10 @@
 
 ## Status
 
-This is the electrical and layout design input for the first custom PCB. It is
-**not yet released for fabrication**. The board accepts one removable
+This is the electrical and layout design input for **one** universal custom PCB.
+It is **not yet released for fabrication**. One board accepts one removable
 STM32F103C8T6 mini module and controls two 12 V linear actuators through two
-bare VNH5019A-E H-bridges.
+bare VNH5019A-E H-bridges. The board is repeated: one per two actuators.
 
 The same PCB is used for every slot. MASTER-only functions use unpopulated
 headers or DNP parts on SLAVE boards. Board role is selected by two straps on
@@ -14,6 +14,9 @@ the carrier; firmware never depends on which physical STM32 board is inserted.
 The current visual placement study is
 [PRELIMINARY_PLACEMENT.svg](PRELIMINARY_PLACEMENT.svg). It is a component
 placement guide, not a routed PCB or fabrication file.
+
+For the physical arrangement of four of these boards in the double-door cabinet,
+see [DOUBLE_DOOR_CABINET.svg](DOUBLE_DOOR_CABINET.svg).
 
 ## Board boundary
 

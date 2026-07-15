@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#f4f7f5"/>
+  <text x="60" y="58" font-family="Arial, sans-serif" font-size="29" font-weight="700" fill="#17251d">Double-door cabinet: 8 actuators</text>
+  <text x="60" y="86" font-family="Arial, sans-serif" font-size="16" fill="#496356">Four identical ACT-CARRIER-2CH boards in one cabinet.</text>
+  <rect x="60" y="120" width="1080" height="530" rx="4" fill="#e8eee9" stroke="#496356" stroke-width="3"/>
+
+  <rect x="105" y="180" width="225" height="285" fill="#1f6b4f" stroke="#143f30" stroke-width="3"/>
+  <text x="163" y="216" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#ffffff">MASTER</text>
+  <text x="126" y="244" font-family="Arial, sans-serif" font-size="15" fill="#d9f0e4">STM32 + 2 x VNH5019</text>
+  <text x="126" y="269" font-family="Arial, sans-serif" font-size="15" fill="#d9f0e4">Actuators 1, 2</text>
+  <rect x="135" y="302" width="164" height="42" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="164" y="329" font-family="Arial, sans-serif" font-size="17" fill="#17251d">CAN module</text>
+  <rect x="135" y="360" width="164" height="42" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="160" y="387" font-family="Arial, sans-serif" font-size="17" fill="#17251d">CAP / reeds</text>
+  <text x="125" y="439" font-family="Arial, sans-serif" font-size="14" fill="#d9f0e4">EEPROM + power-good</text>
+
+  <rect x="500" y="145" width="235" height="125" fill="#386c54" stroke="#143f30" stroke-width="3"/>
+  <text x="570" y="181" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff">SLAVE 1</text>
+  <text x="524" y="211" font-family="Arial, sans-serif" font-size="16" fill="#d9f0e4">STM32 + 2 x VNH5019</text>
+  <text x="548" y="240" font-family="Arial, sans-serif" font-size="16" fill="#d9f0e4">Actuators 3, 4</text>
+
+  <rect x="500" y="323" width="235" height="125" fill="#386c54" stroke="#143f30" stroke-width="3"/>
+  <text x="570" y="359" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff">SLAVE 2</text>
+  <text x="524" y="389" font-family="Arial, sans-serif" font-size="16" fill="#d9f0e4">STM32 + 2 x VNH5019</text>
+  <text x="548" y="418" font-family="Arial, sans-serif" font-size="16" fill="#d9f0e4">Actuators 5, 6</text>
+
+  <rect x="500" y="501" width="235" height="125" fill="#386c54" stroke="#143f30" stroke-width="3"/>
+  <text x="570" y="537" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff">SLAVE 3</text>
+  <text x="524" y="567" font-family="Arial, sans-serif" font-size="16" fill="#d9f0e4">STM32 + 2 x VNH5019</text>
+  <text x="548" y="596" font-family="Arial, sans-serif" font-size="16" fill="#d9f0e4">Actuators 7, 8</text>
+
+  <path d="M330 226 H425 V206 H500" fill="none" stroke="#263d33" stroke-width="5"/>
+  <path d="M330 318 H452 V385 H500" fill="none" stroke="#263d33" stroke-width="5"/>
+  <path d="M330 410 H425 V563 H500" fill="none" stroke="#263d33" stroke-width="5"/>
+  <text x="365" y="192" font-family="Arial, sans-serif" font-size="15" fill="#263d33">UART 1</text>
+  <text x="365" y="305" font-family="Arial, sans-serif" font-size="15" fill="#263d33">UART 2</text>
+  <text x="365" y="548" font-family="Arial, sans-serif" font-size="15" fill="#263d33">UART 3</text>
+
+  <path d="M105 145 H85 V105 H790" fill="none" stroke="#1d6c9c" stroke-width="6"/>
+  <rect x="800" y="77" width="250" height="55" fill="#d9eaf3" stroke="#1d6c9c" stroke-width="2"/>
+  <text x="829" y="111" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#17394d">CAN to ESP32 / other cabinets</text>
+
+  <rect x="805" y="320" width="250" height="178" fill="#ffffff" stroke="#496356" stroke-width="2"/>
+  <text x="830" y="354" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#17251d">Shared cabinet hardware</text>
+  <text x="830" y="385" font-family="Arial, sans-serif" font-size="16" fill="#33443a">12 V motor supply and fuses</text>
+  <text x="830" y="413" font-family="Arial, sans-serif" font-size="16" fill="#33443a">MP1584 5 V logic supply</text>
+  <text x="830" y="441" font-family="Arial, sans-serif" font-size="16" fill="#33443a">ESP32 + CC1101</text>
+  <text x="830" y="469" font-family="Arial, sans-serif" font-size="16" fill="#33443a">CAN input protection</text>
+</svg>
