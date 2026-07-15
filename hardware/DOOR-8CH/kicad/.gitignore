@@ -1,2 +1,4 @@
 # KiCad per-user view state. The board source itself is versioned.
 *.kicad_prl
+*.rpt
+.history/
