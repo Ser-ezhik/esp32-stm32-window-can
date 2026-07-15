@@ -130,9 +130,11 @@ slave count. Until that record has a valid CRC, all bridge outputs remain disabl
 ## STM32F103C8T6 pin assignment
 
 The selected MCU module is the compact USB-C `STM32F103C8T6 mini` board shown
-in the project photo. Every carrier accepts the same module; MASTER or SLAVE
-identity comes only from the carrier straps and its configuration EEPROM, not
-from a different STM32 firmware.
+in the project photo. It must be ordered in its **CH340 UART mode** (CH340 and
+the board's R4/R5 UART links fitted), not native USB mode: PA11/PA12 are then
+free for CAN. Every carrier accepts the same module; MASTER or SLAVE identity
+comes only from the carrier straps and its configuration EEPROM, not from a
+different STM32 firmware.
 
 | Function | Pins |
 | --- | --- |
@@ -161,7 +163,8 @@ implemented.
 
 JTAG must be disabled while SWD remains enabled to release PB3 and PB4. Native
 USB is not used because PA11/PA12 are assigned to CAN. The board CH340 connection
-on PA9/PA10 is not used as the control UART.
+on PA9/PA10 is not used as the control UART; its high-impedance RX input does
+not prevent PA9 from supplying the second PWM signal.
 
 PC14 and PC15 can only be used for `SLOT_ID` if the mini-board does not populate
 the 32.768 kHz LSE crystal on those pins. Verify the actual board before making

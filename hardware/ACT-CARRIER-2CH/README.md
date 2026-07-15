@@ -102,9 +102,10 @@ measurement on the first assembled board before the 5 A software limit is used.
 | 12 V power-good input | PC13 |
 
 PB3 and PB4 require JTAG disabled while retaining SWD, as the firmware already
-does. The final socket footprint must be checked against the actual mini-board:
-the USB-UART wiring on some variants can load PA9/PA10 and PC14/PC15 can be
-occupied by an LSE crystal.
+does. The selected mini-board is documented in
+[STM32_MINI_BOARD_VARIANT.md](STM32_MINI_BOARD_VARIANT.md). It must use its
+CH340 UART configuration, not its native USB configuration: PA11/PA12 are
+reserved for CAN. PC14/PC15 can be occupied by an LSE crystal on some variants.
 
 ## Connectors and optional population
 
@@ -146,8 +147,8 @@ occupied by an LSE crystal.
 
 Before generating Gerbers, complete all four checks:
 
-1. Measure the exact STM32 mini board pin-to-pin spacing, board outline and the
-   continuity of PA9/PA10, PC14 and PC15 to its USB/LSE circuitry.
+1. Verify one physical STM32 mini board against the documented 2x15 footprint,
+   including continuity of PA9/PA10, PC14 and PC15 to its USB/LSE circuitry.
 2. Obtain one genuine VNH5019A-E sample and confirm its MultiPowerSO-30 land
    pattern against the ST recommended footprint.
 3. Confirm the exact actuator-output terminal block: pitch, pin diameter,
