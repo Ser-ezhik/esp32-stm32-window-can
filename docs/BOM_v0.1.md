@@ -48,7 +48,7 @@ mechanism.
 | 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 5 | One on each MASTER carrier. SLAVE boards receive the configuration from their MASTER over UART. |
 | MCP2562-E/SN CAN transceiver | 5 | One on the MASTER carrier in each physical cabinet. SLAVE STM32 boards use only local UART and do not need a CAN transceiver. |
 | MCP2562-E/SN CAN transceiver | 1 | ESP32 CAN interface. |
-| 12 V to 5 V DC/DC converter, regulated, 3 A minimum | 5 | One in each cabinet. Use the same model everywhere. The double-door cabinet also powers the ESP32. |
+| 12 V to 5 V DC/DC converter, regulated, 3 A minimum | 5 | One in each cabinet. Input range must include **9 to 36 V or wider**; use the same model everywhere. The double-door cabinet also powers the ESP32. |
 | 12 V actuator power supply | 5 or 1 central supply | Size from actual actuator current as described below. Separate cabinet supplies are preferred for easier fault isolation. |
 | SWD programmer, ST-Link V2 or V3 | 1 | For STM32 commissioning and recovery. |
 
@@ -157,6 +157,24 @@ For every reed location fit **one**, not both, 4.7 kOhm pull directions. D-M9N a
 The system total is **six CAN transceivers**: five on MASTER carriers and one at the ESP32. The MCP2562 has a 5 V supply and a separate 1.8 to 5 V `VIO` digital I/O supply, so it connects directly to 3.3 V STM32/ESP32 logic. It also disconnects unpowered nodes from the bus, which is useful during cabinet service. [MCP2562 product data](https://www.microchip.com/en-us/product/MCP2562)
 
 ## 12 V cabinet power entry and protection
+
+### Low-voltage DC/DC selection
+
+Do **not** use the pictured `CA-1235` / MP1495 mini-module in a permanent cabinet.
+Its stated 5 to 15 V input range leaves no practical margin for motor-supply
+transients on a nominal 12 V line. It is acceptable only on a clean bench supply
+for a short test.
+
+For each cabinet, select a fixed 5 V buck module with all of the following:
+
+- input operating range of 9 to 36 V or wider;
+- regulated 5.0 V output, 3 A continuous rating or higher;
+- short-circuit and thermal protection;
+- screw terminals or locking connectors, rather than loose Dupont wiring.
+
+Install it after the cabinet's reverse-polarity circuit and main fuse. The listed
+input TVS and capacitors remain mandatory: a wide-range converter does not remove
+the need to suppress motor transients at the 12 V entry.
 
 | Item | Quantity | Specification |
 | --- | ---: | --- |
