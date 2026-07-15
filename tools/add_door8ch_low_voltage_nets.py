@@ -93,16 +93,18 @@ add("C237", "100NF_16V_3V3_IN", "Capacitor_SMD.pretty", "C_0603_1608Metric", 178
 add("C238", "10UF_10V_3V3_OUT", "Capacitor_SMD.pretty", "C_1206_3216Metric", 198, 91, 0)
 add("C239", "100NF_16V_3V3_OUT", "Capacitor_SMD.pretty", "C_0603_1608Metric", 198, 86, 0)
 
-# CAN trunk entry: CANH, CANL, GND, shield/drain. Termination R240 is DNP by
-# default and is populated only on the two physical ends of the CAN line.
+# CAN trunk entry: CANH, CANL, GND, shield/drain. This compact group is placed
+# on the lower board edge between CAN2 and MOD3: cable -> TVS -> CMC -> CAN2.
+# Termination R240 is DNP by default and is populated only on the two physical
+# ends of the CAN line.
 add(
     "J240", "CANH_CANL_GND_SHIELD", "TerminalBlock_Phoenix.pretty",
-    "TerminalBlock_Phoenix_PT-1,5-4-3.5-H_1x04_P3.50mm_Horizontal", 142, 142, 90,
+    "TerminalBlock_Phoenix_PT-1,5-4-3.5-H_1x04_P3.50mm_Horizontal", 158, 152, 0,
 )
-add("L240", "CMC_CAN", "Inductor_SMD.pretty", "L_CommonModeChoke_Coilcraft_1812CAN", 142, 124, 90)
-add("D240", "PESD1CAN_CANH", "Diode_SMD.pretty", "D_SOD-323", 136, 124, 0)
-add("D241", "PESD1CAN_CANL", "Diode_SMD.pretty", "D_SOD-323", 148, 124, 0)
-add("R240", "120R_CAN_TERM_DNP", "Resistor_SMD.pretty", "R_1206_3216Metric", 142, 116, 90)
+add("L240", "CMC_CAN", "Inductor_SMD.pretty", "L_CommonModeChoke_Coilcraft_1812CAN", 158, 143, 0)
+add("D240", "PESD1CAN_CANH", "Diode_SMD.pretty", "D_SOD-323", 147, 140, 90)
+add("D241", "PESD1CAN_CANL", "Diode_SMD.pretty", "D_SOD-323", 169, 140, 90)
+add("R240", "120R_CAN_TERM_DNP", "Resistor_SMD.pretty", "R_1206_3216Metric", 158, 135, 0)
 for reference in ("L240", "D240", "D241", "R240"):
     fp(reference).Reference().SetVisible(False)
 
@@ -164,9 +166,11 @@ connect("L240", (1,), "CANH_ENTRY")
 connect("L240", (2,), "CANL_ENTRY")
 connect("L240", (4,), "CANH_BUS")
 connect("L240", (3,), "CANL_BUS")
-connect("D240", (1,), "CANH_BUS")
+# TVS parts are deliberately on the connector side of the common-mode choke,
+# with the shortest practical return path to the local GND plane.
+connect("D240", (1,), "CANH_ENTRY")
 connect("D240", (2,), GND)
-connect("D241", (1,), "CANL_BUS")
+connect("D241", (1,), "CANL_ENTRY")
 connect("D241", (2,), GND)
 connect("R240", (1,), "CANH_BUS")
 connect("R240", (2,), "CANL_BUS")
