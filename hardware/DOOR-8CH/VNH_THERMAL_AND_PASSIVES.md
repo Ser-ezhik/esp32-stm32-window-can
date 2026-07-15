@@ -28,12 +28,22 @@ Every VNH position receives:
 - three large copper areas under the three exposed MultiPowerSO-30 slugs;
 - dense thermal-via arrays from each slug area to the internal copper layers;
 - a 30 x 30 mm component keepout around the package top;
-- two non-plated M3 mounting holes outside the copper keepout, one pair per VNH;
+- two **M3.2 NPTH** mounting holes outside the copper keepout, 26 mm
+  centre-to-centre, one pair per VNH;
+- a 6 mm diameter copper, solder-mask and component keepout around each hole;
 - silkscreen polarity/insulation warning beside each heatsink area.
 
-The holes accept a small 20 x 20 x 10 mm finned aluminium heatsink or a custom
-bracket. Fit a heatsink after thermal testing, or fit it from the first build
-when the cabinet has poor airflow.
+The holes are for a **top-side** small 20 x 20 x 10 mm finned aluminium
+heatsink with a clamp or bracket. This is the preferred small-radiator position:
+it has free airflow and avoids using the PCB as a structural thermal interface.
+Fit a heatsink after thermal testing, or from the first build when the cabinet
+has poor airflow.
+
+The primary thermal path remains the specified large copper areas and thermal
+via arrays. A bottom-side heatsink is an optional second path only when the
+whole board can be pressed to a metal cabinet backplate through an insulating
+thermal sheet. Do not use a bottom heatsink as a replacement for the copper and
+via design.
 
 ## Electrical isolation rule
 
@@ -42,10 +52,10 @@ to `VCC`, `OUTA` and `OUTB`. A metal heatsink must therefore never touch the
 package directly or bridge any slug copper areas.
 
 Use one electrically insulating, thermally conductive pad (silicone/Sil-Pad or
-Kapton thermal pad, 0.2 to 0.5 mm) between the VNH package and the heatsink.
-Use nylon screws and spacers, or a mechanically isolated bracket. Check with a
-multimeter that the heatsink has no continuity to VCC, OUTA, OUTB or GND before
-powering the board.
+Kapton thermal pad, 0.2 to 0.5 mm) between the VNH package and the top
+heatsink. Use nylon M3 screws and spacers, or a mechanically isolated bracket.
+Check with a multimeter that the heatsink has no continuity to VCC, OUTA, OUTB
+or GND before powering the board.
 
 The source for the exposed-pad electrical functions and thermal layout is the
 [ST VNH5019A-E data sheet](https://www.st.com/resource/en/datasheet/vnh5019a-e.pdf).
