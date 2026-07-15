@@ -36,6 +36,27 @@ its `5V` pin and connect a common GND. Never feed the 12 V actuator supply into
 the ESP32 board. The onboard RGB LED on GPIO47/48 is not used by the controller
 firmware and remains free.
 
+### CC1101 433 MHz module
+
+The selected 28 x 15 mm `433M V2.0` CC1101 module has an eight-pin, two-column
+header. Connect it exactly as follows; its VCC and all I/O are **3.3 V only**.
+
+| CC1101 pin | Label | ESP32-S3 connection |
+| ---: | --- | --- |
+| 1 | VCC | 3.3V |
+| 2 | GND | GND |
+| 3 | GDO0 | GPIO4 |
+| 4 | CSN | GPIO10 |
+| 5 | SCK | GPIO12 |
+| 6 | MOSI | GPIO11 |
+| 7 | MISO / GDO1 | GPIO13; GDO1 is unused |
+| 8 | GDO2 | GPIO5 |
+
+Fit the 100 nF and 10 uF bypass capacitors listed in the BOM directly beside
+this connector. Mount the supplied 433 MHz spring antenna vertically, keep it
+away from the CAN cable and motor wiring, and do not place it against a metal
+wall of the cabinet.
+
 ## Replaceable module identity
 
 Every STM32 module carries the same firmware and interface circuit. Two carrier
