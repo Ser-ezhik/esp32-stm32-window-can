@@ -102,6 +102,11 @@ slave count. Until that record has a valid CRC, all bridge outputs remain disabl
 
 ## STM32F103C8T6 pin assignment
 
+The selected MCU module is the compact USB-C `STM32F103C8T6 mini` board shown
+in the project photo. Every carrier accepts the same module; MASTER or SLAVE
+identity comes only from the carrier straps and its configuration EEPROM, not
+from a different STM32 firmware.
+
 | Function | Pins |
 | --- | --- |
 | VNH current sense | PA0, PA1 |
@@ -119,6 +124,13 @@ slave count. Until that record has a valid CRC, all bridge outputs remain disabl
 | Master UART 3 | PB11 RX, PB10 TX |
 | 12 V power-good input | PC13 |
 | SLOT_ID | PC14, PC15 |
+
+Feed the module with regulated 5 V through its `5V` pin and GND from the
+cabinet low-voltage supply. Its `3V3` pin is the logic rail for its local
+signals; never apply 5 V to any STM32 GPIO. The USB-C connection is for service
+flashing and diagnostics. Do not connect USB power and an external 5 V cabinet
+supply at the same time until the carrier's service-power isolation diode is
+implemented.
 
 JTAG must be disabled while SWD remains enabled to release PB3 and PB4. Native
 USB is not used because PA11/PA12 are assigned to CAN. The board CH340 connection
