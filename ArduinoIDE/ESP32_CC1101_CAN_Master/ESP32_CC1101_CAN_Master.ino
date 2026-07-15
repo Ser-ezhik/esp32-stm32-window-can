@@ -655,7 +655,7 @@ void handleProvision() {
   frame.cabinetId = constrain(server.arg("cabinetId").toInt(), 0, 63);
   frame.objectType = constrain(server.arg("type").toInt(), 0, 2);
   frame.slaveCount = constrain(server.arg("slaveCount").toInt(), 0, 3);
-  frame.flags = constrain(server.arg("reedPolarityMask").toInt(), 0, 7);
+  frame.flags = constrain(server.arg("reedPolarityMask").toInt(), 0, 63);
   sendCan(CAN_PROVISION_REQUEST, &frame, sizeof(frame)); sendJson("{\"ok\":true}");
 }
 
