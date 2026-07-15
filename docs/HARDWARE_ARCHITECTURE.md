@@ -57,6 +57,33 @@ this connector. Mount the supplied 433 MHz spring antenna vertically, keep it
 away from the CAN cable and motor wiring, and do not place it against a metal
 wall of the cabinet.
 
+### CAN prototype module
+
+The pictured six-pin `3V3 / GND / CTX / CRX / CANH / CANL` module is the common
+`SN65HVD230` 3.3 V CAN-transceiver board. It is electrically compatible with
+the 500 kbit/s project CAN bus and may be used for the first prototype instead
+of the carrier's MCP2562 footprint. It is a transceiver, not a CAN controller;
+the ESP32-S3 and STM32F103 provide the CAN controller themselves.
+
+| Module pin | STM32 MASTER | ESP32 controller |
+| --- | --- | --- |
+| 3V3 | 3.3V | 3.3V |
+| GND | GND | GND |
+| CTX | PA12 (CAN TX) | GPIO39 (CAN TX) |
+| CRX | PA11 (CAN RX) | GPIO38 (CAN RX) |
+| CANH | CANH trunk | CANH trunk |
+| CANL | CANL trunk | CANL trunk |
+
+Before fitting all six modules, use an unpowered multimeter to measure each
+one between `CANH` and `CANL`. If it reads about 120 Ohm, it has a fitted
+termination resistor and may be installed only at a physical end of the CAN
+cable, or its resistor must be removed. Across the complete unpowered CAN
+trunk, with exactly two 120 Ohm terminators installed, the reading must be
+about **60 Ohm**. Intermediate cabinets have no termination.
+
+This small module has no connector-level surge protection. Keep the BOM's CAN
+TVS, common-mode choke and CAN_GND reference conductor at every cabinet entry.
+
 ### CAP1188 touch module
 
 The selected `CAP1188 8-Key CapTouch SPI/I2C w/LEDs` breakout is suitable. Use
