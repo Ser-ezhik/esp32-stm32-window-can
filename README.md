@@ -82,6 +82,7 @@ or dedicated sensor is defined and bench-tested.
 - `docs/HARDWARE_ARCHITECTURE.md`
 - `docs/CAN_PROTOCOL.md`
 - `docs/SAFETY_AND_RECOVERY.md`
+- `docs/BOM_v0.1.md`
 
 This is safety-related motion-control software. Test with disconnected mechanics
 and current-limited power before connecting a door or window.
