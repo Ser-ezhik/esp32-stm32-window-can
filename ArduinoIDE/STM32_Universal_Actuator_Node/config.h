@@ -14,7 +14,7 @@ constexpr uint8_t SLAVE_COUNT = 3;
 constexpr PinName SLOT_ID0 = PC_14;
 constexpr PinName SLOT_ID1 = PC_15;
 
-// VNH2SP30 current sense inputs.
+// VNH5019A-E current sense inputs.
 constexpr PinName CURRENT_PINS[ACTUATOR_COUNT] = {PA_0, PA_1};
 
 // Two hardware PWM outputs from TIM1.

@@ -74,19 +74,20 @@ Quantities in this table are **per carrier**. Multiply by 11 for the total purch
 | PWM, INA and INB safe state | 10 kOhm, 1%, 0.125 W pull-down | 6 | 66 |
 | PWM, INA and INB series protection | 100 Ohm, 0.125 W | 6 | 66 |
 | VNH DIAG pull-up | 4.7 kOhm, 1%, 0.125 W to **3.3 V** | 2 | 22 |
-| VNH supply bulk capacitor | 470 uF, 25 V, low-ESR electrolytic, >=105 C | 2 | 22 |
+| VNH supply bulk capacitor | 470 uF, **35 V**, low-ESR electrolytic, >=105 C | 2 | 22 |
 | VNH local ceramic capacitor | 100 nF, 50 V, X7R | 2 | 22 |
 | VNH CS load resistor | 1.00 kOhm, 1%, 0.125 W from CS to GND | 2 | 22 |
 | VNH CS ADC divider | 68 kOhm upper + 100 kOhm lower, both 1%, 0.125 W | 2 + 2 | 22 + 22 |
 | VNH CS ADC filter | 1 kOhm series plus 100 nF, 16 V, X7R at PA0/PA1 | 2 + 2 | 22 + 22 |
 | VNH CS_DIS default | 10 kOhm, 1%, 0.125 W pull-down to GND | 2 | 22 |
+| Carrier 3.3 V LDO | AP2112K-3.3 or equivalent, >=300 mA, SOT-23-5 | 1 | 11 |
 | 12 V power-good comparator, MASTER only | TLV3012 or equivalent open-drain comparator with reference | 1 | 5 |
 | 12 V monitor divider, MASTER only | 100 kOhm upper + 15 kOhm lower, both 1%, 0.125 W | 1 + 1 | 5 + 5 |
 | Comparator input filter, MASTER only | 100 nF, 50 V, X7R | 1 | 5 |
 | Comparator hysteresis, MASTER only | 1 MOhm, 1%, 0.125 W | 1 | 5 |
 | PC13 pull-up, MASTER only | 10 kOhm, 1%, 0.125 W to 3.3 V | 1 | 5 |
-| Carrier 3.3 V bulk decoupling | 10 uF, 10 V, X5R/X7R | 2 | 22 |
-| Carrier 3.3 V local decoupling | 100 nF, 16 V, X7R | 4 | 44 |
+| Carrier 3.3 V bulk decoupling | 10 uF, 10 V, X5R/X7R; one at LDO input and one at its output | 2 | 22 |
+| Carrier 3.3 V local decoupling | 100 nF, 16 V, X7R; near LDO and digital loads | 4 | 44 |
 
 The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Fit this circuit only on MASTER carriers: every cabinet has one shared 12 V supply, and its MASTER stops the local SLAVEs over UART on a low-supply event. Confirm its exact trip and release voltage on the finished carrier before enabling actuator motion.
 
