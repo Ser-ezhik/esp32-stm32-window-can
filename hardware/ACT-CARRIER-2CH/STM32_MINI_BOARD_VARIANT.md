@@ -6,6 +6,11 @@ Use the compact `STM32F103C8T6 mini` module shown in the supplier diagram. It
 has two 1x15, 2.54 mm pin rows, a USB-C connector and a selectable USB/UART
 implementation.
 
+The supplied front-and-back photos match the selected revision: CH340 is fitted
+on the back, the main HSE crystal is fitted, and no separate 32.768 kHz LSE
+crystal is visible. This makes the photographed revision the reference module
+for the first carrier layout.
+
 ## Mandatory order / assembly option
 
 Order the board in **UART mode**:
@@ -43,5 +48,6 @@ or fit an LSE crystal without changing the listing photo.
 
 The board exposes PC14 and PC15 and shows optional LSE circuitry. Purchase the
 version with the LSE crystal **not fitted**, otherwise PC14/PC15 cannot provide
-the two carrier `SLOT_ID` straps. This is checked with a continuity meter on the
-first physical sample before the PCB layout is released.
+the two carrier `SLOT_ID` straps. The supplied photo appears to meet this rule.
+Before PCB release, confirm it with a continuity meter on one physical module;
+listing photos are not a substitute for that electrical check.
