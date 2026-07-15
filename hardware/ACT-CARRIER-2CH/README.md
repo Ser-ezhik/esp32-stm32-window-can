@@ -11,6 +11,10 @@ The same PCB is used for every slot. MASTER-only functions use unpopulated
 headers or DNP parts on SLAVE boards. Board role is selected by two straps on
 the carrier; firmware never depends on which physical STM32 board is inserted.
 
+The current visual placement study is
+[PRELIMINARY_PLACEMENT.svg](PRELIMINARY_PLACEMENT.svg). It is a component
+placement guide, not a routed PCB or fabrication file.
+
 ## Board boundary
 
 The PCB contains:

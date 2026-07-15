@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect width="1200" height="760" fill="#f4f7f5"/>
+  <text x="60" y="55" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#17251d">ACT-CARRIER-2CH v0.1</text>
+  <text x="60" y="84" font-family="Arial, sans-serif" font-size="16" fill="#a53333">PRELIMINARY COMPONENT PLACEMENT - NOT FOR FABRICATION</text>
+
+  <rect x="60" y="120" width="1080" height="540" rx="4" fill="#1f6b4f" stroke="#143f30" stroke-width="5"/>
+  <text x="80" y="642" font-family="Arial, sans-serif" font-size="15" fill="#d9f0e4">4-layer FR-4, 2 oz outer copper. Provisional outline: 160 x 100 mm maximum.</text>
+
+  <rect x="86" y="154" width="142" height="48" fill="#263d33" stroke="#d9f0e4" stroke-width="2"/>
+  <text x="105" y="184" font-family="Arial, sans-serif" font-size="18" fill="#ffffff">J1 POWER IN</text>
+  <text x="92" y="221" font-family="Arial, sans-serif" font-size="13" fill="#d9f0e4">CH1+ GND CH2+ GND</text>
+
+  <rect x="90" y="282" width="230" height="228" fill="#244d3b" stroke="#d9f0e4" stroke-width="2"/>
+  <text x="143" y="320" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">VNH5019 U1</text>
+  <rect x="112" y="340" width="88" height="88" fill="#737b74" stroke="#c4cdc6" stroke-width="2"/>
+  <text x="123" y="390" font-family="Arial, sans-serif" font-size="16" fill="#101510">THERMAL</text>
+  <text x="132" y="410" font-family="Arial, sans-serif" font-size="16" fill="#101510">PAD</text>
+  <circle cx="255" cy="385" r="38" fill="#bc8e31" stroke="#f5d686" stroke-width="3"/>
+  <text x="226" y="391" font-family="Arial, sans-serif" font-size="15" fill="#1b170d">470uF</text>
+  <text x="111" y="480" font-family="Arial, sans-serif" font-size="14" fill="#d9f0e4">wide motor copper + thermal vias</text>
+
+  <rect x="880" y="282" width="230" height="228" fill="#244d3b" stroke="#d9f0e4" stroke-width="2"/>
+  <text x="933" y="320" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">VNH5019 U2</text>
+  <rect x="902" y="340" width="88" height="88" fill="#737b74" stroke="#c4cdc6" stroke-width="2"/>
+  <text x="913" y="390" font-family="Arial, sans-serif" font-size="16" fill="#101510">THERMAL</text>
+  <text x="922" y="410" font-family="Arial, sans-serif" font-size="16" fill="#101510">PAD</text>
+  <circle cx="1045" cy="385" r="38" fill="#bc8e31" stroke="#f5d686" stroke-width="3"/>
+  <text x="1016" y="391" font-family="Arial, sans-serif" font-size="15" fill="#1b170d">470uF</text>
+  <text x="901" y="480" font-family="Arial, sans-serif" font-size="14" fill="#d9f0e4">wide motor copper + thermal vias</text>
+
+  <rect x="402" y="220" width="396" height="202" fill="#386c54" stroke="#d9f0e4" stroke-width="3"/>
+  <text x="491" y="253" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#ffffff">STM32F103C8T6 MINI SOCKET</text>
+  <rect x="456" y="274" width="288" height="96" fill="#202927" stroke="#d9f0e4" stroke-width="2"/>
+  <circle cx="484" cy="296" r="7" fill="#f2d978"/><circle cx="516" cy="296" r="7" fill="#f2d978"/><circle cx="548" cy="296" r="7" fill="#f2d978"/><circle cx="580" cy="296" r="7" fill="#f2d978"/><circle cx="612" cy="296" r="7" fill="#f2d978"/><circle cx="644" cy="296" r="7" fill="#f2d978"/><circle cx="676" cy="296" r="7" fill="#f2d978"/><circle cx="708" cy="296" r="7" fill="#f2d978"/>
+  <circle cx="484" cy="348" r="7" fill="#f2d978"/><circle cx="516" cy="348" r="7" fill="#f2d978"/><circle cx="548" cy="348" r="7" fill="#f2d978"/><circle cx="580" cy="348" r="7" fill="#f2d978"/><circle cx="612" cy="348" r="7" fill="#f2d978"/><circle cx="644" cy="348" r="7" fill="#f2d978"/><circle cx="676" cy="348" r="7" fill="#f2d978"/><circle cx="708" cy="348" r="7" fill="#f2d978"/>
+  <text x="526" y="328" font-family="Arial, sans-serif" font-size="17" fill="#ffffff">2 x 15, 2.54 mm</text>
+  <text x="516" y="400" font-family="Arial, sans-serif" font-size="14" fill="#d9f0e4">USB-C faces service edge</text>
+
+  <rect x="436" y="464" width="120" height="54" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="455" y="495" font-family="Arial, sans-serif" font-size="17" fill="#17251d">CS1 / CS2</text>
+  <text x="455" y="513" font-family="Arial, sans-serif" font-size="12" fill="#17251d">ADC filters</text>
+  <rect x="580" y="464" width="92" height="54" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="598" y="496" font-family="Arial, sans-serif" font-size="17" fill="#17251d">3V3 LDO</text>
+  <rect x="696" y="464" width="80" height="54" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="713" y="496" font-family="Arial, sans-serif" font-size="17" fill="#17251d">SWD</text>
+
+  <rect x="86" y="548" width="132" height="44" fill="#263d33" stroke="#d9f0e4" stroke-width="2"/>
+  <text x="112" y="576" font-family="Arial, sans-serif" font-size="17" fill="#ffffff">J2 ACTUATOR 1</text>
+  <rect x="982" y="548" width="132" height="44" fill="#263d33" stroke="#d9f0e4" stroke-width="2"/>
+  <text x="1008" y="576" font-family="Arial, sans-serif" font-size="17" fill="#ffffff">J3 ACTUATOR 2</text>
+
+  <rect x="308" y="548" width="100" height="44" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="330" y="576" font-family="Arial, sans-serif" font-size="17" fill="#17251d">UART / SLOT</text>
+  <rect x="792" y="548" width="160" height="44" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="814" y="576" font-family="Arial, sans-serif" font-size="17" fill="#17251d">MASTER: CAN / CAP / REEDS</text>
+
+  <text x="60" y="706" font-family="Arial, sans-serif" font-size="16" fill="#33443a">The final routed PCB will replace this placement drawing after ERC, footprint checks and thermal review.</text>
+</svg>
