@@ -1,13 +1,13 @@
-# ACT-CARRIER-2CH v0.1
+# ACT-CARRIER-2CH v0.1 - superseded
 
 ## Status
 
-This is the electrical and layout design input for **one** universal custom PCB.
-It is **not yet released for fabrication**. One board accepts one removable
+This is an archived electrical and layout study. It is **superseded by
+`hardware/DOOR-8CH` and must not be fabricated**. One board accepts one removable
 STM32F103C8T6 mini module and controls two 12 V linear actuators through two
 bare VNH5019A-E H-bridges. The board is repeated: one per two actuators.
 
-The same PCB is used for every slot. MASTER-only functions use unpopulated
+The same PCB was intended for every slot. MASTER-only functions use unpopulated
 headers or DNP parts on SLAVE boards. Board role is selected by two straps on
 the carrier; firmware never depends on which physical STM32 board is inserted.
 

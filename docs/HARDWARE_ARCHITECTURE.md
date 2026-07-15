@@ -7,14 +7,16 @@ Each physical object is one CAN node regardless of actuator count.
 ```text
 CAN_H / CAN_L / GND
         |
-        +-- universal STM32 in MASTER slot -- 2 x VNH5019A-E
-                   |-- UART 1 -- universal STM32 SLAVE1 -- 2 x VNH5019A-E
-                   |-- UART 2 -- universal STM32 SLAVE2 -- 2 x VNH5019A-E
-                   `-- UART 3 -- universal STM32 SLAVE3 -- 2 x VNH5019A-E
+        +-- one universal DOOR-8CH PCB in each cabinet
+              |-- slot 1: STM32 MASTER -- 2 x VNH5019A-E -- CAN
+              |-- slot 2: STM32 SLAVE1 -- 2 x VNH5019A-E -- internal UART 1
+              |-- slot 3: STM32 SLAVE2 -- 2 x VNH5019A-E -- internal UART 2
+              `-- slot 4: STM32 SLAVE3 -- 2 x VNH5019A-E -- internal UART 3
 ```
 
-A window uses master only. A four-actuator door uses master plus one slave. An
-eight-actuator double door uses master plus all three slaves.
+A window populates slot 1 only. A four-actuator door populates slots 1 and 2.
+An eight-actuator double door populates all four slots. The UART connections are
+short internal PCB tracks, so no inter-board UART cable exists.
 
 ## ESP32 controller board
 

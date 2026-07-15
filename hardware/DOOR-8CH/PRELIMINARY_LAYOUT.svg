@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="800" viewBox="0 0 1240 800">
+  <rect width="1240" height="800" fill="#f4f7f5"/>
+  <text x="55" y="53" font-family="Arial, sans-serif" font-size="29" font-weight="700" fill="#17251d">DOOR-8CH universal cabinet board</text>
+  <text x="55" y="81" font-family="Arial, sans-serif" font-size="16" fill="#a53333">PRELIMINARY ARCHITECTURE - NOT A ROUTED PCB OR FABRICATION FILE</text>
+  <rect x="55" y="112" width="1130" height="625" rx="4" fill="#1f6b4f" stroke="#143f30" stroke-width="5"/>
+  <text x="75" y="716" font-family="Arial, sans-serif" font-size="15" fill="#d9f0e4">Four layers, 2 oz outer copper. Populate S1 only for a window, S1-S2 for a single door, S1-S4 for a double door.</text>
+
+  <rect x="88" y="158" width="245" height="510" fill="#244d3b" stroke="#d9f0e4" stroke-width="2"/>
+  <text x="155" y="191" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#ffffff">MASTER ZONE S1</text>
+  <rect x="110" y="215" width="200" height="100" fill="#386c54" stroke="#d9f0e4" stroke-width="2"/>
+  <text x="145" y="250" font-family="Arial, sans-serif" font-size="20" fill="#ffffff">STM32 socket</text>
+  <text x="133" y="280" font-family="Arial, sans-serif" font-size="15" fill="#d9f0e4">2 x VNH5019 / CH1-CH2</text>
+  <rect x="110" y="344" width="200" height="48" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="145" y="374" font-family="Arial, sans-serif" font-size="18" fill="#17251d">CAN / EEPROM</text>
+  <rect x="110" y="414" width="200" height="48" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="130" y="444" font-family="Arial, sans-serif" font-size="18" fill="#17251d">CAP1188 / reeds</text>
+  <rect x="110" y="486" width="200" height="48" fill="#d5e4da" stroke="#143f30" stroke-width="2"/>
+  <text x="142" y="516" font-family="Arial, sans-serif" font-size="18" fill="#17251d">SWD / power-good</text>
+
+  <g font-family="Arial, sans-serif">
+    <rect x="408" y="158" width="300" height="130" fill="#386c54" stroke="#d9f0e4" stroke-width="2"/>
+    <text x="514" y="195" font-size="23" font-weight="700" fill="#ffffff">S2 SLAVE</text>
+    <text x="459" y="227" font-size="17" fill="#d9f0e4">STM32 + 2 x VNH5019</text><text x="487" y="256" font-size="16" fill="#d9f0e4">Actuators 3, 4</text>
+    <rect x="408" y="338" width="300" height="130" fill="#386c54" stroke="#d9f0e4" stroke-width="2"/>
+    <text x="514" y="375" font-size="23" font-weight="700" fill="#ffffff">S3 SLAVE</text>
+    <text x="459" y="407" font-size="17" fill="#d9f0e4">STM32 + 2 x VNH5019</text><text x="487" y="436" font-size="16" fill="#d9f0e4">Actuators 5, 6</text>
+    <rect x="408" y="518" width="300" height="130" fill="#386c54" stroke="#d9f0e4" stroke-width="2"/>
+    <text x="514" y="555" font-size="23" font-weight="700" fill="#ffffff">S4 SLAVE</text>
+    <text x="459" y="587" font-size="17" fill="#d9f0e4">STM32 + 2 x VNH5019</text><text x="487" y="616" font-size="16" fill="#d9f0e4">Actuators 7, 8</text>
+  </g>
+
+  <path d="M333 234 H408 M333 414 H408 M333 594 H408" stroke="#d9f0e4" stroke-width="6" fill="none"/>
+  <text x="342" y="218" font-family="Arial, sans-serif" font-size="14" fill="#ffffff">UART 1</text>
+  <text x="342" y="398" font-family="Arial, sans-serif" font-size="14" fill="#ffffff">UART 2</text>
+  <text x="342" y="578" font-family="Arial, sans-serif" font-size="14" fill="#ffffff">UART 3</text>
+
+  <rect x="792" y="158" width="336" height="490" fill="#ffffff" stroke="#143f30" stroke-width="2"/>
+  <text x="843" y="194" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#17251d">Board-edge connectors</text>
+  <text x="825" y="234" font-family="Arial, sans-serif" font-size="17" fill="#33443a">16 actuator terminals (8 pairs)</text>
+  <text x="825" y="266" font-family="Arial, sans-serif" font-size="17" fill="#33443a">16 fused 12 V/GND channel inputs</text>
+  <text x="825" y="298" font-family="Arial, sans-serif" font-size="17" fill="#33443a">One 5 V logic input from MP1584</text>
+  <text x="825" y="330" font-family="Arial, sans-serif" font-size="17" fill="#33443a">CANH / CANL / GND / shield</text>
+  <text x="825" y="362" font-family="Arial, sans-serif" font-size="17" fill="#33443a">CAP1188 and reed connectors</text>
+  <line x1="820" y1="390" x2="1100" y2="390" stroke="#b7c7bd" stroke-width="2"/>
+  <text x="825" y="426" font-family="Arial, sans-serif" font-size="17" fill="#33443a">No board-wide 40 A trace</text>
+  <text x="825" y="458" font-family="Arial, sans-serif" font-size="17" fill="#33443a">Each VNH gets its own fused pair</text>
+  <text x="825" y="490" font-family="Arial, sans-serif" font-size="17" fill="#33443a">All UART routes stay on the PCB</text>
+</svg>

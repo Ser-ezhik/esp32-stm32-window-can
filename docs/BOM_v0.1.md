@@ -11,7 +11,7 @@ This bill of materials covers these objects:
 | Window | 1 | 2 | 2 | 1 |
 | **Total** | **5** | - | **22** | **11** |
 
-One STM32 controls two VNH5019A-E channels. Only the MASTER STM32 of each cabinet is physically connected to CAN. Other STM32 boards use short, point-to-point 3.3 V UART links to the MASTER.
+One STM32 controls two VNH5019A-E channels. Each physical object uses one universal DOOR-8CH PCB with up to four STM32/VNH two-channel slots. Only slot 1 (MASTER) is connected to CAN; UART connections to the other slots are internal PCB tracks, not external cables.
 
 This is a low-voltage 12 V DC design. Do not connect mains voltage to any board, signal connector or ESP32 input.
 
@@ -40,8 +40,8 @@ mechanism.
 | ESP32-S3 N16R8 | 1 | Central controller, installed in the double-door cabinet. |
 | CC1101, 433 MHz, 3.3 V module | 1 | Radio receiver for existing remotes. Include an antenna matched for 433 MHz. |
 | STM32F103C8T6 mini board | 11 | Same firmware on every board. Buy 1 spare. |
-| Carrier PCB for one STM32 plus two actuator channels | 11 | The carrier, not the removable STM32 board, holds the slot straps. The MASTER version also populates CAN, EEPROM and sensor circuitry. |
-| VNH5019A-E IC | 22 | Two ICs on every custom carrier. Buy at least 4 spare ICs from a traceable supplier. |
+| Universal DOOR-8CH PCB | 5 | One board per physical object. It has four two-channel slots; populate 4/2/1 slots for double door/single door/window. |
+| VNH5019A-E IC | 22 | Two ICs in every populated two-channel slot. Buy at least 4 spare ICs from a traceable supplier. |
 | CAP1188, SPI-capable breakout | 4 | One per door: double door plus three single doors. |
 | CAP1188, optional | 1 | Add for the window only when it also needs an anti-pinch touch perimeter. |
 | D-M9N / D-M9P reed sensor | 15 recommended, 14 minimum | Three per door and two for window OPEN/CLOSED. Add the fifteenth sensor when the window also needs its third position. |
@@ -65,11 +65,11 @@ VNH5019A-E is an active ST product with 3 V CMOS-compatible inputs, current sens
 | Window | 1 | 0 | 2 | 0 | 2 minimum, 3 recommended | 0 |
 | **Total** | **5** | **6** | **22** | **4** | **14 minimum, 15 recommended** | **6** |
 
-## One universal two-actuator carrier: mandatory passive parts
+## One populated two-actuator slot: mandatory passive parts
 
-Quantities in this table are **per carrier**. Multiply by 11 for the total purchase quantity shown in the final column.
+Quantities in this table are **per populated two-actuator slot**. There are 11 populated slots across five DOOR-8CH boards.
 
-| Reference / purpose | Component and nominal | Per carrier | Total for 11 |
+| Reference / purpose | Component and nominal | Per populated slot | Total for 11 slots |
 | --- | --- | ---: | ---: |
 | PWM, INA and INB safe state | 10 kOhm, 1%, 0.125 W pull-down | 6 | 66 |
 | PWM, INA and INB series protection | 100 Ohm, 0.125 W | 6 | 66 |
@@ -80,22 +80,28 @@ Quantities in this table are **per carrier**. Multiply by 11 for the total purch
 | VNH CS ADC divider | 68 kOhm upper + 100 kOhm lower, both 1%, 0.125 W | 2 + 2 | 22 + 22 |
 | VNH CS ADC filter | 1 kOhm series plus 100 nF, 16 V, X7R at PA0/PA1 | 2 + 2 | 22 + 22 |
 | VNH CS_DIS default | 10 kOhm, 1%, 0.125 W pull-down to GND | 2 | 22 |
-| Carrier 3.3 V LDO | AP2112K-3.3 or equivalent, >=300 mA, SOT-23-5 | 1 | 11 |
-| 12 V power-good comparator, MASTER only | TLV3012 or equivalent open-drain comparator with reference | 1 | 5 |
-| 12 V monitor divider, MASTER only | 100 kOhm upper + 15 kOhm lower, both 1%, 0.125 W | 1 + 1 | 5 + 5 |
-| Comparator input filter, MASTER only | 100 nF, 50 V, X7R | 1 | 5 |
-| Comparator hysteresis, MASTER only | 1 MOhm, 1%, 0.125 W | 1 | 5 |
-| PC13 pull-up, MASTER only | 10 kOhm, 1%, 0.125 W to 3.3 V | 1 | 5 |
-| Carrier 3.3 V bulk decoupling | 10 uF, 10 V, X5R/X7R; one at LDO input and one at its output | 2 | 22 |
+| Slot 3.3 V bulk decoupling | 10 uF, 10 V, X5R/X7R | 1 | 11 |
 | Carrier 3.3 V local decoupling | 100 nF, 16 V, X7R; near LDO and digital loads | 4 | 44 |
 
-The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Fit this circuit only on MASTER carriers: every cabinet has one shared 12 V supply, and its MASTER stops the local SLAVEs over UART on a low-supply event. Confirm its exact trip and release voltage on the finished carrier before enabling actuator motion.
+## Shared DOOR-8CH board parts
+
+| Purpose | Component and nominal | Per board | Total for 5 boards |
+| --- | --- | ---: | ---: |
+| Board 3.3 V LDO | AP2112K-3.3 or equivalent, >=300 mA, SOT-23-5 | 1 | 5 |
+| 3.3 V LDO bulk decoupling | 10 uF, 10 V, X5R/X7R; one at input and one at output | 2 | 10 |
+| 12 V power-good comparator | TLV3012 or equivalent open-drain comparator with reference | 1 | 5 |
+| 12 V monitor divider | 100 kOhm upper + 15 kOhm lower, both 1%, 0.125 W | 1 + 1 | 5 + 5 |
+| Comparator input filter | 100 nF, 50 V, X7R | 1 | 5 |
+| Comparator hysteresis | 1 MOhm, 1%, 0.125 W | 1 | 5 |
+| PC13 pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 1 | 5 |
+
+The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Fit this circuit once per DOOR-8CH board: every cabinet has one shared 12 V supply, and its MASTER stops the internal SLAVE slots over UART on a low-supply event. Confirm its exact trip and release voltage on the finished board before enabling actuator motion.
 
 For each VNH5019A-E, tie its two open-drain `DIAG/EN` pins into the one diagnostic node for that actuator, use the listed 4.7 kOhm pull-up and route that node to PB5 or PB12. This enables both bridge legs and lets either diagnostic pull the STM32 input low.
 
-## MASTER-carrier CAN parts only
+## MASTER-slot CAN parts only
 
-These parts are fitted only to the five MASTER carriers. A failed MASTER STM32 is replaced by inserting the same spare STM32 board into its existing MASTER carrier, so the spare board itself does not need a CAN transceiver.
+These parts are fitted only beside slot S1 on the five DOOR-8CH boards. A failed MASTER STM32 is replaced by inserting the same spare STM32 board into slot S1, so the spare board itself does not need a CAN transceiver.
 
 | Purpose | Component and nominal | Per MASTER carrier | Total |
 | --- | --- | ---: | ---: |
@@ -233,10 +239,10 @@ The current 8 A firmware default is a commissioning placeholder. It must be chan
 | DIN rail | 5 sets | For fuses, DC/DC, terminals and power distribution. |
 | 12 V distribution terminal blocks | 5 sets | Separate motor positive distribution and star ground point. |
 | 2-pin actuator terminal blocks | 22 | **Phoenix Contact MKDS 1,5/ 2-5,08, 1715721**; 5.08 mm pitch, 17.5 A. Search-compatible substitute: KF2EDG 5.08-2P straight, >=10 A, >=1.0 mm2. |
-| 4-pin carrier motor-power terminal blocks | 11 | 5.08 mm pitch; MKDS 1,5/ 4-5,08 or KF2EDG 5.08-4P. Carries separately fused CH1 and CH2 inputs. |
+| 4-pin two-channel-slot motor-power terminal blocks | 11 | 5.08 mm pitch; MKDS 1,5/ 4-5,08 or KF2EDG 5.08-4P. Carries separately fused CH1 and CH2 inputs. |
 | 3-pin sensor terminals | 14 minimum, 15 recommended | 3.3 V, signal, GND. |
 | 8-pin CAP1188 terminals/headers | 4 | 3.3 V, GND, CS, SCK, MISO, MOSI, IRQ, RESET. |
-| 4-pin UART cable assemblies | 6 | TX, RX, 3.3 V reference, GND. Buy 12 matching headers, one at each end. Keep inside cabinet and under 30 cm. |
+| External UART cable assemblies | 0 | Master-to-slave UART links are internal DOOR-8CH PCB tracks. |
 | 4-pin CAN terminal blocks | 8 | CANH, CANL, CAN_GND, shield/drain; IN/OUT at the three intermediate cabinets. |
 | Cable glands | As measured | Separate motor, sensor and CAN entries. |
 | Motor cable | As measured | Cross-section selected from length and fuse rating. Do not use thin Dupont wire. |
