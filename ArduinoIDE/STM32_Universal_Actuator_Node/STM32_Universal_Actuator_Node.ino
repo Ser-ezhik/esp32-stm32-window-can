@@ -727,7 +727,9 @@ void initializeMaster() {
   canOnline = canBus.begin(hw::CAN_BITRATE);
   clearFault();
   if (!carrierConfigured) setFault(Fault::NotConfigured);
-  else if (!capOnline) setFault(Fault::Cap1188Offline);
+  else if (!capOnline && carrier.objectType != static_cast<uint8_t>(ObjectType::Window)) {
+    setFault(Fault::Cap1188Offline);
+  }
 }
 
 void initializeSlave() {

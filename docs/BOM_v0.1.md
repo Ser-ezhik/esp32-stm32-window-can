@@ -22,12 +22,12 @@ This is a low-voltage 12 V DC design. Do not connect mains voltage to any board,
 | ESP32-S3 N16R8 | 1 | Central controller, installed in the double-door cabinet. |
 | CC1101, 433 MHz, 3.3 V module | 1 | Radio receiver for existing remotes. Include an antenna matched for 433 MHz. |
 | STM32F103C8T6 mini board | 11 | Same firmware on every board. Buy 1 spare. |
-| Carrier PCB for one STM32 plus two actuator channels | 11 | The carrier, not the removable STM32 board, holds slot straps and configuration EEPROM. |
+| Carrier PCB for one STM32 plus two actuator channels | 11 | The carrier, not the removable STM32 board, holds the slot straps. The MASTER version also populates CAN, EEPROM and sensor circuitry. |
 | VNH2SP30 module | 22 | One module per actuator. Buy at least 2 identical spares. Provide airflow or metal mounting if the actual current requires it. |
 | CAP1188, SPI-capable breakout | 4 | One per door: double door plus three single doors. |
 | CAP1188, optional | 1 | Add for the window only when it also needs an anti-pinch touch perimeter. |
-| D-M9N / D-M9P reed sensor | 15 | Three per physical object, including the window: OPEN, CLOSED and door/leaf position. If the window does not need the third state, populate 2 instead. |
-| 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 11 | One on every carrier so a replacement STM32 remains interchangeable. |
+| D-M9N / D-M9P reed sensor | 15 recommended, 14 minimum | Three per door and two for window OPEN/CLOSED. Add the fifteenth sensor when the window also needs its third position. |
+| 25LC256-I/P or 25LC256-I/SN SPI EEPROM | 5 | One on each MASTER carrier. SLAVE boards receive the configuration from their MASTER over UART. |
 | MCP2562-E/SN CAN transceiver | 5 | One on the MASTER carrier in each physical cabinet. SLAVE STM32 boards use only local UART and do not need a CAN transceiver. |
 | MCP2562-E/SN CAN transceiver | 1 | ESP32 CAN interface. |
 | 12 V to 5 V DC/DC converter, regulated, 3 A minimum | 5 | One in each cabinet. Use the same model everywhere. The double-door cabinet also powers the ESP32. |
@@ -44,8 +44,8 @@ The original VNH2SP30 is obsolete. The modules must be electrically tested befor
 | Single door 1 | 1 | 1 | 4 | 1 | 3 | 1 |
 | Single door 2 | 1 | 1 | 4 | 1 | 3 | 1 |
 | Single door 3 | 1 | 1 | 4 | 1 | 3 | 1 |
-| Window | 1 | 0 | 2 | 0 | 3 | 0 |
-| **Total** | **5** | **6** | **22** | **4** | **15** | **6** |
+| Window | 1 | 0 | 2 | 0 | 2 minimum, 3 recommended | 0 |
+| **Total** | **5** | **6** | **22** | **4** | **14 minimum, 15 recommended** | **6** |
 
 ## One universal two-actuator carrier: mandatory passive parts
 
@@ -60,9 +60,6 @@ Quantities in this table are **per carrier**. Multiply by 11 for the total purch
 | VNH local ceramic capacitor | 100 nF, 50 V, X7R | 2 | 22 |
 | VNH CS ADC filter | 1 kOhm series plus 100 nF, 16 V, X7R at PA0/PA1 | 2 + 2 | 22 + 22 |
 | VNH CS divider, **only when CS can reach 5 V** | 10 kOhm upper + 20 kOhm lower, both 1% | 2 + 2 | 22 + 22 |
-| EEPROM VCC decoupling | 100 nF, 16 V, X7R | 1 | 11 |
-| EEPROM /WP and /HOLD | 10 kOhm, 1%, 0.125 W pull-up to 3.3 V | 2 | 22 |
-| EEPROM CS default inactive | 10 kOhm, 1%, 0.125 W pull-up to 3.3 V | 1 | 11 |
 | 12 V power-good comparator | TLV3012 or equivalent open-drain comparator with reference | 1 | 11 |
 | 12 V monitor divider | 100 kOhm upper + 15 kOhm lower, both 1%, 0.125 W | 1 + 1 | 11 + 11 |
 | Comparator input filter | 100 nF, 50 V, X7R | 1 | 11 |
@@ -72,6 +69,8 @@ Quantities in this table are **per carrier**. Multiply by 11 for the total purch
 | Carrier 3.3 V local decoupling | 100 nF, 16 V, X7R | 4 | 44 |
 
 The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Confirm its exact trip and release voltage on the finished carrier before enabling actuator motion.
+
+For a raw VNH2SP30, tie its two open-drain `DIAG/EN` pins into the one diagnostic node for that actuator, use the listed 4.7 kOhm pull-up and route that node to PB5 or PB12. This enables both bridge legs and lets either diagnostic pull the STM32 input low. If the purchased VNH breakout already contains that network, do not duplicate it; verify this with its schematic or a continuity test.
 
 ## MASTER-carrier CAN parts only
 
@@ -84,6 +83,23 @@ These parts are fitted only to the five MASTER carriers. A failed MASTER STM32 i
 | CAN transceiver 3.3 VIO decoupling | 100 nF, 16 V, X7R | 1 | 5 |
 | MCP2562 STBY normal-mode pull-down | 10 kOhm, 1%, 0.125 W | 1 | 5 |
 | CAN TX series resistor | 47 Ohm, 0.125 W | 1 | 5 |
+| EEPROM | 25LC256-I/P or 25LC256-I/SN | 1 | 5 |
+| EEPROM VCC decoupling | 100 nF, 16 V, X7R | 1 | 5 |
+| EEPROM /WP and /HOLD | 10 kOhm, 1%, 0.125 W pull-up to 3.3 V | 2 | 10 |
+| EEPROM CS default inactive | 10 kOhm, 1%, 0.125 W pull-up to 3.3 V | 1 | 5 |
+
+## ESP32 CAN and radio interface parts
+
+The ESP32 is in the double-door cabinet and is connected internally to the same CAN trunk as that cabinet's MASTER. It is a separate CAN node, therefore its transceiver needs its own local decoupling even though it does not need a second external cabinet connector.
+
+| Purpose | Component and nominal | Quantity |
+| --- | --- | ---: |
+| ESP32 CAN transceiver | MCP2562-E/SN | 1 |
+| MCP2562 5 V decoupling | 100 nF, 16 V, X7R + 1 uF, 16 V, X7R | 1 + 1 |
+| MCP2562 VIO decoupling | 100 nF, 16 V, X7R | 1 |
+| MCP2562 STBY normal-mode pull-down | 10 kOhm, 1%, 0.125 W | 1 |
+| ESP32 CAN TX series resistor | 47 Ohm, 0.125 W | 1 |
+| CC1101 supply bypass at its connector | 100 nF, 16 V, X7R + 10 uF, 10 V, X5R | 1 + 1 |
 
 ### VNH2SP30 CS warning
 
@@ -102,9 +118,9 @@ After this measurement, calibrate `CURRENT_MA_PER_ADC_COUNT_NUM` in the STM32 fi
 | CAP1188 INT pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 4 |
 | CAP1188 RESET pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 4 |
 | CAP1188 supply bypass near connector | 100 nF, 16 V, X7R + 4.7 uF, 10 V, X5R | 4 + 4 |
-| Reed input pull resistor | 4.7 kOhm, 1%, 0.125 W; fit to 3.3 V for D-M9N or GND for D-M9P | 15 |
-| Reed input series resistor | 1 kOhm, 0.125 W | 15 |
-| Reed input noise filter | 100 nF, 16 V, X7R at the STM32 connector | 15 |
+| Reed input pull resistor | 4.7 kOhm, 1%, 0.125 W; fit to 3.3 V for D-M9N or GND for D-M9P | 14 minimum, 15 recommended |
+| Reed input series resistor | 1 kOhm, 0.125 W | 14 minimum, 15 recommended |
+| Reed input noise filter | 100 nF, 16 V, X7R at the STM32 connector | 14 minimum, 15 recommended |
 | UART TX series resistor | 100 Ohm, 0.125 W, one at each end of each link | 12 |
 | SLOT_ID low strap | 10 kOhm, 1%, 0.125 W to GND | 7 |
 
@@ -114,8 +130,8 @@ For every reed location fit **one**, not both, 4.7 kOhm pull directions. D-M9N a
 
 | Item | Quantity | Specification |
 | --- | ---: | --- |
-| CAN connector, 4-pin | 6 | CANH, CANL, CAN_GND, shield/drain. One at ESP32 and one at each MASTER cabinet connection. |
-| CAN termination jumper footprint | 6 | Fit 120 Ohm, 0.25 W only at the two physical ends of the complete cable. Buy 6 resistors, populate 2. |
+| CAN connector, 4-pin | 8 | CANH, CANL, CAN_GND, shield/drain. In a five-cabinet daisy chain: one at each endpoint and two at each of three intermediate cabinets. ESP32 is wired internally in the double-door cabinet. |
+| CAN termination jumper footprint | 5 | One on every MASTER carrier. Fit 120 Ohm, 0.25 W only at the two physical ends of the complete cable. Buy 5 resistors, populate 2. |
 | CAN common-mode choke | 5 | One at each cabinet cable entry, for example a 51 Ohm common-mode impedance class part suitable for CAN. |
 | Dual CAN TVS protector | 5 | Automotive CAN-rated dual-line protector, for example SM24CANB class, at each cabinet cable entry. |
 | CAN cable | As measured | 120 Ohm twisted pair plus reference ground; use shielded cable in electrically noisy routes. |
@@ -156,10 +172,10 @@ The current 8 A firmware default is only a commissioning placeholder, not a fuse
 | DIN rail | 5 sets | For fuses, DC/DC, terminals and power distribution. |
 | 12 V distribution terminal blocks | 5 sets | Separate motor positive distribution and star ground point. |
 | 2-pin actuator terminal blocks | 22 | Rated above actuator maximum current. |
-| 3-pin sensor terminals | 15 | 3.3 V, signal, GND. |
-| 4-pin CAP1188 terminals | 4 | 3.3 V, GND, SPI/IRQ harness as required by the module. |
-| 4-pin UART headers/cables | 6 | TX, RX, 3.3 V reference, GND. Keep inside cabinet and under 30 cm. |
-| 2-pin CAN terminal blocks | 10 | IN/OUT at intermediate cabinets, plus CAN_GND/shield terminals. |
+| 3-pin sensor terminals | 14 minimum, 15 recommended | 3.3 V, signal, GND. |
+| 8-pin CAP1188 terminals/headers | 4 | 3.3 V, GND, CS, SCK, MISO, MOSI, IRQ, RESET. |
+| 4-pin UART cable assemblies | 6 | TX, RX, 3.3 V reference, GND. Buy 12 matching headers, one at each end. Keep inside cabinet and under 30 cm. |
+| 4-pin CAN terminal blocks | 8 | CANH, CANL, CAN_GND, shield/drain; IN/OUT at the three intermediate cabinets. |
 | Cable glands | As measured | Separate motor, sensor and CAN entries. |
 | Motor cable | As measured | Cross-section selected from length and fuse rating. Do not use thin Dupont wire. |
 | Ferrules, labels and heat-shrink | As needed | Label every actuator, sensor and CAN address. |
