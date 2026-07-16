@@ -1,4 +1,4 @@
-"""Route the channel 3-7 VNH current-sense disable straps locally."""
+"""Route the channel 3-8 VNH current-sense disable straps locally."""
 
 from pathlib import Path
 
@@ -80,6 +80,26 @@ add_track(net_name, pcbnew.In1_Cu, (136.00, 60.00), exit_point)
 add_via(net_name, exit_point)
 add_track(net_name, pcbnew.F_Cu, exit_point, (144.00, 66.00))
 add_track(net_name, pcbnew.F_Cu, (144.00, 66.00), target)
+
+# Channel 8 changes to B.Cu above the resistor row so its top-layer approach
+# passes underneath the existing CH8_INB escape without crossing it.
+net_name = "CH8_CS_DIS"
+source = pad_position("U8", 6)
+target = pad_position("R1808", 1)
+entry = (224.00, 33.00)
+upper_exit = (234.00, 58.00)
+lower_exit = (234.00, 66.00)
+add_track(net_name, pcbnew.F_Cu, source, entry)
+add_via(net_name, entry)
+add_track(net_name, pcbnew.In1_Cu, entry, (222.00, 33.00))
+add_track(net_name, pcbnew.In1_Cu, (222.00, 33.00), (222.00, 49.00))
+add_track(net_name, pcbnew.In1_Cu, (222.00, 49.00), (230.00, 49.00))
+add_track(net_name, pcbnew.In1_Cu, (230.00, 49.00), (230.00, 58.00))
+add_track(net_name, pcbnew.In1_Cu, (230.00, 58.00), upper_exit)
+add_via(net_name, upper_exit)
+add_track(net_name, pcbnew.B_Cu, upper_exit, lower_exit)
+add_via(net_name, lower_exit)
+add_track(net_name, pcbnew.F_Cu, lower_exit, target)
 
 pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 pcbnew.SaveBoard(str(BOARD_PATH), board)

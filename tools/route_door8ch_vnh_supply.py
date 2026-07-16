@@ -79,9 +79,19 @@ for channel, center_x in enumerate(centres, start=1):
     # The B.Cu rail is the 5 A path. The short F.Cu stubs fan out into the
     # four VNH supply pins, avoiding a thin single-pin bottleneck.
     track(net_name, pcbnew.B_Cu, 2.5, terminal_xy, (left_x, terminal_xy[1]))
-    track(net_name, pcbnew.B_Cu, 2.5, (left_x, terminal_xy[1]), positive_xy)
-    track(net_name, pcbnew.B_Cu, 2.5, positive_xy, (left_x, 30.0))
-    track(net_name, pcbnew.B_Cu, 2.5, (left_x, 35.0), (right_x, 35.0))
+    if channel == 8:
+        # Keep the high-current feed away from U8's left-side signal escape.
+        # The x=240 trunk feeds the bulk capacitor and both left-side power vias.
+        track(net_name, pcbnew.B_Cu, 2.5, (left_x, terminal_xy[1]), (left_x, 30.0))
+        track(net_name, pcbnew.B_Cu, 2.5, (left_x, 15.0), (240.0, 15.0))
+        track(net_name, pcbnew.B_Cu, 2.5, (240.0, 15.0), (240.0, positive_xy[1]))
+        track(net_name, pcbnew.B_Cu, 2.5, (240.0, positive_xy[1]), positive_xy)
+        track(net_name, pcbnew.B_Cu, 2.5, (240.0, 39.5), (left_x, 39.5))
+    else:
+        track(net_name, pcbnew.B_Cu, 2.5, (left_x, terminal_xy[1]), positive_xy)
+        track(net_name, pcbnew.B_Cu, 2.5, positive_xy, (left_x, 30.0))
+    rail_start_x = 240.0 if channel == 8 else left_x
+    track(net_name, pcbnew.B_Cu, 2.5, (rail_start_x, 35.0), (right_x, 35.0))
 
     for x_mm, y_mm in ((left_x, 30.0), (left_x, 39.5), (right_x, 35.0)):
         via(net_name, x_mm, y_mm)
