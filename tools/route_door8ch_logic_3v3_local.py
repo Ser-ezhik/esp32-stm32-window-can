@@ -40,8 +40,5 @@ for item in list(board.GetTracks()):
 route((189.15, 88.00), (191.00, 91.00), (196.53, 91.00))
 route((197.22, 86.00), (197.22, 91.00))
 
-# CAP1188 is operated at the same 3.3 V level as the STM32 SPI bus.
-route((196.53, 91.00), (196.53, 94.00), (212.00, 94.00), (212.00, 90.80), (221.27, 90.80))
-
 pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 pcbnew.SaveBoard(str(BOARD_PATH), board)

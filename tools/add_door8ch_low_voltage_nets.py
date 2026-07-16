@@ -234,12 +234,11 @@ connect("R262", (1,), "EEPROM_HOLD")
 connect("R262", (2,), LOGIC_3V3)
 connect("MOD1", (35,), "EEPROM_CS")
 
-# CAP1188 SPI breakout matching the supplied photo. The controller and STM32
-# both use 3.3 V logic, so VIN is intentionally supplied from the 3.3 V rail;
-# 3Vo remains an unused local breakout output.
+# CAP1188 SPI breakout matching the supplied photo. VIN is fed from 5 V; 3Vo is
+# treated as a local breakout output and left unconnected.
 connect("CAP1", (1,), "CAP_MISO")
 connect("CAP1", (2,), "CAP_SCK")
-connect("CAP1", (3,), LOGIC_3V3)
+connect("CAP1", (3,), LOGIC_5V)
 connect("CAP1", (4,), GND)
 connect("CAP1", (14,), "CAP_MOSI")
 connect("CAP1", (15,), "CAP_CS")
