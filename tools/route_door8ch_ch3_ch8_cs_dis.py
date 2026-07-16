@@ -1,4 +1,4 @@
-"""Route the channel 3, 4, 6 and 7 VNH current-sense disable straps locally."""
+"""Route the channel 3-7 VNH current-sense disable straps locally."""
 
 from pathlib import Path
 
@@ -65,6 +65,21 @@ for channel in (3, 4, 6, 7):
     add_track(net_name, pcbnew.In1_Cu, (entry[0], approach_y), exit_point)
     add_via(net_name, exit_point)
     add_track(net_name, pcbnew.F_Cu, exit_point, target)
+
+# Channel 5 exits above the resistor row, then uses the narrow gap between
+# the PWM and INA input resistors before approaching R1508 from the right.
+net_name = "CH5_CS_DIS"
+source = pad_position("U5", 6)
+target = pad_position("R1508", 1)
+entry = (136.00, 33.00)
+exit_point = (144.00, 60.00)
+add_track(net_name, pcbnew.F_Cu, source, entry)
+add_via(net_name, entry)
+add_track(net_name, pcbnew.In1_Cu, entry, (136.00, 60.00))
+add_track(net_name, pcbnew.In1_Cu, (136.00, 60.00), exit_point)
+add_via(net_name, exit_point)
+add_track(net_name, pcbnew.F_Cu, exit_point, (144.00, 66.00))
+add_track(net_name, pcbnew.F_Cu, (144.00, 66.00), target)
 
 pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 pcbnew.SaveBoard(str(BOARD_PATH), board)
