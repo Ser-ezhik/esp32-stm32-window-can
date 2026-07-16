@@ -47,9 +47,5 @@ route((182.85, 90.30), (182.85, 95.00))
 route((176.53, 91.00), (176.53, 95.00))
 route((177.22, 86.00), (177.22, 95.00))
 
-# CAP1188 is supplied from the same protected 5 V rail. The route approaches
-# its VIN pad horizontally to avoid the adjacent GND pin and mounting hole.
-route((182.85, 95.00), (212.00, 95.00), (212.00, 90.80), (221.27, 90.80))
-
 pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 pcbnew.SaveBoard(str(BOARD_PATH), board)
