@@ -73,9 +73,9 @@ track(pcbnew.B_Cu, (132.00, 115.00), (20.00, 115.00))
 # short local layer transition after the B.Cu trunk.
 track(pcbnew.B_Cu, (124.27, 115.00), (124.27, 143.70))  # CAN2
 track(pcbnew.B_Cu, (64.27, 115.00), (64.27, 143.70))    # CAN1
-track(pcbnew.B_Cu, (84.47, 115.00), (84.47, 126.00))
-via(84.47, 126.00)
-track(pcbnew.F_Cu, (84.47, 126.00), (84.47, 130.09))    # U250 pin 8
+track(pcbnew.B_Cu, (84.47, 115.00), (84.47, 126.50))
+via(84.47, 126.50)
+track(pcbnew.F_Cu, (84.47, 126.50), (84.47, 130.09))    # U250 pin 8
 track(pcbnew.B_Cu, (20.00, 115.00), (20.00, 126.31), (25.92, 126.31))  # CC1101
 
 pcbnew.ZONE_FILLER(board).Fill(board.Zones())
