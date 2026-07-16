@@ -1,0 +1,44 @@
+(version 1)
+
+# Routing constraints for the four-layer, 2 oz external-copper DOOR-8CH PCB.
+# The 12 V motor rails are kept independent per actuator channel.
+
+(rule "Motor output minimum width"
+    (constraint track_width (min 2.5mm))
+    (condition "A.NetName =~ '^CH[1-8]_OUT[AB]$'")
+)
+
+(rule "Motor output clearance"
+    (constraint clearance (min 0.5mm))
+    (condition "A.NetName =~ '^CH[1-8]_OUT[AB]$' || B.NetName =~ '^CH[1-8]_OUT[AB]$'")
+)
+
+(rule "Fused actuator supply minimum width"
+    (constraint track_width (min 2.5mm))
+    (condition "A.NetName =~ '^FUSED_12V_CH[1-8]$'")
+)
+
+(rule "Fused actuator supply clearance"
+    (constraint clearance (min 0.5mm))
+    (condition "A.NetName =~ '^FUSED_12V_CH[1-8]$' || B.NetName =~ '^FUSED_12V_CH[1-8]$'")
+)
+
+(rule "Logic 12V minimum width"
+    (constraint track_width (min 1.0mm))
+    (condition "A.NetName =~ '^LOGIC_12V_'")
+)
+
+(rule "Logic 5V minimum width"
+    (constraint track_width (min 0.5mm))
+    (condition "A.NetName == 'LOGIC_5V'")
+)
+
+(rule "CAN minimum width"
+    (constraint track_width (min 0.25mm))
+    (condition "A.NetName =~ '^CAN[HL]_(ENTRY|BUS)$'")
+)
+
+(rule "CAN pair clearance"
+    (constraint clearance (min 0.25mm))
+    (condition "A.NetName =~ '^CAN[HL]_(ENTRY|BUS)$' || B.NetName =~ '^CAN[HL]_(ENTRY|BUS)$'")
+)
