@@ -46,10 +46,11 @@ def add(reference, value, library, name, x_mm, y_mm, rotation=0):
     return item
 
 
-# Dedicated protected 12 V logic entry at the left board edge.
+# Dedicated protected 12 V logic entry at the left board edge. The upper
+# position leaves a decoupling pocket under the first VNH stage.
 add(
     "J230", "LOGIC_12V_GND", KICAD_FOOTPRINTS / "TerminalBlock_Phoenix.pretty",
-    "TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal", 5, 60, 90,
+    "TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal", 5, 42, 90,
 )
 
 # Serviceable 1 A branch fuse and protection parts before the buck module.

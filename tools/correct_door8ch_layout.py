@@ -90,9 +90,9 @@ channel_centres = (24, 54, 84, 114, 146, 176, 206, 236)
 for channel, center_x in enumerate(channel_centres, start=1):
     place(f"J{channel}", center_x - 9.04, 8, 0)
     place(f"J{channel + 8}", center_x + 3.96, 8, 0)
-    place(f"U{channel}", center_x, 45, 0)
-    place(f"HS{channel}A", center_x, 32, 0)
-    place(f"HS{channel}B", center_x, 58, 0)
+    place(f"U{channel}", center_x, 35, 0)
+    place(f"HS{channel}A", center_x, 22, 0)
+    place(f"HS{channel}B", center_x, 48, 0)
 
 # Quiet-side control connectors also face board edges. J101-J103 are absent
 # after generic headers have been replaced by complete module footprints.

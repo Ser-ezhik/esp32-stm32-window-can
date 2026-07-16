@@ -77,13 +77,10 @@ for channel, center_x in enumerate(channel_centres, start=1):
     ):
         add(*RESISTOR, f"R{reference_base + index}", value, center_x + dx, y_mm)
 
-    bulk_x, bulk_y = center_x - 8, 76
-    if channel in (1, 2):
-        bulk_y = 74
-    elif channel == 7:
-        bulk_x, bulk_y = 191, 74
-    elif channel == 8:
-        bulk_x, bulk_y = 218, 70
+    # The 470 uF part sits directly below its VNH in the left inter-channel
+    # pocket.  This keeps the high-current supply loop short without touching
+    # VNH pins or the control-resistor row.
+    bulk_x, bulk_y = center_x - 15, 53
 
     add(
         *ELECTROLYTIC,
@@ -92,8 +89,7 @@ for channel, center_x in enumerate(channel_centres, start=1):
         bulk_x,
         bulk_y,
     )
-    small_x = 214 if channel == 7 else (244 if channel == 8 else center_x + 10)
-    ceramic_y = 78 if channel == 7 else (74 if channel == 8 else 68)
+    small_x, ceramic_y = center_x - 15, 61
     add(
         *CERAMIC,
         f"C{reference_base + 2}",
@@ -101,9 +97,8 @@ for channel, center_x in enumerate(channel_centres, start=1):
         small_x,
         ceramic_y,
     )
-    filter_x, filter_y = small_x, ceramic_y + 4
-    if channel == 7:
-        filter_x, filter_y = 208, 82
+    filter_x = 208 if channel == 7 else (244 if channel == 8 else center_x + 10)
+    filter_y = 82 if channel == 7 else (78 if channel == 8 else 72)
     add(
         *CERAMIC,
         f"C{reference_base + 3}",
