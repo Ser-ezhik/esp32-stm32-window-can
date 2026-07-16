@@ -9,12 +9,21 @@ approved universal one-board-per-cabinet architecture. It presently contains:
 - mechanically checked placement for S1 through S4 and the photographed
   plug-in modules.
 
-It is deliberately a design-stage source, not a fabrication release. The v0.7
+It is deliberately a design-stage source, not a fabrication release. The v1.40
 board contains the repeated VNH passive blocks, slot straps, named power,
 motor, control, diagnostic, current-sense and low-voltage communication nets.
-Routing and the complete
-KiCad schematic are not released until the physical module footprints have
-been verified at 1:1 scale.
+The routed PCB passes DRC with zero violations and zero unconnected pads.
+
+Two electrically equivalent principle-schematic views are included:
+
+- `DOOR-8CH.kicad_sch` is the complete flat schematic;
+- `DOOR-8CH-multisheet.kicad_sch` is the recommended entry point, split into
+  power, control/CAN, CAP1188, reeds, eight actuator channels and mechanical
+  sheets.
+
+Both schematic views are generated from the routed PCB and verified by
+`tools/verify_door8ch_schematic_sync.py`. The firmware comparison is recorded
+in `../SCHEMATIC_FIRMWARE_AUDIT.md`.
 
 The placement already uses KiCad's verified `ST_MultiPowerSO-30` footprint for
 all eight VNH5019A-E devices, `Phoenix MKDS-3-2-5.08` two-way power terminals,
@@ -42,13 +51,14 @@ right edge. The placement uses complete photo-matched footprints for the two
 SN65HVD230 modules, CC1101 and CAP1188, plus Espressif's official 44-pin
 ESP32-S3-DevKitC footprint. KiCad placement DRC reports zero violations.
 
-## Next CAD stages
+## Before fabrication
 
-1. Capture the electrical schematic for S1 and the repeatable S2-S4 slots.
-2. Add the top-side heatsink keepout areas and thermal-via arrays around the
-   existing VNH positions.
-3. Set net classes, route the four-layer board, run ERC/DRC and produce
-   1:1 mechanical prints for connector validation.
+1. Add the documented open-drain `POWER_GOOD` detector to MOD1 PC13, or remove
+   that firmware feature explicitly. The current PCB does not yet provide it.
+2. Verify all photographed module footprints, row orientation and connector
+   polarity on 1:1 prints and physical samples.
+3. Populate one VNH5019 channel and calibrate the current-sense conversion and
+   protection thresholds before releasing production Gerbers.
 
 The older `ACT-CARRIER-2CH` files remain an archived design study and must not
 be used for fabrication.

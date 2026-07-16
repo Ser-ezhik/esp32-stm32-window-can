@@ -3,3 +3,5 @@
 *.log
 .android-build-tools/
 Android_Window_App/.gradle/
+tools/__pycache__/
+tools/_vendor/
