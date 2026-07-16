@@ -37,6 +37,7 @@ for item in list(board.GetTracks()):
         board.Delete(item)
 
 # Start at the regulator tab/output pad and keep the output capacitors close.
+route((182.85, 88.00), (189.15, 88.00))
 route((189.15, 88.00), (191.00, 91.00), (196.53, 91.00))
 route((197.22, 86.00), (197.22, 91.00))
 

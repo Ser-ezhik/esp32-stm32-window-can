@@ -27,7 +27,7 @@ for item in list(board.GetTracks()):
 
 # The route remains inside the left-side keep-clear corridor and enters F230
 # from below. Its width matches the protected 12 V distribution.
-points = ((5.00, 42.00), (5.00, 46.00), (13.00, 46.00), (13.00, 76.00), (84.00, 76.00), (84.00, 88.00))
+points = ((5.00, 42.00), (5.00, 46.00), (13.00, 46.00), (13.00, 76.00), (84.00, 76.00), (84.00, 88.00), (84.00, 93.00))
 for start, end in zip(points, points[1:]):
     item = pcbnew.PCB_TRACK(board)
     item.SetLayer(pcbnew.F_Cu)
