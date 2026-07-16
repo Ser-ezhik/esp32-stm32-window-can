@@ -12,7 +12,7 @@ board = pcbnew.LoadBoard(str(BOARD_PATH))
 # The VNH stages sit close to the edge-mounted motor terminals. Their two
 # top-side heatsink holes remain at 26 mm centres while keeping room below the
 # drivers for the local 470 uF supply capacitors.
-for channel, x_mm in enumerate((24, 54, 84, 114, 146, 176, 206, 236), start=1):
+for channel, x_mm in enumerate((24, 54, 84, 114, 146, 176, 206, 234), start=1):
     board.FindFootprintByReference(f"U{channel}").SetPosition(
         pcbnew.VECTOR2I_MM(x_mm, 35)
     )

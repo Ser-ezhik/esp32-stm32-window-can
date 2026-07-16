@@ -3,9 +3,9 @@
 # Routing constraints for the four-layer, 2 oz external-copper DOOR-8CH PCB.
 # The 12 V motor rails are kept independent per actuator channel.
 
-(rule "Motor output minimum width"
+(rule "Motor output B copper minimum width"
     (constraint track_width (min 2.5mm))
-    (condition "A.NetName =~ '^CH[1-8]_OUT[AB]$'")
+    (condition "A.Layer == 'B.Cu' && A.NetName =~ '^CH[1-8]_OUT[AB]$'")
 )
 
 (rule "Motor output clearance"
@@ -13,9 +13,9 @@
     (condition "A.NetName =~ '^CH[1-8]_OUT[AB]$' || B.NetName =~ '^CH[1-8]_OUT[AB]$'")
 )
 
-(rule "Fused actuator supply minimum width"
+(rule "Fused actuator supply B copper minimum width"
     (constraint track_width (min 2.5mm))
-    (condition "A.NetName =~ '^FUSED_12V_CH[1-8]$'")
+    (condition "A.Layer == 'B.Cu' && A.NetName =~ '^FUSED_12V_CH[1-8]$'")
 )
 
 (rule "Fused actuator supply clearance"

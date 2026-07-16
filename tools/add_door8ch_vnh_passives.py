@@ -88,6 +88,7 @@ for channel, center_x in enumerate(channel_centres, start=1):
         "470uF 35V LOW_ESR",
         bulk_x,
         bulk_y,
+        180,
     )
     small_x, ceramic_y = center_x - 15, 61
     add(

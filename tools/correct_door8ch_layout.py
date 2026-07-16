@@ -87,12 +87,14 @@ for reference, module, (x_mm, y_mm) in zip(
 # Every motor-power and actuator connector is now edge-mounted. Input/output
 # terminals are paired per channel, making cabinet wiring readable at a glance.
 channel_centres = (24, 54, 84, 114, 146, 176, 206, 236)
+driver_centres = (24, 54, 84, 114, 146, 176, 206, 234)
 for channel, center_x in enumerate(channel_centres, start=1):
     place(f"J{channel}", center_x - 9.04, 8, 0)
     place(f"J{channel + 8}", center_x + 3.96, 8, 0)
-    place(f"U{channel}", center_x, 35, 0)
-    place(f"HS{channel}A", center_x, 22, 0)
-    place(f"HS{channel}B", center_x, 48, 0)
+    driver_x = driver_centres[channel - 1]
+    place(f"U{channel}", driver_x, 35, 0)
+    place(f"HS{channel}A", driver_x, 22, 0)
+    place(f"HS{channel}B", driver_x, 48, 0)
 
 # Quiet-side control connectors also face board edges. J101-J103 are absent
 # after generic headers have been replaced by complete module footprints.
