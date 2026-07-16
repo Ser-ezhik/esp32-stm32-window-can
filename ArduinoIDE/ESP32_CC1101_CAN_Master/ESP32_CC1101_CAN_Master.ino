@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.5";
-constexpr uint8_t FW_BUILD = 5;
+constexpr char FW_VERSION[] = "0.1.0-alpha.6";
+constexpr uint8_t FW_BUILD = 6;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
@@ -299,8 +299,26 @@ void loadRemotes() {
   prefs.end();
 }
 
+void eventKey(uint8_t index, char *key, size_t length) {
+  snprintf(key, length, "ev%02u", index);
+}
+
+void loadEvents() {
+  prefs.begin("windowcan", true);
+  eventHead = prefs.getUChar("evhead", 0);
+  eventSize = prefs.getUChar("evsize", 0);
+  if (eventHead >= EVENT_COUNT || eventSize > EVENT_COUNT) eventHead = eventSize = 0;
+  for (uint8_t i = 0; i < EVENT_COUNT; ++i) {
+    char key[6];
+    eventKey(i, key, sizeof(key));
+    if (prefs.getBytesLength(key) == sizeof(EventRecord)) prefs.getBytes(key, &events[i], sizeof(EventRecord));
+  }
+  prefs.end();
+}
+
 void appendEvent(uint8_t objectId, uint8_t code, uint8_t actuator, const char *text) {
-  EventRecord &event = events[eventHead];
+  const uint8_t slot = eventHead;
+  EventRecord &event = events[slot];
   event.timestamp = millis() / 1000u;
   event.objectId = objectId;
   event.code = code;
@@ -308,6 +326,13 @@ void appendEvent(uint8_t objectId, uint8_t code, uint8_t actuator, const char *t
   strlcpy(event.text, text, sizeof(event.text));
   eventHead = (eventHead + 1u) % EVENT_COUNT;
   if (eventSize < EVENT_COUNT) ++eventSize;
+  char key[6];
+  eventKey(slot, key, sizeof(key));
+  prefs.begin("windowcan", false);
+  prefs.putBytes(key, &event, sizeof(event));
+  prefs.putUChar("evhead", eventHead);
+  prefs.putUChar("evsize", eventSize);
+  prefs.end();
 }
 
 bool beginCan() {
@@ -465,6 +490,13 @@ void processCanMessage(const twai_message_t &message) {
       runtime[index].actuators[actuator].online = true;
     }
     runtime[index].lastSeen = millis(); runtime[index].online = true; return;
+  }
+  if (id >= CAN_EVENT_BASE && id < CAN_EVENT_BASE + MAX_CABINETS &&
+      message.data_length_code == sizeof(CanEventFrame)) {
+    const int index = objectIndexByCabinet(id - CAN_EVENT_BASE); if (index < 0) return;
+    CanEventFrame frame = {}; memcpy(&frame, message.data, sizeof(frame));
+    if (frame.version != PROTOCOL_VERSION) return;
+    appendEvent(objects[index].id, frame.event, frame.actuator, faultText(frame.event)); return;
   }
   if (id >= CAN_DISCOVERY_RESPONSE_BASE && id < CAN_DISCOVERY_RESPONSE_BASE + MAX_CABINETS &&
       message.data_length_code == sizeof(CanDiscoveryFrame)) {
@@ -629,7 +661,13 @@ void handleEvents() {
 }
 
 void handleClearEvents() {
-  if (!webAuth()) return; eventHead = eventSize = 0; sendJson("{\"ok\":true}");
+  if (!webAuth()) return;
+  eventHead = eventSize = 0;
+  prefs.begin("windowcan", false);
+  prefs.putUChar("evhead", 0);
+  prefs.putUChar("evsize", 0);
+  prefs.end();
+  sendJson("{\"ok\":true}");
 }
 
 void handleDiscoveryStart() {
@@ -836,7 +874,7 @@ void setup() {
   delay(100);
   Serial.printf("\nWindow CAN ESP32 %s\n", FW_VERSION);
   pinMode(PIN_LEARN_BUTTON, INPUT_PULLUP);
-  loadSystemSettings(); loadObjects(); loadRemotes();
+  loadSystemSettings(); loadObjects(); loadRemotes(); loadEvents();
   beginNetwork();
   beginWeb();
   canReady = beginCan();

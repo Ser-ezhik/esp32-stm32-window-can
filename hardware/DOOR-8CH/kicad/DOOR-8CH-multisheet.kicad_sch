@@ -1,19 +1,19 @@
 (kicad_sch (version 20211014) (generator door8ch_pcb_sync)
 
-  (uuid ec4dca8c-3365-44bf-a53a-3f86ee879a12)
+  (uuid ed57343a-f736-408e-bee7-5c993b152a89)
 
   (paper "A3")
   (lib_symbols)
 
   (text "DOOR-8CH | multisheet principle schematic" (at 20.32 12.7 0)
     (effects (font (size 2.0 2.0) bold))
-    (uuid fbf68abc-a970-4bf4-89a6-ec69c4bf99eb)
+    (uuid f120da02-d725-42fa-917d-542db7f12fac)
   )
 
   (sheet (at 25.4 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid bf559da5-829a-4822-8489-3039d0c9df4a)
+    (uuid 4a240114-d582-41a8-af81-0e2df6d80d70)
     (property "Sheetname" "POWER" (id 0) (at 25.4 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -22,7 +22,7 @@
     )
     (instances
       (project ""
-        (path "/bf559da5-829a-4822-8489-3039d0c9df4a" (page "2"))
+        (path "/4a240114-d582-41a8-af81-0e2df6d80d70" (page "2"))
       )
     )
   )
@@ -30,7 +30,7 @@
   (sheet (at 124.46 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid bb815b9d-b779-4fc9-9e7b-a1f296b4d6fa)
+    (uuid 7bbbefb2-9c42-4ab9-ac3e-e2413355b051)
     (property "Sheetname" "CONTROL / CAN" (id 0) (at 124.46 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -39,7 +39,7 @@
     )
     (instances
       (project ""
-        (path "/bb815b9d-b779-4fc9-9e7b-a1f296b4d6fa" (page "3"))
+        (path "/7bbbefb2-9c42-4ab9-ac3e-e2413355b051" (page "3"))
       )
     )
   )
@@ -47,7 +47,7 @@
   (sheet (at 223.52 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 2130c92c-57f0-4f56-b27e-dac48a1ea3bc)
+    (uuid 65fec240-fe17-4e92-980a-1b0da178afa9)
     (property "Sheetname" "CAP1188" (id 0) (at 223.52 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -56,7 +56,7 @@
     )
     (instances
       (project ""
-        (path "/2130c92c-57f0-4f56-b27e-dac48a1ea3bc" (page "4"))
+        (path "/65fec240-fe17-4e92-980a-1b0da178afa9" (page "4"))
       )
     )
   )
@@ -64,7 +64,7 @@
   (sheet (at 322.58 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 9d3d6a28-110d-4b33-a29e-6ba2a978f49a)
+    (uuid f9583925-11f7-4169-b6aa-c8685b298f35)
     (property "Sheetname" "REEDS" (id 0) (at 322.58 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -73,7 +73,7 @@
     )
     (instances
       (project ""
-        (path "/9d3d6a28-110d-4b33-a29e-6ba2a978f49a" (page "5"))
+        (path "/f9583925-11f7-4169-b6aa-c8685b298f35" (page "5"))
       )
     )
   )
@@ -81,7 +81,7 @@
   (sheet (at 25.4 83.82) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 64664bf4-9920-4a8d-aeef-ac3c746d0c63)
+    (uuid 71d3370a-5b15-487f-9f3e-91415f1c5c6b)
     (property "Sheetname" "CHANNEL 1" (id 0) (at 25.4 82.55 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -90,7 +90,7 @@
     )
     (instances
       (project ""
-        (path "/64664bf4-9920-4a8d-aeef-ac3c746d0c63" (page "6"))
+        (path "/71d3370a-5b15-487f-9f3e-91415f1c5c6b" (page "6"))
       )
     )
   )
@@ -98,7 +98,7 @@
   (sheet (at 124.46 83.82) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 48be76a4-3ce8-4abc-92b0-e1e6141b1be6)
+    (uuid 536e935d-c9d3-4bf2-8cfe-d5bd1190a824)
     (property "Sheetname" "CHANNEL 2" (id 0) (at 124.46 82.55 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -107,7 +107,7 @@
     )
     (instances
       (project ""
-        (path "/48be76a4-3ce8-4abc-92b0-e1e6141b1be6" (page "7"))
+        (path "/536e935d-c9d3-4bf2-8cfe-d5bd1190a824" (page "7"))
       )
     )
   )
@@ -115,7 +115,7 @@
   (sheet (at 223.52 83.82) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid b3b4ec1d-d3da-4bf7-9308-1c4604592a24)
+    (uuid 771fdb24-bc57-468f-b86a-96fc62cfa580)
     (property "Sheetname" "CHANNEL 3" (id 0) (at 223.52 82.55 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -124,7 +124,7 @@
     )
     (instances
       (project ""
-        (path "/b3b4ec1d-d3da-4bf7-9308-1c4604592a24" (page "8"))
+        (path "/771fdb24-bc57-468f-b86a-96fc62cfa580" (page "8"))
       )
     )
   )
@@ -132,7 +132,7 @@
   (sheet (at 322.58 83.82) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid e96b6bb5-a3d3-4b10-8b57-eed1d7fefbea)
+    (uuid d50b54ee-ed91-47c3-9eb0-416b93ac8959)
     (property "Sheetname" "CHANNEL 4" (id 0) (at 322.58 82.55 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -141,7 +141,7 @@
     )
     (instances
       (project ""
-        (path "/e96b6bb5-a3d3-4b10-8b57-eed1d7fefbea" (page "9"))
+        (path "/d50b54ee-ed91-47c3-9eb0-416b93ac8959" (page "9"))
       )
     )
   )
@@ -149,7 +149,7 @@
   (sheet (at 25.4 137.16) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 0b1912aa-5e2e-4848-b5a1-fc5965f47e60)
+    (uuid e98d8081-c0f1-4a0c-a6f5-1c6adfa4cffd)
     (property "Sheetname" "CHANNEL 5" (id 0) (at 25.4 135.89 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -158,7 +158,7 @@
     )
     (instances
       (project ""
-        (path "/0b1912aa-5e2e-4848-b5a1-fc5965f47e60" (page "10"))
+        (path "/e98d8081-c0f1-4a0c-a6f5-1c6adfa4cffd" (page "10"))
       )
     )
   )
@@ -166,7 +166,7 @@
   (sheet (at 124.46 137.16) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 96c0d3e4-4d10-4505-9648-8ae4e332c3c4)
+    (uuid ffb5d17a-b2de-4812-a763-2467c867a13a)
     (property "Sheetname" "CHANNEL 6" (id 0) (at 124.46 135.89 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -175,7 +175,7 @@
     )
     (instances
       (project ""
-        (path "/96c0d3e4-4d10-4505-9648-8ae4e332c3c4" (page "11"))
+        (path "/ffb5d17a-b2de-4812-a763-2467c867a13a" (page "11"))
       )
     )
   )
@@ -183,7 +183,7 @@
   (sheet (at 223.52 137.16) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid f70c42ba-cad4-47c9-a0a9-4db1d044fb17)
+    (uuid fcf65a60-c398-4359-907e-eb0b3654f45f)
     (property "Sheetname" "CHANNEL 7" (id 0) (at 223.52 135.89 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -192,7 +192,7 @@
     )
     (instances
       (project ""
-        (path "/f70c42ba-cad4-47c9-a0a9-4db1d044fb17" (page "12"))
+        (path "/fcf65a60-c398-4359-907e-eb0b3654f45f" (page "12"))
       )
     )
   )
@@ -200,7 +200,7 @@
   (sheet (at 322.58 137.16) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 6c42dcec-a294-4cd3-a535-5ccbdbb57e15)
+    (uuid 5ed0bda2-6bd9-4494-93cb-f758a0b78d5a)
     (property "Sheetname" "CHANNEL 8" (id 0) (at 322.58 135.89 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -209,7 +209,7 @@
     )
     (instances
       (project ""
-        (path "/6c42dcec-a294-4cd3-a535-5ccbdbb57e15" (page "13"))
+        (path "/5ed0bda2-6bd9-4494-93cb-f758a0b78d5a" (page "13"))
       )
     )
   )
@@ -217,7 +217,7 @@
   (sheet (at 25.4 190.5) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 96f34086-0be0-40e2-a225-58aad3256028)
+    (uuid 8b10cd43-c2f5-42ea-bfde-3af162b83e56)
     (property "Sheetname" "OTHER / MECHANICAL" (id 0) (at 25.4 189.23 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -226,7 +226,7 @@
     )
     (instances
       (project ""
-        (path "/96f34086-0be0-40e2-a225-58aad3256028" (page "14"))
+        (path "/8b10cd43-c2f5-42ea-bfde-3af162b83e56" (page "14"))
       )
     )
   )

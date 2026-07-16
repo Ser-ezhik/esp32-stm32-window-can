@@ -9,7 +9,7 @@ approved universal one-board-per-cabinet architecture. It presently contains:
 - mechanically checked placement for S1 through S4 and the photographed
   plug-in modules.
 
-It is deliberately a design-stage source, not a fabrication release. The v1.40
+It is deliberately a design-stage source, not a fabrication release. The v1.41
 board contains the repeated VNH passive blocks, slot straps, named power,
 motor, control, diagnostic, current-sense and low-voltage communication nets.
 The routed PCB passes DRC with zero violations and zero unconnected pads.
@@ -44,6 +44,11 @@ links between S1 and S2-S4. In v0.7 the CAN trunk entry and its protection
 parts are moved to the lower service area beside `CAN2`, and `MOD3` is shifted
 right to keep that CAN area away from the actuator power terminals.
 
+Version v1.41 adds U270 (`TLV6700DDCR`) on the fused 12 V logic input, an
+open-drain `POWER_GOOD` connection to S1 PC13, and an isolated MASTER hold-up
+rail using D280 (`SS34`) and C280 (4700 uF / 10 V low ESR). U250 and its SPI
+pull-ups are powered by the held `S1_3V3` rail so an outage record can finish.
+
 All 16 motor terminals are on the top edge. STM32 USB-C connectors face the
 bottom service edge, both ESP32-S3 USB connectors face the left edge, the
 CC1101 antenna faces the left edge, and CAP1188 touch-channel pins face the
@@ -53,12 +58,12 @@ ESP32-S3-DevKitC footprint. KiCad placement DRC reports zero violations.
 
 ## Before fabrication
 
-1. Add the documented open-drain `POWER_GOOD` detector to MOD1 PC13, or remove
-   that firmware feature explicitly. The current PCB does not yet provide it.
-2. Verify all photographed module footprints, row orientation and connector
+1. Verify all photographed module footprints, row orientation and connector
    polarity on 1:1 prints and physical samples.
-3. Populate one VNH5019 channel and calibrate the current-sense conversion and
+2. Populate one VNH5019 channel and calibrate the current-sense conversion and
    protection thresholds before releasing production Gerbers.
+3. Measure the C280 hold-up time at cold temperature and maximum MASTER load;
+   verify a complete U250 write after removing 12 V repeatedly.
 
 The older `ACT-CARRIER-2CH` files remain an archived design study and must not
 be used for fabrication.

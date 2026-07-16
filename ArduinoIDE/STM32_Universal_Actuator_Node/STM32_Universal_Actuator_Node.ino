@@ -92,6 +92,10 @@ bool carrierConfigured = false;
 bool canOnline = false;
 bool capOnline = false;
 bool calibrationPendingApply = false;
+PowerLossRecord powerLossRecord = {};
+bool powerLossEventPending = false;
+bool powerLossHandled = false;
+uint32_t lastPowerEventAttempt = 0;
 
 uint16_t configCrc(NodeConfig value) {
   value.crc = 0;
@@ -468,6 +472,48 @@ void sendConfigToSlave(uint8_t slot) {
   localLinks[slot].send(UartType::Config, ++slaveTxSequence[slot], &payload, sizeof(payload));
 }
 
+void handlePowerFailure() {
+  if (!isMaster() || powerLossHandled || digitalRead(hw::POWER_GOOD) != LOW) return;
+  powerLossHandled = true;
+
+  PowerLossRecord record = {};
+  record.uptimeMs = millis();
+  record.sequence = static_cast<uint8_t>(powerLossRecord.sequence + 1u);
+  record.runState = static_cast<uint8_t>(runState);
+  record.command = static_cast<uint8_t>(activeCommand);
+  record.fault = static_cast<uint8_t>(fault);
+  record.actuator = faultActuator;
+
+  stopLocal();
+  sendStopToSlaves();
+  digitalWrite(hw::CAP_CS, HIGH);
+  if (carrierStore.savePowerLoss(record)) {
+    powerLossRecord = record;
+    powerLossRecord.pending = 1;
+    powerLossEventPending = true;
+  }
+  setFault(Fault::LowSupply);
+}
+
+void sendPendingPowerEvent() {
+  if (!isMaster() || !powerLossEventPending || !carrierConfigured || !canOnline ||
+      digitalRead(hw::POWER_GOOD) == LOW || millis() - lastPowerEventAttempt < 1000) return;
+  lastPowerEventAttempt = millis();
+  const CanEventFrame event = {
+    PROTOCOL_VERSION,
+    powerLossRecord.sequence,
+    static_cast<uint8_t>(Fault::PowerRecovered),
+    powerLossRecord.actuator,
+    powerLossRecord.uptimeMs,
+  };
+  if (canBus.send(CAN_EVENT_BASE + carrier.cabinetId, &event, sizeof(event)) &&
+      carrierStore.acknowledgePowerLoss(powerLossRecord)) {
+    powerLossRecord.pending = 0;
+    powerLossEventPending = false;
+    powerLossHandled = false;
+  }
+}
+
 void applyCalibration() {
   uint16_t target = 0;
   const bool opening = activeCommand == Command::CalibrateOpen;
@@ -759,6 +805,8 @@ void initializeMaster() {
   pinMode(hw::CAP_IRQ, INPUT_PULLUP);
   carrierStore.begin();
   carrierConfigured = carrierStore.load(carrier);
+  if (carrierStore.loadPowerLoss(powerLossRecord)) powerLossEventPending = powerLossRecord.pending != 0;
+  else memset(&powerLossRecord, 0, sizeof(powerLossRecord));
   configureReedInputs();
   capOnline = cap1188.begin(config.capEnabledMask);
   const LocalConfigPayload defaults = makeConfigPayload();
@@ -796,9 +844,16 @@ void loop() {
   const uint32_t now = millis();
   IWatchdog.reload();
 
+  if (isMaster() && digitalRead(hw::POWER_GOOD) == LOW) {
+    handlePowerFailure();
+    delay(1);
+    return;
+  }
+
   if (isMaster()) {
     pollCan();
     pollMasterLinks();
+    sendPendingPowerEvent();
   } else {
     pollSlaveLink();
   }

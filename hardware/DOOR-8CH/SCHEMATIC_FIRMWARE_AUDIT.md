@@ -1,12 +1,12 @@
 # DOOR-8CH schematic and firmware audit
 
 Audit target: routed `DOOR-8CH.kicad_pcb`, generated principle schematics,
-`STM32_Universal_Actuator_Node` v0.1.0-alpha.6 and
-`ESP32_CC1101_CAN_Master` v0.1.0-alpha.5.
+`STM32_Universal_Actuator_Node` v0.1.0-alpha.7 and
+`ESP32_CC1101_CAN_Master` v0.1.0-alpha.6.
 
 ## Result
 
-The generated flat and multisheet schematics contain all 230 PCB references,
+The generated flat and multisheet schematics contain all 238 PCB references,
 all numbered pads and the same net labels as the routed PCB. KiCad ERC reports
 zero errors. The two remaining warnings are intentionally isolated optional
 nets: the ESP32 GPIO9 learn-button input and the unused S1 PA7 slot-ID pull-up.
@@ -32,16 +32,24 @@ nets: the ESP32 GPIO9 learn-button input and the unused S1 PA7 slot-ID pull-up.
 | ESP32 CC1101 SPI | GPIO10-13 | CS / MOSI / SCK / MISO | OK |
 | ESP32 CC1101 data | GPIO4 / GPIO5 | GDO0 / GDO2 | OK |
 | ESP32 CAN | GPIO38 / GPIO39 | CAN2 CRX / CTX | OK |
-| Logic power monitor | PC13 | MOD1 pad 30 is not connected | **MISMATCH** |
+| Logic power monitor | PC13 | `POWER_GOOD`, U270 open-drain output | OK |
 
-## Required correction before fabrication
+## Power-fail implementation
 
-The STM32 firmware samples `POWER_GOOD` on PC13 and reports low-supply state,
-but the current PCB has no `POWER_GOOD` net or comparator connected to MOD1 pad
-30. Until the hardware monitor is added, PC13 remains high through the internal
-pull-up, so low-supply telemetry is not real. Add the planned open-drain
-power-good detector to PC13 or explicitly remove this function from firmware
-and documentation before releasing Gerbers.
+U270 (`TLV6700DDCR`) monitors `LOGIC_12V_FUSED` through 226 kOhm / 10 kOhm.
+Its two open-drain outputs are tied to `POWER_GOOD` and pulled up to `S1_3V3`.
+The nominal thresholds are about 9.44 V rising and 9.31 V falling. D280
+(`SS34`) isolates the MASTER 5 V input and C280 (4700 uF / 10 V, low ESR)
+holds up S1 and U250 long enough for one EEPROM page write.
+
+Firmware stops the local outputs and SLAVEs on the first low level, stores one
+CRC-protected power-loss record in U250, then reports `PowerRecovered` over CAN
+after the next boot. The ESP32 stores its 48-entry event ring in NVS, so the
+web journal also survives an ESP32 restart.
+
+The hold-up duration must still be measured on the populated prototype at the
+highest MASTER-board current and lowest expected temperature. Do not release
+production Gerbers until the EEPROM write completes reliably with margin.
 
 The current-sense scale in `config.h` is still marked for calibration. Its
 conversion constant and protection thresholds must be measured on a populated

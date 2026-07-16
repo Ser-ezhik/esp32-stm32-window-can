@@ -92,13 +92,14 @@ Quantities in this table are **per populated two-actuator slot**. There are 11 p
 | --- | --- | ---: | ---: |
 | Board 3.3 V LDO | AP2112K-3.3 or equivalent, >=300 mA, SOT-23-5 | 1 | 5 |
 | 3.3 V LDO bulk decoupling | 10 uF, 10 V, X5R/X7R; one at input and one at output | 2 | 10 |
-| 12 V power-good comparator | TLV3012 or equivalent open-drain comparator with reference | 1 | 5 |
-| 12 V monitor divider | 100 kOhm upper + 15 kOhm lower, both 1%, 0.125 W | 1 + 1 | 5 + 5 |
-| Comparator input filter | 100 nF, 50 V, X7R | 1 | 5 |
-| Comparator hysteresis | 1 MOhm, 1%, 0.125 W | 1 | 5 |
-| PC13 pull-up | 10 kOhm, 1%, 0.125 W to 3.3 V | 1 | 5 |
+| 12 V window supervisor | TLV6700DDCR, SOT-23-6, dual open-drain output | 1 | 5 |
+| 12 V monitor divider | 226 kOhm upper + 10 kOhm lower, both 1%, 0.125 W | 1 + 1 | 5 + 5 |
+| Supervisor supply and sense filters | 100 nF, 25 V, X7R | 2 | 10 |
+| PC13 pull-up | 10 kOhm, 1%, 0.125 W to `S1_3V3` | 1 | 5 |
+| MASTER hold-up diode | SS34, 3 A / 40 V Schottky | 1 | 5 |
+| MASTER hold-up capacitor | 4700 uF, 10 V, low ESR, radial | 1 | 5 |
 
-The `100 kOhm / 15 kOhm` divider gives an approximately 9.5 V 12-V-power threshold with a 1.242 V reference. The 1 MOhm feedback resistor adds hysteresis. Fit this circuit once per DOOR-8CH board: every cabinet has one shared 12 V supply, and its MASTER stops the internal SLAVE slots over UART on a low-supply event. Confirm its exact trip and release voltage on the finished board before enabling actuator motion.
+The `226 kOhm / 10 kOhm` divider and TLV6700 400 mV reference give nominal thresholds of approximately 9.44 V rising and 9.31 V falling using the device's internal hysteresis. Fit this circuit once per DOOR-8CH board. Verify the thresholds and C280 hold-up time on a populated board before enabling field operation.
 
 For each VNH5019A-E, tie its two open-drain `DIAG/EN` pins into the one diagnostic node for that actuator, use the listed 4.7 kOhm pull-up and route that node to PB5 or PB12. This enables both bridge legs and lets either diagnostic pull the STM32 input low.
 

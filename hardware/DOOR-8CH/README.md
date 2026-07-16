@@ -76,6 +76,12 @@ style regulator for CAN, CC1101 and other plug-in module supplies. STM32 mini
 board 3.3 V pins remain local to their own slot and are not tied together.
 Each STM32 mini board receives 5 V from the protected logic rail.
 
+S1 is supplied through D280 (`SS34`) from `LOGIC_5V`; C280 (4700 uF / 10 V,
+low ESR) holds its isolated `S1_5V_HOLD` rail during a power failure. U270
+monitors the fused 12 V input and pulls S1 PC13 low near 9.3 V. The EEPROM and
+its pull-ups use the resulting held `S1_3V3` rail, allowing the MASTER to stop
+outputs and finish one outage-record write before brownout.
+
 The external SPI EEPROM stores the cabinet identity, object type, slave count
 and reed polarity mask. See [CARRIER_EEPROM_MAP.md](CARRIER_EEPROM_MAP.md).
 This keeps the STM32 firmware universal: a replacement STM32 module reads the
