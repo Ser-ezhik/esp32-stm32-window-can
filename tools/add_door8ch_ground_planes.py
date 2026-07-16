@@ -33,6 +33,7 @@ for layer in (pcbnew.In1_Cu, pcbnew.In2_Cu):
     zone.SetNet(gnd)
     zone.SetLayer(layer)
     zone.SetLocalClearance(pcbnew.FromMM(0.30))
+    zone.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
     zone.SetIsFilled(True)
     outline = zone.Outline()
     outline.NewOutline()
