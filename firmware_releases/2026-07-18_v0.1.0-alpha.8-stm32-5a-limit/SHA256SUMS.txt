@@ -1,0 +1,2 @@
+1f1da1b2264c41ca84b67b71e28aad8ea473aa30cb5f693712c8825d1401e501  STM32_Universal_Actuator_Node_v0.1.0-alpha.8.bin
+13280e6dd065bef71afbd5bce5b2c657a23e27a8742bda246b4811901e8ca82e  STM32_Universal_Actuator_Node_v0.1.0-alpha.8.hex

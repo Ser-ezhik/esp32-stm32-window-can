@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -15,9 +16,12 @@ import pcbnew
 from kiutils.schematic import Schematic
 
 
-PROJECT = ROOT / "hardware" / "DOOR-8CH" / "kicad"
-BOARD = PROJECT / "DOOR-8CH.kicad_pcb"
-FLAT = PROJECT / "DOOR-8CH.kicad_sch"
+PROJECT_NAME = os.environ.get("PROJECT_NAME", "DOOR-8CH")
+PROJECT = Path(os.environ.get(
+    "PROJECT_DIR", ROOT / "hardware" / PROJECT_NAME / "kicad"
+))
+BOARD = PROJECT / f"{PROJECT_NAME}.kicad_pcb"
+FLAT = PROJECT / f"{PROJECT_NAME}.kicad_sch"
 
 
 def main():

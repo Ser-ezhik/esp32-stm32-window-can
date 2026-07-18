@@ -1,0 +1,480 @@
+ERC report (2026-07-18T19:04:54, Encoding UTF8)
+Report includes: Errors, Warnings
+
+***** Sheet /
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 46.99 mm): Symbol U270 [GEN_P1_P2_P3_P4_P5_P6]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 60.96 mm): Symbol C233 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 72.39 mm): Symbol C237 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 83.82 mm): Symbol C270 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 95.25 mm): Symbol F230 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 106.68 mm): Symbol R272 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 45.72 mm): Symbol DC1 [GEN_P1_P2_P3_P4]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 58.42 mm): Symbol C230 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 69.85 mm): Symbol C234 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 81.28 mm): Symbol C238 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 92.71 mm): Symbol D230 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 104.14 mm): Symbol J230 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 45.72 mm): Symbol L240 [GEN_P1_P2_P3_P4]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 58.42 mm): Symbol C231 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 69.85 mm): Symbol C235 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 81.28 mm): Symbol C239 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 92.71 mm): Symbol D231 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 104.14 mm): Symbol R210 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 45.72 mm): Symbol U230 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 58.42 mm): Symbol C232 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 69.85 mm): Symbol C236 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 81.28 mm): Symbol C250 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 92.71 mm): Symbol D280 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 104.14 mm): Symbol R270 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 64.77 mm): Symbol U1 [GEN_P1_P2_P3_P4_P5_P6_P7_P8_P9_P10...]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 96.52 mm): Symbol R1110 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 45.72 mm): Symbol D1101 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 58.42 mm): Symbol J9 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 69.85 mm): Symbol R1103 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 81.28 mm): Symbol R1106 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 92.71 mm): Symbol R1109 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 44.45 mm): Symbol C1101 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 55.88 mm): Symbol C1103 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 67.31 mm): Symbol R1101 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 78.74 mm): Symbol R1104 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 90.17 mm): Symbol R1107 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 44.45 mm): Symbol C1102 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 55.88 mm): Symbol J1 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 67.31 mm): Symbol R1102 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 78.74 mm): Symbol R1105 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 90.17 mm): Symbol R1108 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 45.72 mm): Symbol J240 [GEN_P1_P2_P3_P4]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 58.42 mm): Symbol H3 [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 69.85 mm): Symbol HS2A [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 81.28 mm): Symbol HS4A [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 92.71 mm): Symbol R271 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 44.45 mm): Symbol C271 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 55.88 mm): Symbol D241 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 67.31 mm): Symbol H4 [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 78.74 mm): Symbol HS2B [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 90.17 mm): Symbol HS4B [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 44.45 mm): Symbol C280 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 55.88 mm): Symbol H1 [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 67.31 mm): Symbol HS1A [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 78.74 mm): Symbol HS3A [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 90.17 mm): Symbol R209 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 44.45 mm): Symbol D240 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 55.88 mm): Symbol H2 [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 67.31 mm): Symbol HS1B [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 78.74 mm): Symbol HS3B [GEN_NOPINS]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 90.17 mm): Symbol R240 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 48.26 mm): Symbol U250 [GEN_P1_P2_P3_P4_P5_P6_P7_P8]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 63.50 mm): Symbol R262 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 74.93 mm): Symbol R3022 [GEN_P1_P2]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(210.82 mm, 72.39 mm): Global Label 'S1_SLOT_ID1'
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 46.99 mm): Symbol CAN1 [GEN_P1_P2_P3_P4_P5_P6]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 60.96 mm): Symbol R260 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 72.39 mm): Symbol R3012 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 46.99 mm): Symbol J220 [GEN_P1_P2_P3_P4_P5]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 60.96 mm): Symbol R261 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 72.39 mm): Symbol R3021 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 44.45 mm): Symbol R250 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 55.88 mm): Symbol R251 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 67.31 mm): Symbol R3011 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 64.77 mm): Symbol U2 [GEN_P1_P2_P3_P4_P5_P6_P7_P8_P9_P10...]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 96.52 mm): Symbol R1210 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 45.72 mm): Symbol D1201 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 58.42 mm): Symbol J10 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 69.85 mm): Symbol R1203 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 81.28 mm): Symbol R1206 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 92.71 mm): Symbol R1209 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 44.45 mm): Symbol C1201 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 55.88 mm): Symbol C1203 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 67.31 mm): Symbol R1201 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 78.74 mm): Symbol R1204 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 90.17 mm): Symbol R1207 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 44.45 mm): Symbol C1202 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 55.88 mm): Symbol J2 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 67.31 mm): Symbol R1202 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 78.74 mm): Symbol R1205 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 90.17 mm): Symbol R1208 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 59.69 mm): Symbol CAP1 [GEN_P1_P2_P3_P4_P5_P6_P7_P8_P9_P10...]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(93.98 mm, 64.77 mm): Global Label 'CAP_C5_RAW'
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(93.98 mm, 67.31 mm): Global Label 'CAP_C6_RAW'
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(93.98 mm, 69.85 mm): Global Label 'CAP_C7_RAW'
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(93.98 mm, 72.39 mm): Global Label 'CAP_C8_RAW'
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 44.45 mm): Symbol J211 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 55.88 mm): Symbol J214 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 67.31 mm): Symbol R203 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 44.45 mm): Symbol J212 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 55.88 mm): Symbol R201 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 67.31 mm): Symbol R204 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 44.45 mm): Symbol J213 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 55.88 mm): Symbol R202 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 64.77 mm): Symbol U3 [GEN_P1_P2_P3_P4_P5_P6_P7_P8_P9_P10...]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 96.52 mm): Symbol R1310 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 45.72 mm): Symbol D1301 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 58.42 mm): Symbol J11 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 69.85 mm): Symbol R1303 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 81.28 mm): Symbol R1306 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 92.71 mm): Symbol R1309 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 44.45 mm): Symbol C1301 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 55.88 mm): Symbol C1303 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 67.31 mm): Symbol R1301 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 78.74 mm): Symbol R1304 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 90.17 mm): Symbol R1307 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 44.45 mm): Symbol C1302 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 55.88 mm): Symbol J3 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 67.31 mm): Symbol R1302 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 78.74 mm): Symbol R1305 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 90.17 mm): Symbol R1308 [GEN_P1_P2]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(78.74 mm, 52.07 mm): Global Label 'S1_UART3_TX'
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(78.74 mm, 64.77 mm): Global Label 'S1_UART2_RX'
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(78.74 mm, 77.47 mm): Global Label 'S1_UART3_RX'
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(78.74 mm, 90.17 mm): Global Label 'S1_UART2_TX'
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 68.58 mm): Symbol MOD1 [GEN_P1_P2_P3_P4_P5_P6_P7_P8_P9_P10...]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(210.82 mm, 54.61 mm): Global Label 'REED_B_CLOSED'
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(210.82 mm, 57.15 mm): Global Label 'REED_B_OPEN'
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 68.58 mm): Symbol MOD2 [GEN_P1_P2_P3_P4_P5_P6_P7_P8_P9_P10...]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(226.06 mm, 87.63 mm): Global Label 'REED_B_IN_PLACE'
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 45.72 mm): Symbol J201 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 59.69 mm): Symbol J203 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 45.72 mm): Symbol J202 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 64.77 mm): Symbol U4 [GEN_P1_P2_P3_P4_P5_P6_P7_P8_P9_P10...]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(86.36 mm, 96.52 mm): Symbol R1410 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 45.72 mm): Symbol D1401 [GEN_P1_P2_P3]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 58.42 mm): Symbol J12 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 69.85 mm): Symbol R1403 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 81.28 mm): Symbol R1406 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(218.44 mm, 92.71 mm): Symbol R1409 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 44.45 mm): Symbol C1401 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 55.88 mm): Symbol C1403 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 67.31 mm): Symbol R1401 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 78.74 mm): Symbol R1404 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(351.79 mm, 90.17 mm): Symbol R1407 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 44.45 mm): Symbol C1402 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 55.88 mm): Symbol J4 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 67.31 mm): Symbol R1402 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 78.74 mm): Symbol R1405 [GEN_P1_P2]
+[lib_symbol_issues]: Текущая конфигурация не содержит библиотеку символов 'WINDOW4CH'
+    ; warning
+    @(483.87 mm, 90.17 mm): Symbol R1408 [GEN_P1_P2]
+
+***** Sheet /POWER/
+
+***** Sheet /CHANNEL 1/
+
+***** Sheet /OTHER / MECHANICAL/
+
+***** Sheet /CONTROL / CAN/
+
+***** Sheet /CHANNEL 2/
+
+***** Sheet /CAP1188/
+
+***** Sheet /CHANNEL 3/
+
+***** Sheet /REEDS/
+
+***** Sheet /CHANNEL 4/
+
+ ** ERC messages: 150  Errors 0  Warnings 150
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters

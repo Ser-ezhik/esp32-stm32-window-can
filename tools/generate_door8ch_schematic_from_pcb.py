@@ -33,11 +33,17 @@ from kiutils.schematic import Schematic
 from kiutils.symbol import Symbol, SymbolLib, SymbolPin
 
 
-PROJECT = ROOT / "hardware" / "DOOR-8CH" / "kicad"
-BOARD_PATH = Path(os.environ.get("BOARD_PATH", PROJECT / "DOOR-8CH.kicad_pcb"))
-FLAT_PATH = PROJECT / "DOOR-8CH.kicad_sch"
-MULTISHEET_PATH = PROJECT / "DOOR-8CH-multisheet.kicad_sch"
-SYMBOL_LIBRARY_PATH = PROJECT / "DOOR-8CH-generated.kicad_sym"
+PROJECT_NAME = os.environ.get("PROJECT_NAME", "DOOR-8CH")
+PROJECT = Path(os.environ.get(
+    "PROJECT_DIR", ROOT / "hardware" / PROJECT_NAME / "kicad"
+))
+CHANNEL_COUNT = int(os.environ.get("CHANNEL_COUNT", "8"))
+LIBRARY_NAME = re.sub(r"[^A-Za-z0-9]", "", PROJECT_NAME)
+GENERATOR_NAME = f"{LIBRARY_NAME.lower()}_pcb_sync"
+BOARD_PATH = Path(os.environ.get("BOARD_PATH", PROJECT / f"{PROJECT_NAME}.kicad_pcb"))
+FLAT_PATH = PROJECT / f"{PROJECT_NAME}.kicad_sch"
+MULTISHEET_PATH = PROJECT / f"{PROJECT_NAME}-multisheet.kicad_sch"
+SYMBOL_LIBRARY_PATH = PROJECT / f"{PROJECT_NAME}-generated.kicad_sym"
 
 GRID = 1.27
 PIN_PITCH = 2.54
@@ -49,24 +55,17 @@ GROUP_ORDER = (
     "CONTROL / CAN",
     "CAP1188",
     "REEDS",
-    "CHANNEL 1",
-    "CHANNEL 2",
-    "CHANNEL 3",
-    "CHANNEL 4",
-    "CHANNEL 5",
-    "CHANNEL 6",
-    "CHANNEL 7",
-    "CHANNEL 8",
+    *(f"CHANNEL {n}" for n in range(1, CHANNEL_COUNT + 1)),
     "OTHER / MECHANICAL",
 )
 
 GROUP_FILES = {
-    "POWER": "DOOR-8CH-power.kicad_sch",
-    "CONTROL / CAN": "DOOR-8CH-control-can.kicad_sch",
-    "CAP1188": "DOOR-8CH-cap1188.kicad_sch",
-    "REEDS": "DOOR-8CH-reeds.kicad_sch",
-    **{f"CHANNEL {n}": f"DOOR-8CH-channel-{n}.kicad_sch" for n in range(1, 9)},
-    "OTHER / MECHANICAL": "DOOR-8CH-other.kicad_sch",
+    "POWER": f"{PROJECT_NAME}-power.kicad_sch",
+    "CONTROL / CAN": f"{PROJECT_NAME}-control-can.kicad_sch",
+    "CAP1188": f"{PROJECT_NAME}-cap1188.kicad_sch",
+    "REEDS": f"{PROJECT_NAME}-reeds.kicad_sch",
+    **{f"CHANNEL {n}": f"{PROJECT_NAME}-channel-{n}.kicad_sch" for n in range(1, CHANNEL_COUNT + 1)},
+    "OTHER / MECHANICAL": f"{PROJECT_NAME}-other.kicad_sch",
 }
 
 
@@ -128,7 +127,7 @@ def symbol_id(numbers):
 
 def make_library_symbol(numbers):
     entry_name = symbol_id(numbers)
-    parent = Symbol.create_new(id=f"DOOR8CH:{entry_name}", reference="U", value="PCB component")
+    parent = Symbol.create_new(id=f"{LIBRARY_NAME}:{entry_name}", reference="U", value="PCB component")
     parent.pinNames = True
     parent.pinNamesOffset = 0.5
     unit = Symbol()
@@ -220,9 +219,9 @@ def write_symbol_library(definitions):
         library_symbol = copy.deepcopy(parent)
         library_symbol.libId = library_symbol.libId.split(":", 1)[-1]
         symbols.append(library_symbol)
-    SymbolLib(generator="door8ch_pcb_sync", symbols=symbols).to_file(str(SYMBOL_LIBRARY_PATH), encoding="utf-8")
+    SymbolLib(generator=GENERATOR_NAME, symbols=symbols).to_file(str(SYMBOL_LIBRARY_PATH), encoding="utf-8")
     (PROJECT / "sym-lib-table").write_text(
-        '(sym_lib_table\n  (lib (name "DOOR8CH")(type "KiCad")(uri "${KIPRJMOD}/DOOR-8CH-generated.kicad_sym")(options "")(descr "Generated DOOR-8CH symbols"))\n)\n',
+        f'(sym_lib_table\n  (lib (name "{LIBRARY_NAME}")(type "KiCad")(uri "${{KIPRJMOD}}/{PROJECT_NAME}-generated.kicad_sym")(options "")(descr "Generated {PROJECT_NAME} symbols"))\n)\n',
         encoding="utf-8",
     )
 
@@ -279,7 +278,7 @@ def add_component(schematic, definitions, item, x, y, global_labels):
 def new_schematic(definitions, paper="A2"):
     schematic = Schematic.create_new()
     schematic.uuid = uid()
-    schematic.generator = "door8ch_pcb_sync"
+    schematic.generator = GENERATOR_NAME
     schematic.paper = PageSettings(paperSize=paper, portrait=False)
     schematic.libSymbols = [copy.deepcopy(parent) for parent, _, _ in definitions.values()]
     return schematic
@@ -291,7 +290,7 @@ def add_title(schematic, title):
 
 def generate_flat(definitions, groups):
     schematic = new_schematic(definitions, "A0")
-    add_title(schematic, "DOOR-8CH | generated from routed PCB | pad numbers and net labels are authoritative")
+    add_title(schematic, f"{PROJECT_NAME} | generated from routed PCB | pad numbers and net labels are authoritative")
     cell_width, cell_height = 285.75, 254.0
     for index, group_name in enumerate(GROUP_ORDER):
         row, column = divmod(index, 4)
@@ -305,7 +304,7 @@ def generate_flat(definitions, groups):
 
 def generate_child(definitions, group_name, items, path):
     schematic = new_schematic(definitions, "A2")
-    add_title(schematic, f"DOOR-8CH | {group_name}")
+    add_title(schematic, f"{PROJECT_NAME} | {group_name}")
     for item, x, y in pack_items(items, 20.32, 25.4, 530.0, columns=4):
         add_component(schematic, definitions, item, x, y, global_labels=True)
     schematic.to_file(str(path), encoding="utf-8")
@@ -319,7 +318,7 @@ def generate_multisheet(definitions, groups):
         child_entries.append((group_name, child_path.name))
 
     root = new_schematic({}, "A3")
-    add_title(root, "DOOR-8CH | multisheet principle schematic")
+    add_title(root, f"{PROJECT_NAME} | multisheet principle schematic")
     for index, (group_name, filename) in enumerate(child_entries):
         row, column = divmod(index, 4)
         x, y = snap(25.4 + column * 99.06), snap(30.48 + row * 53.34)

@@ -8,20 +8,20 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 
 - ESP32-S3: CC1101 433 MHz radio, Wi-Fi, web UI, configuration backup and CAN coordinator.
 - One cabinet per physical window or door.
-- One universal STM32F103C8T6 master in each cabinet: two VNH2SP30 channels, CAN,
+- One universal STM32F103C8T6 master in each cabinet: two VNH5019A-E channels, CAN,
   CAP1188 over 4-wire SPI, three D-M9 position sensors and up to three local UART slaves.
-- Up to three identical STM32 boards as local slaves, two VNH2SP30 channels per board.
+- Up to three identical STM32 boards as local slaves, two VNH5019A-E channels per board.
 - One firmware image for every STM32 board. `SLOT_ID` pins on the cabinet carrier select
   master/slave role, so a pre-flashed spare module can replace any controller.
 - Cabinet identity is stored in a 25LCxx SPI EEPROM on the non-removable carrier board.
 
 ## Current development status
 
-The current releases are STM32 `0.1.0-alpha.3` and ESP32-S3 `0.1.0-alpha.5`:
+The current releases are STM32 `0.1.0-alpha.8` and ESP32-S3 `0.1.0-alpha.6`:
 
 - hardware bxCAN at 500 kbit/s;
 - three hardware UART links at 250 kbit/s with CRC16 frames;
-- VNH2SP30 PWM, direction, current sense and diagnostic monitoring;
+- VNH5019A-E PWM, direction, current sense and diagnostic monitoring;
 - CAP1188 4-wire SPI driver, no I2C;
 - three active-low D-M9N inputs;
 - current disappearance end-stop detection;
@@ -83,6 +83,8 @@ or dedicated sensor is defined and bench-tested.
 - `docs/CAN_PROTOCOL.md`
 - `docs/SAFETY_AND_RECOVERY.md`
 - `docs/BOM_v0.1.md`
+- `hardware/DOOR-8CH/README.md`
+- `hardware/WINDOW-4CH/README.md`
 
 This is safety-related motion-control software. Test with disconnected mechanics
 and current-limited power before connecting a door or window.

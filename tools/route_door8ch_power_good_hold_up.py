@@ -43,6 +43,11 @@ def add_path(board, net_name, layer, positions, width=0.25):
 
 
 def add_via(board, net_name, position, diameter=0.65, drill=0.30):
+    target = point(position)
+    for item in board.GetTracks():
+        if (isinstance(item, pcbnew.PCB_VIA) and item.GetNetname() == net_name and
+                item.GetPosition() == target):
+            return
     via = pcbnew.PCB_VIA(board)
     via.SetNet(board.FindNet(net_name))
     via.SetPosition(point(position))
@@ -63,7 +68,8 @@ def route_any(board, net_name, start, end, width, layers):
     raise RuntimeError("; ".join(errors))
 
 
-def route_multilayer(board, net_name, start, end, width=0.20, start_layer=None):
+def route_multilayer(board, net_name, start, end, width=0.20, start_layer=None,
+                     end_layer=pcbnew.F_Cu, end_through_hole=False):
     layers = (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu)
     blocked = [grid_router.build_blocked(board, net_name, layer, width) for layer in layers]
     via_blocked = [grid_router.build_blocked(board, net_name, layer, 0.65) for layer in layers]
@@ -95,8 +101,9 @@ def route_multilayer(board, net_name, start, end, width=0.20, start_layer=None):
             continue
         x, y, layer_index = state
         if (x, y) == target:
-            final = state
-            break
+            if end_through_hole or layers[layer_index] == end_layer:
+                final = state
+                break
         for dx, dy in moves:
             neighbor = (x + dx, y + dy, layer_index)
             if not (min_key <= neighbor[0] <= max_x and min_key <= neighbor[1] <= max_y):
@@ -110,7 +117,8 @@ def route_multilayer(board, net_name, start, end, width=0.20, start_layer=None):
                 heuristic = math.hypot(target[0] - neighbor[0], target[1] - neighbor[1])
                 heapq.heappush(queue, (next_cost + heuristic, next_cost, neighbor))
         for next_layer in range(len(layers)):
-            if next_layer == layer_index or any((x, y) in layer_blocked for layer_blocked in via_blocked):
+            if ((x, y) in (source, target) or next_layer == layer_index
+                    or any((x, y) in layer_blocked for layer_blocked in via_blocked)):
                 continue
             neighbor = (x, y, next_layer)
             next_cost = current_cost + 8.0 + abs(next_layer - layer_index)
@@ -156,6 +164,20 @@ def route_multilayer(board, net_name, start, end, width=0.20, start_layer=None):
             compact.append(b)
     compact.append(positions[-1])
     add_path(board, net_name, layers[current_layer], compact, width)
+
+    source_grid = grid_router.grid_point(source)
+    target_grid = grid_router.grid_point(target)
+    initial_layer = layers[states[0][2]]
+    final_layer = layers[states[-1][2]]
+    if source_grid != start:
+        add_track(board, net_name, initial_layer, start, source_grid, width)
+    if target_grid != end:
+        if end_through_hole:
+            add_track(board, net_name, final_layer, target_grid, end, width)
+        else:
+            if final_layer != end_layer:
+                add_via(board, net_name, target_grid)
+            add_track(board, net_name, end_layer, target_grid, end, width)
     print(net_name, "multilayer", start, "->", end, "states", len(states))
 
 

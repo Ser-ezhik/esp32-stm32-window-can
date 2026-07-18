@@ -4,8 +4,8 @@
 
 namespace hw {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.7";
-constexpr uint32_t FW_BUILD = 7;
+constexpr char FW_VERSION[] = "0.1.0-alpha.8";
+constexpr uint32_t FW_BUILD = 8;
 
 constexpr uint8_t ACTUATOR_COUNT = 2;
 constexpr uint8_t SLAVE_COUNT = 3;
@@ -63,7 +63,7 @@ constexpr uint32_t NO_CURRENT_STARTUP_MS = 700;
 constexpr uint32_t ENDSTOP_CONFIRM_MS = 250;
 constexpr uint32_t DEFAULT_MAX_TRAVEL_MS = 45000;
 constexpr uint32_t DEFAULT_MIN_TRAVEL_MS = 1500;
-constexpr uint16_t DEFAULT_MAX_CURRENT_MA = 8000;
+constexpr uint16_t DEFAULT_MAX_CURRENT_MA = 5000;
 constexpr uint16_t DEFAULT_ZERO_CURRENT_MA = 100;
 constexpr uint16_t DEFAULT_PWM_PERMILLE = 1000;
 constexpr uint16_t MIN_CALIBRATION_PWM_PERMILLE = 600;

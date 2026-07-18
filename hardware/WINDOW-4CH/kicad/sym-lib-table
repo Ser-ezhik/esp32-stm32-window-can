@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "WINDOW4CH")(type "KiCad")(uri "${KIPRJMOD}/WINDOW-4CH-generated.kicad_sym")(options "")(descr "Generated WINDOW-4CH symbols"))
+)
