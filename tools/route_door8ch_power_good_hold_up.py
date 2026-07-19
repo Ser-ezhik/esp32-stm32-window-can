@@ -76,15 +76,14 @@ def route_multilayer(board, net_name, start, end, width=0.20, start_layer=None,
     source = grid_router.grid_key(start)
     target = grid_router.grid_key(end)
     for layer_blocked in blocked:
-        for center in (source, target):
-            for dx in range(-2, 3):
-                for dy in range(-2, 3):
-                    layer_blocked.discard((center[0] + dx, center[1] + dy))
+        layer_blocked.discard(source)
+        layer_blocked.discard(target)
 
     min_key = round(grid_router.EDGE / grid_router.GRID)
-    max_x = round((260.0 - grid_router.EDGE) / grid_router.GRID)
-    max_y = round((160.0 - grid_router.EDGE) / grid_router.GRID)
-    moves = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
+    edge_box = board.GetBoardEdgesBoundingBox()
+    max_x = round((pcbnew.ToMM(edge_box.GetRight()) - grid_router.EDGE) / grid_router.GRID)
+    max_y = round((pcbnew.ToMM(edge_box.GetBottom()) - grid_router.EDGE) / grid_router.GRID)
+    moves = ((1, 0), (-1, 0), (0, 1), (0, -1))
     queue = []
     cost = {}
     parent = {}

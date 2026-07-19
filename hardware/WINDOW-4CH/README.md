@@ -15,11 +15,13 @@ replace or modify `DOOR-8CH`.
 - One 25LC256 carrier EEPROM stores cabinet identity and the power-loss record.
 - U270, D280 and C280 provide power-fail detection and MASTER hold-up.
 
-The board outline is 240 x 160 mm and uses four copper layers. All external
+The compact board outline is 155 x 150 mm and uses four copper layers. All external
 power, actuator, CAN, reed and capacitive-sensor connectors are placed at board
-edges. Four VNH5019A-E channels retain the same protection, current sensing,
-bulk capacitance and heatsink mounting pattern as the validated 8-channel
-design.
+edges. The SWD service connector remains inside the low-voltage service area.
+Four VNH5019A-E channels retain the same protection, current sensing, bulk
+capacitance and top-mounted heatsink hole pattern as the validated 8-channel
+design. Clearance-checked GND stitching vias tie all four copper layers together
+around the power section.
 
 ## KiCad files
 

@@ -16,6 +16,7 @@ BOARD_PATH = Path(os.environ.get("BOARD_PATH", DEFAULT_BOARD))
 GRID = 0.5
 EDGE = 0.75
 CLEARANCE = 0.30
+PAD_EXTRA = GRID
 
 
 def mm(position):
@@ -84,11 +85,15 @@ def build_blocked(board, net_name, layer, width):
 
     for footprint in board.GetFootprints():
         for pad in footprint.Pads():
-            if pad.GetNetname() == net_name or not pad.IsOnLayer(layer):
+            through_hole = pad.GetAttribute() == pcbnew.PAD_ATTRIB_PTH
+            if pad.GetNetname() == net_name or (not through_hole and not pad.IsOnLayer(layer)):
                 continue
             center = mm(pad.GetPosition())
             size = pad.GetSize()
-            radius = max(pcbnew.ToMM(size.x), pcbnew.ToMM(size.y)) / 2 + margin
+            # One extra grid step covers the corridor between sampled nodes;
+            # otherwise a 0.5 mm segment can graze a large round PTH pad even
+            # when both of its endpoint nodes are clear.
+            radius = max(pcbnew.ToMM(size.x), pcbnew.ToMM(size.y)) / 2 + margin + PAD_EXTRA
             mark_circle(blocked, *center, radius)
 
     return blocked
@@ -102,9 +107,10 @@ def find_path(board, net_name, layer, start, end, width):
 
     min_x = round(EDGE / GRID)
     min_y = round(EDGE / GRID)
-    max_x = round((260.0 - EDGE) / GRID)
-    max_y = round((160.0 - EDGE) / GRID)
-    moves = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
+    edge_box = board.GetBoardEdgesBoundingBox()
+    max_x = round((pcbnew.ToMM(edge_box.GetRight()) - EDGE) / GRID)
+    max_y = round((pcbnew.ToMM(edge_box.GetBottom()) - EDGE) / GRID)
+    moves = ((1, 0), (-1, 0), (0, 1), (0, -1))
     queue = [(0.0, 0.0, source, None)]
     cost = {(source, None): 0.0}
     parent = {}
