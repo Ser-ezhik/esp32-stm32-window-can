@@ -2,7 +2,7 @@
 
 Audit target: routed `WINDOW-4CH.kicad_pcb`, generated flat and multisheet
 schematics, `STM32_Universal_Actuator_Node` v0.1.0-alpha.8 and
-`ESP32_CC1101_CAN_Master` v0.1.0-alpha.6.
+`ESP32_CC1101_CAN_Master` v0.1.0-alpha.7.
 
 ## Result
 
@@ -36,12 +36,11 @@ records are supported without a board-specific firmware build.
 
 ## Configuration finding
 
-The protocol and STM32 carrier identity accept `ObjectType::Window` with
-`slaveCount = 1`. The ESP32 runtime also supports `actuatorCount = 4`, but its
-current factory default object table still defines the existing window as two
-actuators with no slave. The WINDOW-4CH cabinet must therefore be provisioned
-with slave count 1 and represented in the ESP32 object table with actuator
-count 4. This is a configuration requirement, not a PCB pin mismatch.
+The existing two-actuator window remains in the ESP32 object table with no
+SLAVE. ESP32 v0.1.0-alpha.7 adds each newly discovered cabinet as a separate
+object and accepts 2, 4, 6 or 8 actuators. It derives the local SLAVE count as
+0, 1, 2 or 3 respectively, so a WINDOW-4CH cabinet is stored as four actuators
+with one SLAVE without replacing the two-actuator window.
 
 CAP1188 is physically present on S1. Use enabled mask `0x07` for three sensors
 or `0x0F` when the spare fourth input is fitted.

@@ -13,7 +13,7 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.6";
+constexpr char FW_VERSION[] = "0.1.0-alpha.7";
 constexpr uint8_t FW_BUILD = 6;
 
 constexpr int PIN_RF_SCK = 12;
@@ -692,9 +692,50 @@ void handleProvision() {
   frame.uidHash = strtoul(server.arg("uid").c_str(), nullptr, 16);
   frame.cabinetId = constrain(server.arg("cabinetId").toInt(), 0, 63);
   frame.objectType = constrain(server.arg("type").toInt(), 0, 2);
-  frame.slaveCount = constrain(server.arg("slaveCount").toInt(), 0, 3);
+  int actuatorCount = server.hasArg("actuatorCount") ? server.arg("actuatorCount").toInt() : 0;
+  if (actuatorCount == 0 && server.hasArg("slaveCount")) {
+    actuatorCount = (constrain(server.arg("slaveCount").toInt(), 0, 3) + 1) * 2;
+  }
+  if (actuatorCount < 2 || actuatorCount > 8 || (actuatorCount & 1)) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"actuator_count\"}");
+    return;
+  }
+  frame.slaveCount = actuatorCount / 2 - 1;
   frame.flags = constrain(server.arg("reedPolarityMask").toInt(), 0, 63);
-  sendCan(CAN_PROVISION_REQUEST, &frame, sizeof(frame)); sendJson("{\"ok\":true}");
+
+  int objectIndex = objectIndexByCabinet(frame.cabinetId);
+  if (objectIndex < 0) {
+    if (objectCount >= MAX_CABINETS) {
+      server.send(409, "application/json", "{\"ok\":false,\"error\":\"object_limit\"}");
+      return;
+    }
+    objectIndex = objectCount++;
+    memset(&objects[objectIndex], 0, sizeof(objects[objectIndex]));
+    objects[objectIndex].enabled = 1;
+    objects[objectIndex].id = objectIndex;
+    objects[objectIndex].capEnabledMask = 0x07;
+  }
+
+  ObjectConfig &object = objects[objectIndex];
+  object.enabled = 1;
+  object.cabinetId = frame.cabinetId;
+  object.type = frame.objectType;
+  object.actuatorCount = actuatorCount;
+  object.slaveCount = frame.slaveCount;
+  String objectName = server.arg("name");
+  objectName.trim();
+  if (objectName.length()) {
+    objectName.toCharArray(object.name, sizeof(object.name));
+  } else if (!object.name[0]) {
+    snprintf(object.name, sizeof(object.name), "CAN %u", frame.cabinetId);
+  }
+  saveObjects();
+
+  sendCan(CAN_PROVISION_REQUEST, &frame, sizeof(frame));
+  String response = F("{\"ok\":true,\"objectId\":");
+  response += object.id;
+  response += '}';
+  sendJson(response);
 }
 
 bool isShortPulse(uint32_t value) { return value >= RF_SHORT_MIN_US && value <= RF_SHORT_MAX_US; }
