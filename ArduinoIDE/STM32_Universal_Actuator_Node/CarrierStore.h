@@ -45,26 +45,35 @@ class CarrierStore {
   }
 
   bool load(CarrierIdentity &identity) {
-    readBytes(0, reinterpret_cast<uint8_t *>(&identity), sizeof(identity));
-    if (identity.magic != MAGIC || identity.version != VERSION) return false;
-    if (!windowbus::validCabinetId(identity.cabinetId) || identity.slaveCount > 3) return false;
-    const uint16_t stored = identity.crc;
-    identity.crc = 0;
-    const uint16_t expected = windowbus::crc16(reinterpret_cast<const uint8_t *>(&identity), sizeof(identity));
-    identity.crc = stored;
-    return stored == expected;
+    CarrierIdentity primary = {}, backup = {};
+    const bool primaryValid = loadIdentity(PRIMARY_IDENTITY_ADDRESS, primary);
+    const bool backupValid = loadIdentity(BACKUP_IDENTITY_ADDRESS, backup);
+    if (!primaryValid && !backupValid) return false;
+    if (!primaryValid) identity = backup;
+    else if (!backupValid) identity = primary;
+    else identity = revisionNewer(backup.configRevision, primary.configRevision) ? backup : primary;
+    return true;
   }
 
   bool save(CarrierIdentity identity) {
     if (!windowbus::validCabinetId(identity.cabinetId) || identity.slaveCount > 3) return false;
+    CarrierIdentity primary = {}, backup = {};
+    const bool primaryValid = loadIdentity(PRIMARY_IDENTITY_ADDRESS, primary);
+    const bool backupValid = loadIdentity(BACKUP_IDENTITY_ADDRESS, backup);
+    const bool backupIsActive = backupValid &&
+      (!primaryValid || revisionNewer(backup.configRevision, primary.configRevision));
+    const CarrierIdentity *active = backupIsActive ? &backup : (primaryValid ? &primary : nullptr);
+    identity.configRevision = active ? static_cast<uint16_t>(active->configRevision + 1u) : 1u;
+    if (identity.configRevision == 0) identity.configRevision = 1;
     identity.magic = MAGIC;
     identity.version = VERSION;
     identity.crc = 0;
     identity.crc = windowbus::crc16(reinterpret_cast<const uint8_t *>(&identity), sizeof(identity));
 
-    if (!writeBytes(IDENTITY_ADDRESS, reinterpret_cast<const uint8_t *>(&identity), sizeof(identity))) return false;
+    const uint16_t target = backupIsActive ? PRIMARY_IDENTITY_ADDRESS : BACKUP_IDENTITY_ADDRESS;
+    if (!writeBytes(target, reinterpret_cast<const uint8_t *>(&identity), sizeof(identity))) return false;
     CarrierIdentity verify = {};
-    return load(verify) && memcmp(&identity, &verify, sizeof(identity)) == 0;
+    return loadIdentity(target, verify) && memcmp(&identity, &verify, sizeof(identity)) == 0;
   }
 
   bool loadPowerLoss(PowerLossRecord &record) {
@@ -96,12 +105,28 @@ class CarrierStore {
  private:
   static constexpr uint32_t MAGIC = 0x314E4957u;  // WIN1
   static constexpr uint8_t VERSION = 1;
-  static constexpr uint16_t IDENTITY_ADDRESS = 0x0000;
+  static constexpr uint16_t PRIMARY_IDENTITY_ADDRESS = 0x0000;
+  static constexpr uint16_t BACKUP_IDENTITY_ADDRESS = 0x0020;
   static constexpr uint16_t POWER_LOSS_ADDRESS = 0x0040;
   static constexpr uint32_t POWER_LOSS_MAGIC = 0x31525750u;  // PWR1
   static constexpr uint8_t POWER_LOSS_VERSION = 1;
   static constexpr uint8_t PAGE_SIZE = 64;
   PinName cs_;
+
+  static bool revisionNewer(uint16_t candidate, uint16_t reference) {
+    return static_cast<int16_t>(candidate - reference) > 0;
+  }
+
+  bool loadIdentity(uint16_t address, CarrierIdentity &identity) {
+    readBytes(address, reinterpret_cast<uint8_t *>(&identity), sizeof(identity));
+    if (identity.magic != MAGIC || identity.version != VERSION) return false;
+    if (!windowbus::validCabinetId(identity.cabinetId) || identity.slaveCount > 3) return false;
+    const uint16_t stored = identity.crc;
+    identity.crc = 0;
+    const uint16_t expected = windowbus::crc16(reinterpret_cast<const uint8_t *>(&identity), sizeof(identity));
+    identity.crc = stored;
+    return stored == expected;
+  }
 
   void readBytes(uint16_t address, uint8_t *data, size_t length) {
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));

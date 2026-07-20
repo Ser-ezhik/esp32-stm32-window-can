@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.7";
-constexpr uint8_t FW_BUILD = 6;
+constexpr char FW_VERSION[] = "0.1.0-alpha.8";
+constexpr uint8_t FW_BUILD = 7;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
@@ -37,6 +37,7 @@ constexpr uint8_t EVENT_COUNT = 48;
 constexpr uint8_t REMOTE_COUNT = 36;
 constexpr uint8_t DISCOVERY_COUNT = 24;
 constexpr uint8_t NAME_LENGTH = 32;
+constexpr uint32_t PROVISION_TIMEOUT_MS = 3000;
 
 constexpr float RF_FREQUENCY_MHZ = 433.92f;
 constexpr float RF_DATA_RATE_KBPS = 19.2f;
@@ -121,13 +122,40 @@ struct DiscoveryRecord {
   uint32_t lastSeen = 0;
 };
 
+enum class ProvisionTransactionState : uint8_t {
+  Idle = 0,
+  Pending = 1,
+  Success = 2,
+  Failed = 3,
+  TimedOut = 4,
+};
+
+struct ProvisionTransaction {
+  ProvisionTransactionState state = ProvisionTransactionState::Idle;
+  uint32_t token = 0;
+  uint32_t uidHash = 0;
+  uint32_t startedAt = 0;
+  uint32_t completedAt = 0;
+  uint16_t configRevision = 0;
+  uint8_t oldCabinetId = 0xFF;
+  uint8_t cabinetId = 0xFF;
+  uint8_t objectType = 0;
+  uint8_t actuatorCount = 0;
+  uint8_t slaveCount = 0;
+  uint8_t reedPolarityMask = 0;
+  uint8_t result = 0;
+  char name[NAME_LENGTH] = {};
+};
+
 Preferences prefs;
 WebServer server(80);
 ObjectConfig objects[MAX_CABINETS] = {};
 ObjectRuntime runtime[MAX_CABINETS] = {};
+uint8_t reedPolarityMasks[MAX_CABINETS] = {};
 RemoteRecord remotes[REMOTE_COUNT] = {};
 EventRecord events[EVENT_COUNT] = {};
 DiscoveryRecord discovered[DISCOVERY_COUNT] = {};
+ProvisionTransaction provision = {};
 uint8_t objectCount = 0;
 uint8_t remoteCount = 0;
 uint8_t eventHead = 0;
@@ -152,6 +180,9 @@ volatile uint32_t rfLastEdgeUs = 0;
 volatile uint32_t rfLastActivityUs = 0;
 volatile bool rfHadActivity = false;
 portMUX_TYPE rfMux = portMUX_INITIALIZER_UNLOCKED;
+
+void saveObjects();
+void appendEvent(uint8_t objectId, uint8_t code, uint8_t actuator, const char *text);
 
 void IRAM_ATTR onRfEdge() {
   const uint32_t now = micros();
@@ -238,8 +269,73 @@ int objectIndexById(uint8_t id) {
   return -1;
 }
 
+int discoveryIndexByUid(uint32_t uidHash) {
+  for (uint8_t i = 0; i < discoveredCount; ++i) {
+    if (discovered[i].uidHash == uidHash) return i;
+  }
+  return -1;
+}
+
+void commitProvisionTransaction(uint16_t configRevision) {
+  int objectIndex = provision.oldCabinetId < MAX_CABINETS
+    ? objectIndexByCabinet(provision.oldCabinetId) : -1;
+  if (objectIndex < 0) objectIndex = objectIndexByCabinet(provision.cabinetId);
+  if (objectIndex < 0) {
+    if (objectCount >= MAX_CABINETS) {
+      provision.state = ProvisionTransactionState::Failed;
+      provision.result = static_cast<uint8_t>(ProvisionResult::InvalidRequest);
+      provision.completedAt = millis();
+      return;
+    }
+    objectIndex = objectCount++;
+    memset(&objects[objectIndex], 0, sizeof(objects[objectIndex]));
+    objects[objectIndex].enabled = 1;
+    objects[objectIndex].id = objectIndex;
+    objects[objectIndex].capEnabledMask = 0x07;
+  }
+
+  ObjectConfig &object = objects[objectIndex];
+  object.enabled = 1;
+  object.cabinetId = provision.cabinetId;
+  object.type = provision.objectType;
+  object.actuatorCount = provision.actuatorCount;
+  object.slaveCount = provision.slaveCount;
+  reedPolarityMasks[objectIndex] = provision.reedPolarityMask;
+  if (provision.name[0]) strncpy(object.name, provision.name, sizeof(object.name) - 1);
+  else snprintf(object.name, sizeof(object.name), "CAN %u", provision.cabinetId);
+  object.name[sizeof(object.name) - 1] = '\0';
+  runtime[objectIndex] = ObjectRuntime{};
+  saveObjects();
+
+  const int discoveryIndex = discoveryIndexByUid(provision.uidHash);
+  if (discoveryIndex >= 0) {
+    discovered[discoveryIndex].configured = 1;
+    discovered[discoveryIndex].cabinetId = provision.cabinetId;
+    discovered[discoveryIndex].lastSeen = millis();
+  }
+  provision.configRevision = configRevision;
+  provision.result = static_cast<uint8_t>(ProvisionResult::Success);
+  provision.state = ProvisionTransactionState::Success;
+  provision.completedAt = millis();
+  appendEvent(object.id, 0, 0, "EEPROM configuration verified");
+}
+
+void processProvisionResult(const CanProvisionResultFrame &frame) {
+  if (provision.state != ProvisionTransactionState::Pending ||
+      frame.uidHash != provision.uidHash || frame.cabinetId != provision.cabinetId) return;
+  provision.result = frame.result;
+  provision.configRevision = frame.configRevision;
+  if (frame.result == static_cast<uint8_t>(ProvisionResult::Success)) {
+    commitProvisionTransaction(frame.configRevision);
+  } else {
+    provision.state = ProvisionTransactionState::Failed;
+    provision.completedAt = millis();
+  }
+}
+
 void setDefaultObjects() {
   memset(objects, 0, sizeof(objects));
+  memset(reedPolarityMasks, 0, sizeof(reedPolarityMasks));
   objectCount = 5;
   const ObjectConfig defaults[5] = {
     {1, 0, 1, static_cast<uint8_t>(ObjectType::DoubleDoor), 8, 3, "Двойная дверь", 0x3F},
@@ -255,15 +351,22 @@ void saveObjects() {
   prefs.begin("windowcan", false);
   prefs.putUChar("objcount", objectCount);
   prefs.putBytes("objects", objects, sizeof(objects));
+  prefs.putBytes("reedmasks", reedPolarityMasks, sizeof(reedPolarityMasks));
   prefs.end();
 }
 
 void loadObjects() {
   prefs.begin("windowcan", true);
   const size_t stored = prefs.getBytesLength("objects");
+  const size_t storedReedMasks = prefs.getBytesLength("reedmasks");
   objectCount = prefs.getUChar("objcount", 0);
   if (stored == sizeof(objects) && objectCount <= MAX_CABINETS) prefs.getBytes("objects", objects, sizeof(objects));
   else objectCount = 0;
+  if (storedReedMasks == sizeof(reedPolarityMasks)) {
+    prefs.getBytes("reedmasks", reedPolarityMasks, sizeof(reedPolarityMasks));
+  } else {
+    memset(reedPolarityMasks, 0, sizeof(reedPolarityMasks));
+  }
   prefs.end();
   if (objectCount == 0) { setDefaultObjects(); saveObjects(); }
 }
@@ -502,6 +605,10 @@ void processCanMessage(const twai_message_t &message) {
       message.data_length_code == sizeof(CanDiscoveryFrame)) {
     CanDiscoveryFrame frame = {}; memcpy(&frame, message.data, sizeof(frame)); rememberDiscovery(frame); return;
   }
+  if (id == CAN_PROVISION_RESPONSE && message.data_length_code == sizeof(CanProvisionResultFrame)) {
+    CanProvisionResultFrame frame = {}; memcpy(&frame, message.data, sizeof(frame));
+    processProvisionResult(frame); return;
+  }
 }
 
 void pollCan() {
@@ -511,6 +618,11 @@ void pollCan() {
   uint32_t alerts = 0;
   if (twai_read_alerts(&alerts, 0) == ESP_OK && (alerts & TWAI_ALERT_BUS_OFF)) twai_initiate_recovery();
   const uint32_t now = millis();
+  if (provision.state == ProvisionTransactionState::Pending &&
+      now - provision.startedAt > PROVISION_TIMEOUT_MS) {
+    provision.state = ProvisionTransactionState::TimedOut;
+    provision.completedAt = now;
+  }
   for (uint8_t i = 0; i < objectCount; ++i) {
     if (runtime[i].online && now - runtime[i].lastSeen > OBJECT_OFFLINE_MS) {
       runtime[i].online = false;
@@ -539,6 +651,7 @@ String objectSummaryJson(uint8_t index) {
   json += F(",\"name\":\""); json += jsonEscape(object.name); json += '"';
   json += F(",\"type\":"); json += object.type;
   json += F(",\"actuatorCount\":"); json += object.actuatorCount;
+  json += F(",\"reedPolarityMask\":"); json += reedPolarityMasks[index];
   json += F(",\"capEnabledMask\":"); json += object.capEnabledMask;
   json += F(",\"online\":"); json += state.online ? F("true") : F("false");
   json += F(",\"state\":"); json += state.state;
@@ -688,8 +801,21 @@ void handleDiscoveryList() {
 
 void handleProvision() {
   if (!webAuth()) return;
+  if (provision.state == ProvisionTransactionState::Pending) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"provision_busy\"}");
+    return;
+  }
   CanProvisionFrame frame = {};
   frame.uidHash = strtoul(server.arg("uid").c_str(), nullptr, 16);
+  const int discoveryIndex = discoveryIndexByUid(frame.uidHash);
+  if (discoveryIndex < 0) {
+    server.send(404, "application/json", "{\"ok\":false,\"error\":\"uid_not_discovered\"}");
+    return;
+  }
+  if (discovered[discoveryIndex].firmware < 9) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"stm32_update_required\"}");
+    return;
+  }
   frame.cabinetId = constrain(server.arg("cabinetId").toInt(), 0, 63);
   frame.objectType = constrain(server.arg("type").toInt(), 0, 2);
   int actuatorCount = server.hasArg("actuatorCount") ? server.arg("actuatorCount").toInt() : 0;
@@ -703,39 +829,84 @@ void handleProvision() {
   frame.slaveCount = actuatorCount / 2 - 1;
   frame.flags = constrain(server.arg("reedPolarityMask").toInt(), 0, 63);
 
-  int objectIndex = objectIndexByCabinet(frame.cabinetId);
-  if (objectIndex < 0) {
-    if (objectCount >= MAX_CABINETS) {
-      server.send(409, "application/json", "{\"ok\":false,\"error\":\"object_limit\"}");
+  const uint8_t oldCabinetId = discovered[discoveryIndex].configured
+    ? discovered[discoveryIndex].cabinetId : static_cast<uint8_t>(0xFF);
+  for (uint8_t i = 0; i < discoveredCount; ++i) {
+    if (i != discoveryIndex && discovered[i].configured && discovered[i].cabinetId == frame.cabinetId) {
+      server.send(409, "application/json", "{\"ok\":false,\"error\":\"cabinet_id_in_use\"}");
       return;
     }
-    objectIndex = objectCount++;
-    memset(&objects[objectIndex], 0, sizeof(objects[objectIndex]));
-    objects[objectIndex].enabled = 1;
-    objects[objectIndex].id = objectIndex;
-    objects[objectIndex].capEnabledMask = 0x07;
+  }
+  const int oldObjectIndex = oldCabinetId < MAX_CABINETS ? objectIndexByCabinet(oldCabinetId) : -1;
+  const int collisionIndex = objectIndexByCabinet(frame.cabinetId);
+  if (collisionIndex >= 0 && collisionIndex != oldObjectIndex) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"cabinet_id_in_use\"}");
+    return;
+  }
+  if (oldObjectIndex < 0 && collisionIndex < 0 && objectCount >= MAX_CABINETS) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"object_limit\"}");
+    return;
+  }
+  if (oldObjectIndex >= 0 &&
+      (runtime[oldObjectIndex].state == static_cast<uint8_t>(RunState::Moving) ||
+       runtime[oldObjectIndex].state == static_cast<uint8_t>(RunState::Calibrating))) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"object_moving\"}");
+    return;
   }
 
-  ObjectConfig &object = objects[objectIndex];
-  object.enabled = 1;
-  object.cabinetId = frame.cabinetId;
-  object.type = frame.objectType;
-  object.actuatorCount = actuatorCount;
-  object.slaveCount = frame.slaveCount;
+  uint32_t nextToken = provision.token + 1u;
+  if (nextToken == 0) nextToken = 1;
+  provision = ProvisionTransaction{};
+  provision.state = ProvisionTransactionState::Pending;
+  provision.token = nextToken;
+  provision.uidHash = frame.uidHash;
+  provision.startedAt = millis();
+  provision.oldCabinetId = oldCabinetId;
+  provision.cabinetId = frame.cabinetId;
+  provision.objectType = frame.objectType;
+  provision.actuatorCount = actuatorCount;
+  provision.slaveCount = frame.slaveCount;
+  provision.reedPolarityMask = frame.flags;
   String objectName = server.arg("name");
   objectName.trim();
   if (objectName.length()) {
-    objectName.toCharArray(object.name, sizeof(object.name));
-  } else if (!object.name[0]) {
-    snprintf(object.name, sizeof(object.name), "CAN %u", frame.cabinetId);
+    objectName.toCharArray(provision.name, sizeof(provision.name));
+  } else if (oldObjectIndex >= 0 && objects[oldObjectIndex].name[0]) {
+    strncpy(provision.name, objects[oldObjectIndex].name, sizeof(provision.name) - 1);
+  } else {
+    snprintf(provision.name, sizeof(provision.name), "CAN %u", frame.cabinetId);
   }
-  saveObjects();
 
-  sendCan(CAN_PROVISION_REQUEST, &frame, sizeof(frame));
-  String response = F("{\"ok\":true,\"objectId\":");
-  response += object.id;
+  if (!sendCan(CAN_PROVISION_REQUEST, &frame, sizeof(frame))) {
+    provision.state = ProvisionTransactionState::Failed;
+    provision.result = static_cast<uint8_t>(ProvisionResult::WriteVerifyFailed);
+    provision.completedAt = millis();
+    server.send(503, "application/json", "{\"ok\":false,\"error\":\"can_send_failed\"}");
+    return;
+  }
+  String response = F("{\"ok\":true,\"pending\":true,\"token\":");
+  response += provision.token;
   response += '}';
-  sendJson(response);
+  server.send(202, "application/json", response);
+}
+
+void handleProvisionStatus() {
+  if (!webAuth()) return;
+  String json = F("{\"token\":");
+  json += provision.token;
+  json += F(",\"state\":\"");
+  switch (provision.state) {
+    case ProvisionTransactionState::Pending: json += F("pending"); break;
+    case ProvisionTransactionState::Success: json += F("success"); break;
+    case ProvisionTransactionState::Failed: json += F("failed"); break;
+    case ProvisionTransactionState::TimedOut: json += F("timeout"); break;
+    default: json += F("idle"); break;
+  }
+  json += F("\",\"result\":"); json += provision.result;
+  json += F(",\"cabinetId\":"); json += provision.cabinetId;
+  json += F(",\"configRevision\":"); json += provision.configRevision;
+  json += '}';
+  sendJson(json);
 }
 
 bool isShortPulse(uint32_t value) { return value >= RF_SHORT_MIN_US && value <= RF_SHORT_MAX_US; }
@@ -882,6 +1053,7 @@ void beginWeb() {
   server.on("/api/stop-all", HTTP_POST, handleStopAll); server.on("/api/events", HTTP_GET, handleEvents);
   server.on("/api/events/clear", HTTP_POST, handleClearEvents); server.on("/api/discover", HTTP_POST, handleDiscoveryStart);
   server.on("/api/discovery", HTTP_GET, handleDiscoveryList); server.on("/api/provision", HTTP_POST, handleProvision);
+  server.on("/api/provision/status", HTTP_GET, handleProvisionStatus);
   server.on("/api/remotes", HTTP_GET, handleRemotesApi); server.on("/api/remotes/learn", HTTP_POST, handleRemoteLearn);
   server.on("/api/remotes/delete", HTTP_POST, handleRemoteDelete);
   server.on("/api/remotes/save", HTTP_POST, handleRemoteSave);

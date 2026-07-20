@@ -20,6 +20,7 @@ constexpr uint16_t CAN_CONFIG_BASE = 0x3C0;
 constexpr uint16_t CAN_DISCOVERY_REQUEST = 0x700;
 constexpr uint16_t CAN_DISCOVERY_RESPONSE_BASE = 0x740;
 constexpr uint16_t CAN_PROVISION_REQUEST = 0x7C0;
+constexpr uint16_t CAN_PROVISION_RESPONSE = 0x7C1;
 
 constexpr uint8_t UART_SOF = 0xA5;
 constexpr uint8_t UART_MAX_PAYLOAD = 32;
@@ -114,6 +115,13 @@ enum ActuatorFlags : uint8_t {
   ACTUATOR_CALIBRATED = 1u << 6,
 };
 
+enum class ProvisionResult : uint8_t {
+  Success = 0,
+  InvalidRequest = 1,
+  Busy = 2,
+  WriteVerifyFailed = 3,
+};
+
 #pragma pack(push, 1)
 
 struct CanCommandFrame {
@@ -175,6 +183,13 @@ struct CanProvisionFrame {
   uint8_t flags;
 };
 
+struct CanProvisionResultFrame {
+  uint32_t uidHash;
+  uint8_t cabinetId;
+  uint8_t result;
+  uint16_t configRevision;
+};
+
 struct LocalCommandPayload {
   uint8_t command;
   uint8_t flags;
@@ -219,6 +234,7 @@ static_assert(sizeof(CanActuatorFrame) == 8, "CAN actuator frame must fit one cl
 static_assert(sizeof(CanEventFrame) == 8, "CAN event frame must fit one classic CAN frame");
 static_assert(sizeof(CanDiscoveryFrame) == 8, "CAN discovery frame must fit one classic CAN frame");
 static_assert(sizeof(CanProvisionFrame) == 8, "CAN provision frame must fit one classic CAN frame");
+static_assert(sizeof(CanProvisionResultFrame) == 8, "CAN provision response must fit one classic CAN frame");
 
 inline uint16_t crc16(const uint8_t *data, size_t length) {
   uint16_t crc = 0xFFFF;

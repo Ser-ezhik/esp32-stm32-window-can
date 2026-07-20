@@ -687,21 +687,46 @@ void sendDiscovery() {
   canBus.send(id, &response, sizeof(response));
 }
 
+void sendProvisionResult(const CanProvisionFrame &request, ProvisionResult result,
+                         uint16_t configRevision = 0) {
+  const CanProvisionResultFrame response = {
+    request.uidHash,
+    request.cabinetId,
+    static_cast<uint8_t>(result),
+    configRevision,
+  };
+  canBus.send(CAN_PROVISION_RESPONSE, &response, sizeof(response));
+}
+
 void handleProvision(const CanProvisionFrame &request) {
-  if (!isMaster() || request.uidHash != uidHash || !validCabinetId(request.cabinetId) || request.slaveCount > 3) return;
+  if (!isMaster() || request.uidHash != uidHash) return;
+  if (runState == RunState::Moving || runState == RunState::Calibrating) {
+    sendProvisionResult(request, ProvisionResult::Busy);
+    return;
+  }
+  if (!validCabinetId(request.cabinetId) || request.slaveCount > 3 ||
+      request.objectType > static_cast<uint8_t>(ObjectType::DoubleDoor)) {
+    sendProvisionResult(request, ProvisionResult::InvalidRequest);
+    return;
+  }
   CarrierIdentity next = {};
   next.cabinetId = request.cabinetId;
   next.objectType = request.objectType;
   next.slaveCount = request.slaveCount;
   next.reserved = request.flags & 0x3Fu;
-  next.configRevision = 1;
   if (carrierStore.save(next)) {
-    carrier = next;
     carrierConfigured = carrierStore.load(carrier);
-    configureReedInputs();
-    clearFault();
-    sendDiscovery();
+    if (carrierConfigured && carrier.cabinetId == request.cabinetId &&
+        carrier.objectType == request.objectType && carrier.slaveCount == request.slaveCount &&
+        carrier.reserved == (request.flags & 0x3Fu)) {
+      configureReedInputs();
+      clearFault();
+      sendProvisionResult(request, ProvisionResult::Success, carrier.configRevision);
+      sendDiscovery();
+      return;
+    }
   }
+  sendProvisionResult(request, ProvisionResult::WriteVerifyFailed);
 }
 
 void pollCan() {
