@@ -64,7 +64,7 @@ for slot, (module, center_x) in enumerate(
     module.SetReference(f"MOD{slot}")
     module.SetValue(f"STM32F103C8T6_MINI_SLOT_S{slot}")
     # Rotation 180 places USB-C toward the lower service edge. The footprint
-    # origin is pad 1, so these coordinates centre the 22.86 mm-wide module.
+    # Origin is pad 1; the YD ESP32-S3 module has 25.40 mm row spacing.
     module.SetPosition(pcbnew.VECTOR2I_MM(center_x + 10.16, 153))
     module.SetOrientationDegrees(180)
     board.Add(module)

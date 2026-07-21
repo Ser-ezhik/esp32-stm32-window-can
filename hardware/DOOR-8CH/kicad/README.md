@@ -9,7 +9,7 @@ approved universal one-board-per-cabinet architecture. It presently contains:
 - mechanically checked placement for S1 through S4 and the photographed
   plug-in modules.
 
-It is deliberately a design-stage source, not a fabrication release. The v1.41
+The editable source is also the basis of the checked v1.43 fabrication release. The v1.43
 board contains the repeated VNH passive blocks, slot straps, named power,
 motor, control, diagnostic, current-sense and low-voltage communication nets.
 The routed PCB passes DRC with zero violations and zero unconnected pads.
@@ -49,12 +49,26 @@ open-drain `POWER_GOOD` connection to S1 PC13, and an isolated MASTER hold-up
 rail using D280 (`SS34`) and C280 (4700 uF / 10 V low ESR). U250 and its SPI
 pull-ups are powered by the held `S1_3V3` rail so an outage record can finish.
 
-All 16 motor terminals are on the top edge. STM32 USB-C connectors face the
+Version v1.43 corrects D230 so its anode is connected to
+`LOGIC_12V_FUSED` and its cathode to `LOGIC_12V_PROTECTED`. It also adds the
+front-silkscreen Telegram QR code and exports an SMD-only JLCPCB assembly set
+with package-specific orientation corrections.
+
+Version v1.44 combines each channel's fused 12 V input and bidirectional motor
+output into one keyed DINKLE 2EHDRC-04P connector. Pins are `+12V`, `GND`, `MA`
+and `MB`; all resistor and capacitor references are visible on front silk.
+
+Version v1.47 corrects the YD ESP32-S3 N16R8 socket to 25.40 mm row spacing,
+keeps 1.00 mm finished drills, and reroutes the nearby CAN and reed signals.
+The resulting PCB passes DRC with zero violations and zero unconnected items.
+
+All eight actuator terminals are on the top edge. STM32 USB-C connectors face the
 bottom service edge, both ESP32-S3 USB connectors face the left edge, the
 CC1101 antenna faces the left edge, and CAP1188 touch-channel pins face the
 right edge. The placement uses complete photo-matched footprints for the two
-SN65HVD230 modules, CC1101 and CAP1188, plus Espressif's official 44-pin
-ESP32-S3-DevKitC footprint. KiCad placement DRC reports zero violations.
+SN65HVD230 modules, CC1101 and CAP1188, plus the photographed 44-pin YD
+ESP32-S3 N16R8 board with 25.40 mm row spacing. KiCad placement DRC reports
+zero violations.
 
 ## Before fabrication
 
