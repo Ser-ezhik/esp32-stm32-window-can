@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "UNIVERSAL2CH")(type "KiCad")(uri "${KIPRJMOD}/UNIVERSAL-2CH-generated.kicad_sym")(options "")(descr "Generated UNIVERSAL-2CH symbols"))
+)

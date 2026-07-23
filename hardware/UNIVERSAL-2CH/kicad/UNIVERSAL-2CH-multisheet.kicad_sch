@@ -1,0 +1,135 @@
+(kicad_sch (version 20211014) (generator universal2ch_pcb_sync)
+
+  (uuid 85ce9833-8eb7-46a8-8382-0184392bd20c)
+
+  (paper "A3")
+  (lib_symbols)
+
+  (text "UNIVERSAL-2CH | multisheet principle schematic" (at 20.32 12.7 0)
+    (effects (font (size 2.0 2.0) bold))
+    (uuid 5f98618f-0615-4019-826c-be7a02fb7225)
+  )
+
+  (sheet (at 25.4 30.48) (size 88.9 38.1)
+    (stroke (width 0.254) (type default))
+    (fill (color 1 1 1 0))
+    (uuid 1b913616-de28-4bf1-8646-3901ebef1d03)
+    (property "Sheetname" "POWER" (id 0) (at 25.4 29.21 0)
+      (effects (font (size 1.0 1.0)))
+    )
+    (property "Sheetfile" "UNIVERSAL-2CH-power.kicad_sch" (id 1) (at 25.4 69.85 0)
+      (effects (font (size 0.9 0.9)))
+    )
+    (instances
+      (project ""
+        (path "/1b913616-de28-4bf1-8646-3901ebef1d03" (page "2"))
+      )
+    )
+  )
+
+  (sheet (at 124.46 30.48) (size 88.9 38.1)
+    (stroke (width 0.254) (type default))
+    (fill (color 1 1 1 0))
+    (uuid 0df5f307-921b-4c46-9897-0073fd3e5ba8)
+    (property "Sheetname" "CONTROL / CAN" (id 0) (at 124.46 29.21 0)
+      (effects (font (size 1.0 1.0)))
+    )
+    (property "Sheetfile" "UNIVERSAL-2CH-control-can.kicad_sch" (id 1) (at 124.46 69.85 0)
+      (effects (font (size 0.9 0.9)))
+    )
+    (instances
+      (project ""
+        (path "/0df5f307-921b-4c46-9897-0073fd3e5ba8" (page "3"))
+      )
+    )
+  )
+
+  (sheet (at 223.52 30.48) (size 88.9 38.1)
+    (stroke (width 0.254) (type default))
+    (fill (color 1 1 1 0))
+    (uuid 99b86600-6d8c-415e-aa68-d0ac041605e4)
+    (property "Sheetname" "CAP1188" (id 0) (at 223.52 29.21 0)
+      (effects (font (size 1.0 1.0)))
+    )
+    (property "Sheetfile" "UNIVERSAL-2CH-cap1188.kicad_sch" (id 1) (at 223.52 69.85 0)
+      (effects (font (size 0.9 0.9)))
+    )
+    (instances
+      (project ""
+        (path "/99b86600-6d8c-415e-aa68-d0ac041605e4" (page "4"))
+      )
+    )
+  )
+
+  (sheet (at 322.58 30.48) (size 88.9 38.1)
+    (stroke (width 0.254) (type default))
+    (fill (color 1 1 1 0))
+    (uuid 93c56625-edf1-4197-8641-8acbead02b38)
+    (property "Sheetname" "REEDS" (id 0) (at 322.58 29.21 0)
+      (effects (font (size 1.0 1.0)))
+    )
+    (property "Sheetfile" "UNIVERSAL-2CH-reeds.kicad_sch" (id 1) (at 322.58 69.85 0)
+      (effects (font (size 0.9 0.9)))
+    )
+    (instances
+      (project ""
+        (path "/93c56625-edf1-4197-8641-8acbead02b38" (page "5"))
+      )
+    )
+  )
+
+  (sheet (at 25.4 83.82) (size 88.9 38.1)
+    (stroke (width 0.254) (type default))
+    (fill (color 1 1 1 0))
+    (uuid 453b988d-2ffe-4864-ba83-a8b1d5590fcf)
+    (property "Sheetname" "CHANNEL 1" (id 0) (at 25.4 82.55 0)
+      (effects (font (size 1.0 1.0)))
+    )
+    (property "Sheetfile" "UNIVERSAL-2CH-channel-1.kicad_sch" (id 1) (at 25.4 123.19 0)
+      (effects (font (size 0.9 0.9)))
+    )
+    (instances
+      (project ""
+        (path "/453b988d-2ffe-4864-ba83-a8b1d5590fcf" (page "6"))
+      )
+    )
+  )
+
+  (sheet (at 124.46 83.82) (size 88.9 38.1)
+    (stroke (width 0.254) (type default))
+    (fill (color 1 1 1 0))
+    (uuid 6065a46a-fa30-4cb0-bcf4-b21d438a3713)
+    (property "Sheetname" "CHANNEL 2" (id 0) (at 124.46 82.55 0)
+      (effects (font (size 1.0 1.0)))
+    )
+    (property "Sheetfile" "UNIVERSAL-2CH-channel-2.kicad_sch" (id 1) (at 124.46 123.19 0)
+      (effects (font (size 0.9 0.9)))
+    )
+    (instances
+      (project ""
+        (path "/6065a46a-fa30-4cb0-bcf4-b21d438a3713" (page "7"))
+      )
+    )
+  )
+
+  (sheet (at 223.52 83.82) (size 88.9 38.1)
+    (stroke (width 0.254) (type default))
+    (fill (color 1 1 1 0))
+    (uuid e83e371f-9f6a-4e28-ac68-f2d9122ce453)
+    (property "Sheetname" "OTHER / MECHANICAL" (id 0) (at 223.52 82.55 0)
+      (effects (font (size 1.0 1.0)))
+    )
+    (property "Sheetfile" "UNIVERSAL-2CH-other.kicad_sch" (id 1) (at 223.52 123.19 0)
+      (effects (font (size 0.9 0.9)))
+    )
+    (instances
+      (project ""
+        (path "/e83e371f-9f6a-4e28-ac68-f2d9122ce453" (page "8"))
+      )
+    )
+  )
+
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+)

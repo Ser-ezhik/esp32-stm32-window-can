@@ -4,8 +4,8 @@
 
 namespace hw {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.11";
-constexpr uint32_t FW_BUILD = 11;
+constexpr char FW_VERSION[] = "0.1.0-alpha.12";
+constexpr uint32_t FW_BUILD = 12;
 
 constexpr uint8_t ACTUATOR_COUNT = 2;
 constexpr uint8_t SLAVE_COUNT = 3;
@@ -69,8 +69,9 @@ constexpr uint16_t DEFAULT_PWM_PERMILLE = 1000;
 constexpr uint16_t MIN_CALIBRATION_PWM_PERMILLE = 600;
 constexpr uint16_t LOW_SUPPLY_MV = 9500;
 
-// Calibrate this value for the custom VNH5019A-E CS circuit and ADC divider.
-constexpr uint32_t CURRENT_MA_PER_ADC_COUNT_NUM = 20;
-constexpr uint32_t CURRENT_MA_PER_ADC_COUNT_DEN = 1;
+// Theoretical starting value for K0=7110, 1 kOhm sense resistor and a
+// 3.3 V/12-bit ADC: 5.73 mA/count. Calibrate each assembled channel under load.
+constexpr uint32_t CURRENT_MA_PER_ADC_COUNT_NUM = 57;
+constexpr uint32_t CURRENT_MA_PER_ADC_COUNT_DEN = 10;
 
 }  // namespace hw
