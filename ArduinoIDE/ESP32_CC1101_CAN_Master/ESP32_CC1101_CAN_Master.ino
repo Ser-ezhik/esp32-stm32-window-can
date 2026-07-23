@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.9";
-constexpr uint8_t FW_BUILD = 9;
+constexpr char FW_VERSION[] = "0.1.0-alpha.10";
+constexpr uint8_t FW_BUILD = 10;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
@@ -40,6 +40,8 @@ constexpr uint8_t NAME_LENGTH = 32;
 constexpr uint32_t PROVISION_TIMEOUT_MS = 3000;
 constexpr uint32_t CARRIER_BACKUP_MAGIC = 0x314B4243u;  // CBK1
 constexpr uint8_t CARRIER_BACKUP_VERSION = 1;
+constexpr uint32_t SYSTEM_BACKUP_MAGIC = 0x314B4257u;  // WBK1
+constexpr uint16_t SYSTEM_BACKUP_VERSION = 1;
 
 constexpr float RF_FREQUENCY_MHZ = 433.92f;
 constexpr float RF_DATA_RATE_KBPS = 19.2f;
@@ -90,6 +92,26 @@ struct CarrierBackupRecord {
   uint16_t configRevision;
   char name[NAME_LENGTH];
   uint16_t crc;
+};
+
+struct SystemBackupPayload {
+  char wifiSsid[33];
+  char wifiPassword[65];
+  char systemName[NAME_LENGTH];
+  uint8_t objectCount;
+  uint8_t remoteCount;
+  ObjectConfig objects[MAX_CABINETS];
+  uint8_t reedPolarityMasks[MAX_CABINETS];
+  RemoteRecord remotes[REMOTE_COUNT];
+  CarrierBackupRecord carrierBackups[MAX_CABINETS];
+};
+
+struct SystemBackupFile {
+  uint32_t magic;
+  uint16_t version;
+  uint16_t payloadSize;
+  uint32_t crc32;
+  SystemBackupPayload payload;
 };
 #pragma pack(pop)
 
@@ -175,6 +197,9 @@ RemoteRecord remotes[REMOTE_COUNT] = {};
 EventRecord events[EVENT_COUNT] = {};
 DiscoveryRecord discovered[DISCOVERY_COUNT] = {};
 CarrierBackupRecord carrierBackups[MAX_CABINETS] = {};
+SystemBackupFile backupTransfer = {};
+size_t backupUploadLength = 0;
+bool backupUploadFailed = false;
 ProvisionTransaction provision = {};
 uint8_t objectCount = 0;
 uint8_t remoteCount = 0;
@@ -202,6 +227,8 @@ volatile bool rfHadActivity = false;
 portMUX_TYPE rfMux = portMUX_INITIALIZER_UNLOCKED;
 
 void saveObjects();
+void saveRemotes();
+void saveSystemSettings();
 void appendEvent(uint8_t objectId, uint8_t code, uint8_t actuator, const char *text);
 
 void IRAM_ATTR onRfEdge() {
@@ -478,6 +505,105 @@ void loadRemotes() {
   if (remoteCount > REMOTE_COUNT || prefs.getBytesLength("remotes") != sizeof(remotes)) remoteCount = 0;
   else prefs.getBytes("remotes", remotes, sizeof(remotes));
   prefs.end();
+}
+
+uint32_t systemBackupCrc32(const uint8_t *data, size_t length) {
+  uint32_t crc = 0xFFFFFFFFu;
+  for (size_t i = 0; i < length; ++i) {
+    crc ^= data[i];
+    for (uint8_t bit = 0; bit < 8; ++bit) {
+      crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+    }
+  }
+  return ~crc;
+}
+
+bool terminatedText(const char *text, size_t length) {
+  return memchr(text, '\0', length) != nullptr;
+}
+
+bool validSystemBackup(const SystemBackupFile &file) {
+  if (file.magic != SYSTEM_BACKUP_MAGIC ||
+      file.version != SYSTEM_BACKUP_VERSION ||
+      file.payloadSize != sizeof(SystemBackupPayload) ||
+      file.crc32 != systemBackupCrc32(
+        reinterpret_cast<const uint8_t *>(&file.payload), sizeof(file.payload))) return false;
+
+  const SystemBackupPayload &payload = file.payload;
+  if (payload.objectCount > MAX_CABINETS || payload.remoteCount > REMOTE_COUNT ||
+      !terminatedText(payload.wifiSsid, sizeof(payload.wifiSsid)) ||
+      !terminatedText(payload.wifiPassword, sizeof(payload.wifiPassword)) ||
+      !terminatedText(payload.systemName, sizeof(payload.systemName))) return false;
+
+  bool usedCabinetIds[MAX_CABINETS] = {};
+  for (uint8_t i = 0; i < payload.objectCount; ++i) {
+    const ObjectConfig &object = payload.objects[i];
+    if (object.enabled > 1 || !object.enabled ||
+        object.id >= MAX_CABINETS ||
+        !validCabinetId(object.cabinetId) || usedCabinetIds[object.cabinetId] ||
+        object.type > static_cast<uint8_t>(ObjectType::DoubleDoor) ||
+        object.actuatorCount < 2 || object.actuatorCount > MAX_ACTUATORS_PER_CABINET ||
+        (object.actuatorCount & 1u) != 0 ||
+        object.slaveCount != object.actuatorCount / 2u - 1u ||
+        !terminatedText(object.name, sizeof(object.name))) return false;
+    usedCabinetIds[object.cabinetId] = true;
+  }
+
+  const uint64_t validTargetMask = payload.objectCount == 64
+    ? UINT64_MAX : ((1ULL << payload.objectCount) - 1ULL);
+  for (uint8_t i = 0; i < payload.remoteCount; ++i) {
+    const RemoteRecord &remote = payload.remotes[i];
+    const Command command = static_cast<Command>(remote.command);
+    if (remote.enabled > 1 || (remote.targetMask & ~validTargetMask) != 0 ||
+        (command != Command::Open && command != Command::Close && command != Command::Stop) ||
+        !terminatedText(remote.name, sizeof(remote.name))) return false;
+  }
+
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) {
+    const CarrierBackupRecord &backup = payload.carrierBackups[i];
+    if (backup.valid == 0) continue;
+    if (!validCarrierBackup(backup) || backup.cabinetId != i) return false;
+  }
+  return true;
+}
+
+void buildSystemBackup() {
+  memset(&backupTransfer, 0, sizeof(backupTransfer));
+  backupTransfer.magic = SYSTEM_BACKUP_MAGIC;
+  backupTransfer.version = SYSTEM_BACKUP_VERSION;
+  backupTransfer.payloadSize = sizeof(SystemBackupPayload);
+  SystemBackupPayload &payload = backupTransfer.payload;
+  strlcpy(payload.wifiSsid, wifiSsid, sizeof(payload.wifiSsid));
+  strlcpy(payload.wifiPassword, wifiPassword, sizeof(payload.wifiPassword));
+  strlcpy(payload.systemName, systemName, sizeof(payload.systemName));
+  payload.objectCount = objectCount;
+  payload.remoteCount = remoteCount;
+  memcpy(payload.objects, objects, sizeof(objects));
+  memcpy(payload.reedPolarityMasks, reedPolarityMasks, sizeof(reedPolarityMasks));
+  memcpy(payload.remotes, remotes, sizeof(remotes));
+  memcpy(payload.carrierBackups, carrierBackups, sizeof(carrierBackups));
+  backupTransfer.crc32 = systemBackupCrc32(
+    reinterpret_cast<const uint8_t *>(&payload), sizeof(payload));
+}
+
+void applySystemBackup(const SystemBackupFile &file) {
+  const SystemBackupPayload &payload = file.payload;
+  strlcpy(wifiSsid, payload.wifiSsid, sizeof(wifiSsid));
+  strlcpy(wifiPassword, payload.wifiPassword, sizeof(wifiPassword));
+  strlcpy(systemName, payload.systemName, sizeof(systemName));
+  objectCount = payload.objectCount;
+  remoteCount = payload.remoteCount;
+  memcpy(objects, payload.objects, sizeof(objects));
+  memcpy(reedPolarityMasks, payload.reedPolarityMasks, sizeof(reedPolarityMasks));
+  memcpy(remotes, payload.remotes, sizeof(remotes));
+  memcpy(carrierBackups, payload.carrierBackups, sizeof(carrierBackups));
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) runtime[i] = ObjectRuntime{};
+  discoveredCount = 0;
+  provision = ProvisionTransaction{};
+  saveSystemSettings();
+  saveObjects();
+  saveRemotes();
+  saveCarrierBackups();
 }
 
 void eventKey(uint8_t index, char *key, size_t length) {
@@ -1215,6 +1341,75 @@ void handleRemoteSave() {
   saveRemotes(); sendJson("{\"ok\":true}");
 }
 
+bool systemBusyForRestore() {
+  if (provision.state == ProvisionTransactionState::Pending) return true;
+  for (uint8_t i = 0; i < objectCount; ++i) {
+    if (runtime[i].state == static_cast<uint8_t>(RunState::Moving) ||
+        runtime[i].state == static_cast<uint8_t>(RunState::Calibrating) ||
+        runtime[i].heartbeatCommand != Command::None) return true;
+  }
+  return false;
+}
+
+void handleSystemBackupExport() {
+  if (!webAuth()) return;
+  buildSystemBackup();
+  server.sendHeader("Content-Disposition",
+                    "attachment; filename=window-can-settings-v1.wbackup");
+  server.setContentLength(sizeof(backupTransfer));
+  server.send(200, "application/octet-stream", "");
+  server.client().write(
+    reinterpret_cast<const uint8_t *>(&backupTransfer), sizeof(backupTransfer));
+}
+
+void handleSystemBackupUpload() {
+  HTTPUpload &upload = server.upload();
+  if (upload.status == UPLOAD_FILE_START) {
+    backupUploadLength = 0;
+    backupUploadFailed = false;
+    memset(&backupTransfer, 0, sizeof(backupTransfer));
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (!backupUploadFailed &&
+        backupUploadLength + upload.currentSize <= sizeof(backupTransfer)) {
+      memcpy(reinterpret_cast<uint8_t *>(&backupTransfer) + backupUploadLength,
+             upload.buf, upload.currentSize);
+      backupUploadLength += upload.currentSize;
+    } else {
+      backupUploadFailed = true;
+    }
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    backupUploadLength = 0;
+    backupUploadFailed = true;
+  }
+}
+
+void handleSystemBackupImport() {
+  if (!webAuth()) return;
+  if (systemBusyForRestore()) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"system_busy\"}");
+    return;
+  }
+  if (backupUploadFailed || backupUploadLength != sizeof(backupTransfer)) {
+    backupUploadLength = 0;
+    backupUploadFailed = false;
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"backup_size\"}");
+    return;
+  }
+  if (!validSystemBackup(backupTransfer)) {
+    backupUploadLength = 0;
+    backupUploadFailed = false;
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"backup_invalid\"}");
+    return;
+  }
+
+  applySystemBackup(backupTransfer);
+  backupUploadLength = 0;
+  backupUploadFailed = false;
+  server.send(200, "application/json", "{\"ok\":true,\"restarting\":true}");
+  delay(300);
+  ESP.restart();
+}
+
 void handleSettingsGet() {
   if (!webAuth()) return;
   String json = F("{\"systemName\":\""); json += jsonEscape(systemName);
@@ -1254,6 +1449,8 @@ void beginWeb() {
   server.on("/api/remotes/delete", HTTP_POST, handleRemoteDelete);
   server.on("/api/remotes/save", HTTP_POST, handleRemoteSave);
   server.on("/api/settings", HTTP_GET, handleSettingsGet); server.on("/api/settings", HTTP_POST, handleSettingsSave);
+  server.on("/api/backup/export", HTTP_GET, handleSystemBackupExport);
+  server.on("/api/backup/import", HTTP_POST, handleSystemBackupImport, handleSystemBackupUpload);
   server.onNotFound([] { server.send(404, "application/json", "{\"error\":\"not_found\"}"); }); server.begin();
 }
 

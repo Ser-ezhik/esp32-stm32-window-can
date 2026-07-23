@@ -145,3 +145,9 @@ The power-loss record is deliberately not restored because it is a historical
 event from the old board. Per-actuator speed calibration remains local to each
 STM32 module and must be repeated after replacing STM32 modules, motor drivers
 or actuators.
+
+ESP32 firmware `v0.1.0-alpha.10` also includes all carrier EEPROM backup records
+in the downloadable system settings file (`.wbackup`). Restoring that file on a
+replacement ESP32 restores the cabinet table and its EEPROM backups together.
+The file has a versioned header and CRC32; its size and every contained cabinet
+record are validated before NVS is changed.
