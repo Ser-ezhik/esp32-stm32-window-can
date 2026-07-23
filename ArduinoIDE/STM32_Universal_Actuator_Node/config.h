@@ -4,8 +4,8 @@
 
 namespace hw {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.10";
-constexpr uint32_t FW_BUILD = 10;
+constexpr char FW_VERSION[] = "0.1.0-alpha.11";
+constexpr uint32_t FW_BUILD = 11;
 
 constexpr uint8_t ACTUATOR_COUNT = 2;
 constexpr uint8_t SLAVE_COUNT = 3;

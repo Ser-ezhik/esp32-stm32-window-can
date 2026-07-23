@@ -97,6 +97,8 @@ bool powerLossEventPending = false;
 bool powerLossHandled = false;
 uint32_t lastPowerEventAttempt = 0;
 
+void sendCanSensors();
+
 uint16_t configCrc(NodeConfig value) {
   value.crc = 0;
   return crc16(reinterpret_cast<const uint8_t *>(&value), sizeof(value));
@@ -601,7 +603,13 @@ void readMasterSensors() {
     else position = Position::Intermediate;
   }
 
-  if (capOnline) capMask = cap1188.touched() & config.capEnabledMask;
+  if (capOnline) {
+    const uint8_t nextCapMask = cap1188.touched() & config.capEnabledMask;
+    if (nextCapMask != capMask) {
+      capMask = nextCapMask;
+      sendCanSensors();
+    }
+  }
   if (capMask != 0 && commandDirection(activeCommand) == Direction::Retract) {
     setFault(Fault::SafetyEdge);
   }
@@ -763,6 +771,18 @@ void pollCan() {
   }
 }
 
+void sendCanSensors() {
+  if (!carrierConfigured || !canOnline) return;
+  CanSensorFrame sensors = {
+    PROTOCOL_VERSION, reedMask, capMask,
+    static_cast<uint8_t>((capOnline ? 1u : 0u) |
+                         (digitalRead(hw::POWER_GOOD) == HIGH ? 2u : 0u) |
+                         ((capOnline && (cap1188.noiseFlags() & config.capEnabledMask)) ? 4u : 0u)),
+    0, static_cast<uint16_t>(min<uint32_t>(millis() / 1000u, 65535u))
+  };
+  canBus.send(CAN_SENSORS_BASE + carrier.cabinetId, &sensors, sizeof(sensors));
+}
+
 void sendCanTelemetry() {
   if (!carrierConfigured || !canOnline) return;
 
@@ -782,15 +802,7 @@ void sendCanTelemetry() {
     static_cast<uint8_t>(position), static_cast<uint8_t>(aggregateFault), aggregateActuator, slaveMask
   };
   canBus.send(CAN_STATUS_BASE + carrier.cabinetId, &status, sizeof(status));
-
-  CanSensorFrame sensors = {
-    PROTOCOL_VERSION, reedMask, capMask,
-    static_cast<uint8_t>((capOnline ? 1u : 0u) |
-                         (digitalRead(hw::POWER_GOOD) == HIGH ? 2u : 0u) |
-                         ((capOnline && (cap1188.noiseFlags() & config.capEnabledMask)) ? 4u : 0u)),
-    0, static_cast<uint16_t>(min<uint32_t>(millis() / 1000u, 65535u))
-  };
-  canBus.send(CAN_SENSORS_BASE + carrier.cabinetId, &sensors, sizeof(sensors));
+  sendCanSensors();
 
   CanActuatorFrame local = {};
   for (uint8_t i = 0; i < 2; ++i) {

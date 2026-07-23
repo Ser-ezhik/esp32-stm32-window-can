@@ -151,3 +151,7 @@ in the downloadable system settings file (`.wbackup`). Restoring that file on a
 replacement ESP32 restores the cabinet table and its EEPROM backups together.
 The file has a versioned header and CRC32; its size and every contained cabinet
 record are validated before NVS is changed.
+
+Firmware `v0.1.0-alpha.11` exports backup format V2, which additionally stores
+the optional SLIDE-2CH pairings and sequence delays. V1 files from alpha.10
+remain importable; automatic sliding is left disabled when restoring V1.

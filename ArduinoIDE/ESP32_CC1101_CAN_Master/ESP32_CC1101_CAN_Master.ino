@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.10";
-constexpr uint8_t FW_BUILD = 10;
+constexpr char FW_VERSION[] = "0.1.0-alpha.11";
+constexpr uint8_t FW_BUILD = 11;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
@@ -33,6 +33,10 @@ constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
 constexpr uint32_t CAN_HEARTBEAT_MS = 100;
 constexpr uint32_t OBJECT_OFFLINE_MS = 3000;
 constexpr uint32_t COMMAND_MAX_MS = 60000;
+constexpr uint32_t SLIDE_SEQUENCE_TIMEOUT_MS = 180000;
+constexpr uint32_t SLIDE_MOVING_STATUS_TIMEOUT_MS = 500;
+constexpr uint32_t SLIDE_IDLE_STATUS_TIMEOUT_MS = 1500;
+constexpr uint16_t DEFAULT_SLIDE_DELAY_MS = 300;
 constexpr uint8_t EVENT_COUNT = 48;
 constexpr uint8_t REMOTE_COUNT = 36;
 constexpr uint8_t DISCOVERY_COUNT = 24;
@@ -41,7 +45,7 @@ constexpr uint32_t PROVISION_TIMEOUT_MS = 3000;
 constexpr uint32_t CARRIER_BACKUP_MAGIC = 0x314B4243u;  // CBK1
 constexpr uint8_t CARRIER_BACKUP_VERSION = 1;
 constexpr uint32_t SYSTEM_BACKUP_MAGIC = 0x314B4257u;  // WBK1
-constexpr uint16_t SYSTEM_BACKUP_VERSION = 1;
+constexpr uint16_t SYSTEM_BACKUP_VERSION = 2;
 
 constexpr float RF_FREQUENCY_MHZ = 433.92f;
 constexpr float RF_DATA_RATE_KBPS = 19.2f;
@@ -94,7 +98,14 @@ struct CarrierBackupRecord {
   uint16_t crc;
 };
 
-struct SystemBackupPayload {
+struct SlideConfig {
+  uint8_t enabled;
+  uint8_t auxCabinetId;
+  uint16_t openDelayMs;
+  uint16_t closeDelayMs;
+};
+
+struct SystemBackupPayloadV1 {
   char wifiSsid[33];
   char wifiPassword[65];
   char systemName[NAME_LENGTH];
@@ -106,6 +117,27 @@ struct SystemBackupPayload {
   CarrierBackupRecord carrierBackups[MAX_CABINETS];
 };
 
+struct SystemBackupPayload {
+  char wifiSsid[33];
+  char wifiPassword[65];
+  char systemName[NAME_LENGTH];
+  uint8_t objectCount;
+  uint8_t remoteCount;
+  ObjectConfig objects[MAX_CABINETS];
+  uint8_t reedPolarityMasks[MAX_CABINETS];
+  RemoteRecord remotes[REMOTE_COUNT];
+  CarrierBackupRecord carrierBackups[MAX_CABINETS];
+  SlideConfig slideConfigs[MAX_CABINETS];
+};
+
+struct SystemBackupFileV1 {
+  uint32_t magic;
+  uint16_t version;
+  uint16_t payloadSize;
+  uint32_t crc32;
+  SystemBackupPayloadV1 payload;
+};
+
 struct SystemBackupFile {
   uint32_t magic;
   uint16_t version;
@@ -114,6 +146,9 @@ struct SystemBackupFile {
   SystemBackupPayload payload;
 };
 #pragma pack(pop)
+
+static_assert(offsetof(SystemBackupPayload, slideConfigs) == sizeof(SystemBackupPayloadV1),
+              "V2 backup must preserve the complete V1 payload prefix");
 
 struct ActuatorRuntime {
   uint16_t currentMa = 0;
@@ -143,6 +178,23 @@ struct ObjectRuntime {
   uint32_t nextHeartbeat = 0;
   uint32_t commandStarted = 0;
   ActuatorRuntime actuators[MAX_ACTUATORS_PER_CABINET];
+};
+
+enum class SlidePhase : uint8_t {
+  Idle = 0,
+  WaitPrimaryOpen = 1,
+  OpenDelay = 2,
+  WaitSlideOpen = 3,
+  WaitSlideClosed = 4,
+  CloseDelay = 5,
+  WaitPrimaryClosed = 6,
+};
+
+struct SlideSequenceRuntime {
+  SlidePhase phase = SlidePhase::Idle;
+  uint8_t auxiliaryIndex = 0xFF;
+  uint32_t startedAt = 0;
+  uint32_t delayUntil = 0;
 };
 
 struct EventRecord {
@@ -197,6 +249,8 @@ RemoteRecord remotes[REMOTE_COUNT] = {};
 EventRecord events[EVENT_COUNT] = {};
 DiscoveryRecord discovered[DISCOVERY_COUNT] = {};
 CarrierBackupRecord carrierBackups[MAX_CABINETS] = {};
+SlideConfig slideConfigs[MAX_CABINETS] = {};
+SlideSequenceRuntime slideSequences[MAX_CABINETS] = {};
 SystemBackupFile backupTransfer = {};
 size_t backupUploadLength = 0;
 bool backupUploadFailed = false;
@@ -229,6 +283,8 @@ portMUX_TYPE rfMux = portMUX_INITIALIZER_UNLOCKED;
 void saveObjects();
 void saveRemotes();
 void saveSystemSettings();
+void saveSlideConfigs();
+void loadSlideConfigs();
 void appendEvent(uint8_t objectId, uint8_t code, uint8_t actuator, const char *text);
 
 void IRAM_ATTR onRfEdge() {
@@ -379,6 +435,17 @@ void storeCarrierBackup(const ObjectConfig &object, uint8_t reedPolarityMask,
   saveCarrierBackups();
 }
 
+void refreshCarrierBackupForObject(uint8_t objectIndex) {
+  if (objectIndex >= objectCount) return;
+  const uint8_t cabinetId = objects[objectIndex].cabinetId;
+  const CarrierBackupRecord &stored = carrierBackups[cabinetId];
+  storeCarrierBackup(
+    objects[objectIndex], reedPolarityMasks[objectIndex],
+    validCarrierBackup(stored) ? stored.sourceUidHash : 0,
+    validCarrierBackup(stored) ? stored.configRevision : 0
+  );
+}
+
 void commitProvisionTransaction(uint16_t configRevision) {
   int objectIndex = provision.oldCabinetId < MAX_CABINETS
     ? objectIndexByCabinet(provision.oldCabinetId) : -1;
@@ -410,6 +477,7 @@ void commitProvisionTransaction(uint16_t configRevision) {
   object.name[sizeof(object.name) - 1] = '\0';
   runtime[objectIndex] = ObjectRuntime{};
   saveObjects();
+  loadSlideConfigs();
 
   const int discoveryIndex = discoveryIndexByUid(provision.uidHash);
   if (discoveryIndex >= 0) {
@@ -476,6 +544,60 @@ void loadObjects() {
   if (objectCount == 0) { setDefaultObjects(); saveObjects(); }
 }
 
+void setDefaultSlideConfigs() {
+  memset(slideConfigs, 0, sizeof(slideConfigs));
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) {
+    slideConfigs[i].auxCabinetId = 0xFF;
+    slideConfigs[i].openDelayMs = DEFAULT_SLIDE_DELAY_MS;
+    slideConfigs[i].closeDelayMs = DEFAULT_SLIDE_DELAY_MS;
+  }
+}
+
+void saveSlideConfigs() {
+  prefs.begin("windowcan", false);
+  prefs.putBytes("slidecfg", slideConfigs, sizeof(slideConfigs));
+  prefs.end();
+}
+
+void loadSlideConfigs() {
+  setDefaultSlideConfigs();
+  prefs.begin("windowcan", true);
+  if (prefs.getBytesLength("slidecfg") == sizeof(slideConfigs)) {
+    prefs.getBytes("slidecfg", slideConfigs, sizeof(slideConfigs));
+  }
+  prefs.end();
+  bool changed = false;
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) {
+    SlideConfig &config = slideConfigs[i];
+    if (config.enabled > 1 || config.openDelayMs > 10000 ||
+        config.closeDelayMs > 10000 ||
+        (config.enabled && !validCabinetId(config.auxCabinetId))) {
+      config = SlideConfig{0, 0xFF, DEFAULT_SLIDE_DELAY_MS, DEFAULT_SLIDE_DELAY_MS};
+      changed = true;
+    }
+  }
+  bool usedAuxiliaries[MAX_CABINETS] = {};
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) {
+    SlideConfig &config = slideConfigs[i];
+    if (!config.enabled) continue;
+    const int auxiliary = objectIndexByCabinet(config.auxCabinetId);
+    const bool valid = i < objectCount &&
+      objects[i].type != static_cast<uint8_t>(ObjectType::Window) &&
+      auxiliary >= 0 && auxiliary != i &&
+      objects[auxiliary].type == static_cast<uint8_t>(ObjectType::Window) &&
+      objects[auxiliary].actuatorCount == 2 &&
+      !slideConfigs[auxiliary].enabled &&
+      !usedAuxiliaries[config.auxCabinetId];
+    if (!valid) {
+      config = SlideConfig{0, 0xFF, DEFAULT_SLIDE_DELAY_MS, DEFAULT_SLIDE_DELAY_MS};
+      changed = true;
+      continue;
+    }
+    usedAuxiliaries[config.auxCabinetId] = true;
+  }
+  if (changed) saveSlideConfigs();
+}
+
 void loadSystemSettings() {
   prefs.begin("windowcan", true);
   prefs.getString("ssid", wifiSsid, sizeof(wifiSsid));
@@ -523,13 +645,16 @@ bool terminatedText(const char *text, size_t length) {
 }
 
 bool validSystemBackup(const SystemBackupFile &file) {
-  if (file.magic != SYSTEM_BACKUP_MAGIC ||
-      file.version != SYSTEM_BACKUP_VERSION ||
-      file.payloadSize != sizeof(SystemBackupPayload) ||
-      file.crc32 != systemBackupCrc32(
-        reinterpret_cast<const uint8_t *>(&file.payload), sizeof(file.payload))) return false;
+  if (file.magic != SYSTEM_BACKUP_MAGIC) return false;
+  const bool version1 = file.version == 1 && file.payloadSize == sizeof(SystemBackupPayloadV1);
+  const bool version2 = file.version == SYSTEM_BACKUP_VERSION &&
+                        file.payloadSize == sizeof(SystemBackupPayload);
+  if (!version1 && !version2) return false;
+  if (file.crc32 != systemBackupCrc32(
+        reinterpret_cast<const uint8_t *>(&file.payload), file.payloadSize)) return false;
 
-  const SystemBackupPayload &payload = file.payload;
+  const SystemBackupPayloadV1 &payload =
+    reinterpret_cast<const SystemBackupPayloadV1 &>(file.payload);
   if (payload.objectCount > MAX_CABINETS || payload.remoteCount > REMOTE_COUNT ||
       !terminatedText(payload.wifiSsid, sizeof(payload.wifiSsid)) ||
       !terminatedText(payload.wifiPassword, sizeof(payload.wifiPassword)) ||
@@ -564,6 +689,31 @@ bool validSystemBackup(const SystemBackupFile &file) {
     if (backup.valid == 0) continue;
     if (!validCarrierBackup(backup) || backup.cabinetId != i) return false;
   }
+
+  if (version1) return true;
+
+  bool usedAuxiliaries[MAX_CABINETS] = {};
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) {
+    const SlideConfig &slide = file.payload.slideConfigs[i];
+    if (slide.enabled > 1 || slide.openDelayMs > 10000 || slide.closeDelayMs > 10000) return false;
+    if (i >= payload.objectCount) {
+      if (slide.enabled) return false;
+      continue;
+    }
+    if (!slide.enabled) continue;
+    if (!validCabinetId(slide.auxCabinetId) || usedAuxiliaries[slide.auxCabinetId] ||
+        payload.objects[i].type == static_cast<uint8_t>(ObjectType::Window) ||
+        payload.objects[i].cabinetId == slide.auxCabinetId) return false;
+    int auxiliaryIndex = -1;
+    for (uint8_t candidate = 0; candidate < payload.objectCount; ++candidate) {
+      if (payload.objects[candidate].cabinetId == slide.auxCabinetId) {
+        auxiliaryIndex = candidate;
+        break;
+      }
+    }
+    if (auxiliaryIndex < 0 || payload.objects[auxiliaryIndex].actuatorCount != 2) return false;
+    usedAuxiliaries[slide.auxCabinetId] = true;
+  }
   return true;
 }
 
@@ -582,12 +732,14 @@ void buildSystemBackup() {
   memcpy(payload.reedPolarityMasks, reedPolarityMasks, sizeof(reedPolarityMasks));
   memcpy(payload.remotes, remotes, sizeof(remotes));
   memcpy(payload.carrierBackups, carrierBackups, sizeof(carrierBackups));
+  memcpy(payload.slideConfigs, slideConfigs, sizeof(slideConfigs));
   backupTransfer.crc32 = systemBackupCrc32(
     reinterpret_cast<const uint8_t *>(&payload), sizeof(payload));
 }
 
 void applySystemBackup(const SystemBackupFile &file) {
-  const SystemBackupPayload &payload = file.payload;
+  const SystemBackupPayloadV1 &payload =
+    reinterpret_cast<const SystemBackupPayloadV1 &>(file.payload);
   strlcpy(wifiSsid, payload.wifiSsid, sizeof(wifiSsid));
   strlcpy(wifiPassword, payload.wifiPassword, sizeof(wifiPassword));
   strlcpy(systemName, payload.systemName, sizeof(systemName));
@@ -597,13 +749,17 @@ void applySystemBackup(const SystemBackupFile &file) {
   memcpy(reedPolarityMasks, payload.reedPolarityMasks, sizeof(reedPolarityMasks));
   memcpy(remotes, payload.remotes, sizeof(remotes));
   memcpy(carrierBackups, payload.carrierBackups, sizeof(carrierBackups));
+  if (file.version >= 2) memcpy(slideConfigs, file.payload.slideConfigs, sizeof(slideConfigs));
+  else setDefaultSlideConfigs();
   for (uint8_t i = 0; i < MAX_CABINETS; ++i) runtime[i] = ObjectRuntime{};
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) slideSequences[i] = SlideSequenceRuntime{};
   discoveredCount = 0;
   provision = ProvisionTransaction{};
   saveSystemSettings();
   saveObjects();
   saveRemotes();
   saveCarrierBackups();
+  saveSlideConfigs();
 }
 
 void eventKey(uint8_t index, char *key, size_t length) {
@@ -684,6 +840,160 @@ void sendObjectCommand(uint8_t index, Command command) {
   state.heartbeatCommand = command;
   state.commandStarted = millis();
   state.nextHeartbeat = millis() + CAN_HEARTBEAT_MS;
+}
+
+int slideAuxiliaryIndex(uint8_t primaryIndex) {
+  if (primaryIndex >= objectCount || !slideConfigs[primaryIndex].enabled) return -1;
+  return objectIndexByCabinet(slideConfigs[primaryIndex].auxCabinetId);
+}
+
+int slidePrimaryIndex(uint8_t auxiliaryIndex) {
+  if (auxiliaryIndex >= objectCount) return -1;
+  for (uint8_t i = 0; i < objectCount; ++i) {
+    if (slideConfigs[i].enabled &&
+        slideConfigs[i].auxCabinetId == objects[auxiliaryIndex].cabinetId) return i;
+  }
+  return -1;
+}
+
+bool slideNodeReady(uint8_t index) {
+  if (index >= objectCount || !objects[index].enabled || !runtime[index].online ||
+      runtime[index].fault != static_cast<uint8_t>(Fault::None)) return false;
+  const bool moving = runtime[index].state == static_cast<uint8_t>(RunState::Moving) ||
+                      runtime[index].state == static_cast<uint8_t>(RunState::Calibrating);
+  const uint32_t timeout = moving ? SLIDE_MOVING_STATUS_TIMEOUT_MS
+                                  : SLIDE_IDLE_STATUS_TIMEOUT_MS;
+  return millis() - runtime[index].lastSeen <= timeout;
+}
+
+bool slidePositionReached(uint8_t index, Position position) {
+  return slideNodeReady(index) &&
+    runtime[index].state == static_cast<uint8_t>(RunState::Idle) &&
+    runtime[index].position == static_cast<uint8_t>(position);
+}
+
+void stopSlidePair(uint8_t primaryIndex, uint8_t auxiliaryIndex) {
+  if (primaryIndex < objectCount) sendObjectCommand(primaryIndex, Command::Stop);
+  if (auxiliaryIndex < objectCount && auxiliaryIndex != primaryIndex) {
+    sendObjectCommand(auxiliaryIndex, Command::Stop);
+  }
+  if (primaryIndex < MAX_CABINETS) slideSequences[primaryIndex] = SlideSequenceRuntime{};
+}
+
+bool dispatchObjectCommand(uint8_t index, Command command) {
+  if (index >= objectCount || !objects[index].enabled) return false;
+  int primaryForAuxiliary = slidePrimaryIndex(index);
+  if (primaryForAuxiliary >= 0) {
+    if (command == Command::Stop) {
+      stopSlidePair(primaryForAuxiliary, index);
+      return true;
+    }
+    return false;
+  }
+
+  const int auxiliary = slideAuxiliaryIndex(index);
+  if (auxiliary < 0 || (command != Command::Open && command != Command::Close &&
+                        command != Command::Stop)) {
+    sendObjectCommand(index, command);
+    return true;
+  }
+  if (command == Command::Stop) {
+    stopSlidePair(index, auxiliary);
+    return true;
+  }
+  if (!slideNodeReady(index) || !slideNodeReady(auxiliary)) return false;
+
+  stopSlidePair(index, auxiliary);
+  SlideSequenceRuntime &sequence = slideSequences[index];
+  sequence.auxiliaryIndex = auxiliary;
+  sequence.startedAt = millis();
+  if (command == Command::Open) {
+    if (slidePositionReached(index, Position::Open)) {
+      sequence.phase = SlidePhase::OpenDelay;
+      sequence.delayUntil = millis() + slideConfigs[index].openDelayMs;
+    } else {
+      sendObjectCommand(index, Command::Open);
+      sequence.phase = SlidePhase::WaitPrimaryOpen;
+    }
+  } else {
+    if (slidePositionReached(auxiliary, Position::Closed)) {
+      sequence.phase = SlidePhase::CloseDelay;
+      sequence.delayUntil = millis() + slideConfigs[index].closeDelayMs;
+    } else {
+      sendObjectCommand(auxiliary, Command::Close);
+      sequence.phase = SlidePhase::WaitSlideClosed;
+    }
+  }
+  return true;
+}
+
+void abortSlideSequence(uint8_t primaryIndex, Fault fault, const char *reason) {
+  const uint8_t auxiliary = slideSequences[primaryIndex].auxiliaryIndex;
+  stopSlidePair(primaryIndex, auxiliary);
+  appendEvent(objects[primaryIndex].id, static_cast<uint8_t>(fault), 0, reason);
+}
+
+void updateSlideSequences() {
+  const uint32_t now = millis();
+  for (uint8_t primary = 0; primary < objectCount; ++primary) {
+    SlideSequenceRuntime &sequence = slideSequences[primary];
+    if (sequence.phase == SlidePhase::Idle) continue;
+    const uint8_t auxiliary = sequence.auxiliaryIndex;
+    if (auxiliary >= objectCount || now - sequence.startedAt > SLIDE_SEQUENCE_TIMEOUT_MS ||
+        !slideNodeReady(primary) || !slideNodeReady(auxiliary)) {
+      abortSlideSequence(primary, Fault::CommunicationTimeout, "стоп: связь раздвижения");
+      continue;
+    }
+    const bool closing = sequence.phase == SlidePhase::WaitSlideClosed ||
+      sequence.phase == SlidePhase::CloseDelay ||
+      sequence.phase == SlidePhase::WaitPrimaryClosed;
+    if (closing && runtime[primary].capMask != 0) {
+      abortSlideSequence(primary, Fault::SafetyEdge, "стоп: защитная кромка");
+      continue;
+    }
+
+    switch (sequence.phase) {
+      case SlidePhase::WaitPrimaryOpen:
+        if (slidePositionReached(primary, Position::Open)) {
+          sequence.phase = SlidePhase::OpenDelay;
+          sequence.delayUntil = now + slideConfigs[primary].openDelayMs;
+        }
+        break;
+      case SlidePhase::OpenDelay:
+        if (static_cast<int32_t>(now - sequence.delayUntil) >= 0) {
+          sendObjectCommand(auxiliary, Command::Open);
+          sequence.phase = SlidePhase::WaitSlideOpen;
+        }
+        break;
+      case SlidePhase::WaitSlideOpen:
+        if (slidePositionReached(auxiliary, Position::Open)) {
+          sequence = SlideSequenceRuntime{};
+          appendEvent(objects[primary].id, 0, 0, "раздвижение завершено");
+        }
+        break;
+      case SlidePhase::WaitSlideClosed:
+        if (slidePositionReached(auxiliary, Position::Closed)) {
+          sequence.phase = SlidePhase::CloseDelay;
+          sequence.delayUntil = now + slideConfigs[primary].closeDelayMs;
+        }
+        break;
+      case SlidePhase::CloseDelay:
+        if (static_cast<int32_t>(now - sequence.delayUntil) >= 0) {
+          sendObjectCommand(primary, Command::Close);
+          sequence.phase = SlidePhase::WaitPrimaryClosed;
+        }
+        break;
+      case SlidePhase::WaitPrimaryClosed:
+        if (slidePositionReached(primary, Position::Closed)) {
+          sequence = SlideSequenceRuntime{};
+          appendEvent(objects[primary].id, 0, 0, "закрытие завершено");
+        }
+        break;
+      default:
+        sequence = SlideSequenceRuntime{};
+        break;
+    }
+  }
 }
 
 void sendCapConfiguration(uint8_t index) {
@@ -860,7 +1170,9 @@ void sendJson(const String &json) {
 String objectSummaryJson(uint8_t index) {
   const ObjectConfig &object = objects[index];
   const ObjectRuntime &state = runtime[index];
-  String json; json.reserve(230);
+  const int auxiliary = slideAuxiliaryIndex(index);
+  const int primary = slidePrimaryIndex(index);
+  String json; json.reserve(330);
   json += F("{\"id\":"); json += object.id;
   json += F(",\"cabinetId\":"); json += object.cabinetId;
   json += F(",\"name\":\""); json += jsonEscape(object.name); json += '"';
@@ -872,6 +1184,13 @@ String objectSummaryJson(uint8_t index) {
   json += F(",\"state\":"); json += state.state;
   json += F(",\"position\":"); json += state.position;
   json += F(",\"fault\":"); json += state.fault;
+  json += F(",\"slideEnabled\":"); json += slideConfigs[index].enabled ? F("true") : F("false");
+  json += F(",\"slideCabinetId\":"); json += slideConfigs[index].auxCabinetId;
+  json += F(",\"slideOpenDelayMs\":"); json += slideConfigs[index].openDelayMs;
+  json += F(",\"slideCloseDelayMs\":"); json += slideConfigs[index].closeDelayMs;
+  json += F(",\"slidePhase\":"); json += static_cast<uint8_t>(slideSequences[index].phase);
+  json += F(",\"slideAuxOnline\":"); json += auxiliary >= 0 && runtime[auxiliary].online ? F("true") : F("false");
+  json += F(",\"slideAuxiliary\":"); json += primary >= 0 ? F("true") : F("false");
   json += '}';
   return json;
 }
@@ -922,7 +1241,62 @@ void handleCapConfiguration() {
   objects[index].capEnabledMask = static_cast<uint8_t>(
     constrain(server.arg("mask").toInt(), 0, 255));
   saveObjects();
+  refreshCarrierBackupForObject(index);
   sendCapConfiguration(index);
+  sendJson("{\"ok\":true}");
+}
+
+void handleSlideConfiguration() {
+  if (!webAuth()) return;
+  const int index = objectIndexById(server.arg("id").toInt());
+  if (index < 0) {
+    server.send(404, "application/json", "{\"ok\":false,\"error\":\"not_found\"}");
+    return;
+  }
+  if (objects[index].type == static_cast<uint8_t>(ObjectType::Window) ||
+      slidePrimaryIndex(index) >= 0) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"slide_primary_invalid\"}");
+    return;
+  }
+  const bool enabled = server.arg("enabled").toInt() != 0;
+  if (!enabled) {
+    const int auxiliary = slideAuxiliaryIndex(index);
+    if (auxiliary >= 0) stopSlidePair(index, auxiliary);
+    slideConfigs[index] = SlideConfig{0, 0xFF, DEFAULT_SLIDE_DELAY_MS, DEFAULT_SLIDE_DELAY_MS};
+    saveSlideConfigs();
+    sendJson("{\"ok\":true}");
+    return;
+  }
+
+  const int cabinetId = server.arg("auxCabinetId").toInt();
+  const int auxiliary = cabinetId >= 0 && cabinetId < MAX_CABINETS
+    ? objectIndexByCabinet(cabinetId) : -1;
+  if (auxiliary < 0 || auxiliary == index || objects[auxiliary].actuatorCount != 2 ||
+      objects[auxiliary].type != static_cast<uint8_t>(ObjectType::Window) ||
+      slideConfigs[auxiliary].enabled) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"slide_aux_invalid\"}");
+    return;
+  }
+  const int existingPrimary = slidePrimaryIndex(auxiliary);
+  if (existingPrimary >= 0 && existingPrimary != index) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"slide_aux_in_use\"}");
+    return;
+  }
+
+  const uint16_t openDelay = static_cast<uint16_t>(
+    constrain(server.arg("openDelayMs").toInt(), 0, 10000));
+  const uint16_t closeDelay = static_cast<uint16_t>(
+    constrain(server.arg("closeDelayMs").toInt(), 0, 10000));
+  const int oldAuxiliary = slideAuxiliaryIndex(index);
+  if (oldAuxiliary >= 0) stopSlidePair(index, oldAuxiliary);
+  slideConfigs[index] = SlideConfig{
+    1, static_cast<uint8_t>(cabinetId), openDelay, closeDelay
+  };
+  objects[auxiliary].capEnabledMask = 0;
+  saveObjects();
+  saveSlideConfigs();
+  refreshCarrierBackupForObject(auxiliary);
+  sendCapConfiguration(auxiliary);
   sendJson("{\"ok\":true}");
 }
 
@@ -931,7 +1305,11 @@ void handleObjectCommand() {
   const int index = objectIndexById(server.arg("id").toInt());
   const Command command = parseCommand(server.arg("command"));
   if (index < 0 || command == Command::None) { server.send(400, "application/json", "{\"ok\":false}"); return; }
-  sendObjectCommand(index, command); appendEvent(objects[index].id, 0, 0, commandName(command));
+  if (!dispatchObjectCommand(index, command)) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"slide_unavailable\"}");
+    return;
+  }
+  appendEvent(objects[index].id, 0, 0, commandName(command));
   sendJson("{\"ok\":true}");
 }
 
@@ -969,6 +1347,7 @@ void handleCalibration() {
 
 void handleStopAll() {
   if (!webAuth()) return;
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) slideSequences[i] = SlideSequenceRuntime{};
   for (uint8_t i = 0; i < objectCount; ++i) if (objects[i].enabled) sendObjectCommand(i, Command::Stop);
   appendEvent(0xFF, 0, 0, "остановлены все объекты"); sendJson("{\"ok\":true}");
 }
@@ -1279,7 +1658,9 @@ int findRemote(uint32_t code) {
 void executeRemote(const RemoteRecord &record) {
   if (!record.enabled) return;
   for (uint8_t i = 0; i < objectCount && i < 64; ++i) {
-    if (record.targetMask & (uint64_t(1) << i)) sendObjectCommand(i, static_cast<Command>(record.command));
+    if (record.targetMask & (uint64_t(1) << i)) {
+      dispatchObjectCommand(i, static_cast<Command>(record.command));
+    }
   }
 }
 
@@ -1344,7 +1725,8 @@ void handleRemoteSave() {
 bool systemBusyForRestore() {
   if (provision.state == ProvisionTransactionState::Pending) return true;
   for (uint8_t i = 0; i < objectCount; ++i) {
-    if (runtime[i].state == static_cast<uint8_t>(RunState::Moving) ||
+    if (slideSequences[i].phase != SlidePhase::Idle ||
+        runtime[i].state == static_cast<uint8_t>(RunState::Moving) ||
         runtime[i].state == static_cast<uint8_t>(RunState::Calibrating) ||
         runtime[i].heartbeatCommand != Command::None) return true;
   }
@@ -1355,7 +1737,7 @@ void handleSystemBackupExport() {
   if (!webAuth()) return;
   buildSystemBackup();
   server.sendHeader("Content-Disposition",
-                    "attachment; filename=window-can-settings-v1.wbackup");
+                    "attachment; filename=window-can-settings-v2.wbackup");
   server.setContentLength(sizeof(backupTransfer));
   server.send(200, "application/octet-stream", "");
   server.client().write(
@@ -1389,7 +1771,9 @@ void handleSystemBackupImport() {
     server.send(409, "application/json", "{\"ok\":false,\"error\":\"system_busy\"}");
     return;
   }
-  if (backupUploadFailed || backupUploadLength != sizeof(backupTransfer)) {
+  if (backupUploadFailed ||
+      (backupUploadLength != sizeof(backupTransfer) &&
+       backupUploadLength != sizeof(SystemBackupFileV1))) {
     backupUploadLength = 0;
     backupUploadFailed = false;
     server.send(400, "application/json", "{\"ok\":false,\"error\":\"backup_size\"}");
@@ -1439,6 +1823,7 @@ void beginWeb() {
   server.on("/api/objects", HTTP_GET, handleObjectsApi); server.on("/api/object", HTTP_GET, handleObjectApi);
   server.on("/api/object/command", HTTP_POST, handleObjectCommand); server.on("/api/object/calibrate", HTTP_POST, handleCalibration);
   server.on("/api/object/cap", HTTP_POST, handleCapConfiguration);
+  server.on("/api/object/slide", HTTP_POST, handleSlideConfiguration);
   server.on("/api/stop-all", HTTP_POST, handleStopAll); server.on("/api/events", HTTP_GET, handleEvents);
   server.on("/api/events/clear", HTTP_POST, handleClearEvents); server.on("/api/discover", HTTP_POST, handleDiscoveryStart);
   server.on("/api/discovery", HTTP_GET, handleDiscoveryList); server.on("/api/provision", HTTP_POST, handleProvision);
@@ -1480,7 +1865,7 @@ void setup() {
   delay(100);
   Serial.printf("\nWindow CAN ESP32 %s\n", FW_VERSION);
   pinMode(PIN_LEARN_BUTTON, INPUT_PULLUP);
-  loadSystemSettings(); loadObjects(); loadCarrierBackups(); loadRemotes(); loadEvents();
+  loadSystemSettings(); loadObjects(); loadSlideConfigs(); loadCarrierBackups(); loadRemotes(); loadEvents();
   beginNetwork();
   beginWeb();
   canReady = beginCan();
@@ -1493,5 +1878,6 @@ void setup() {
 }
 
 void loop() {
-  server.handleClient(); pollCan(); updateCalibrationSequences(); updateHeartbeats(); pollRadio(); pollLearnButton(); delay(1);
+  server.handleClient(); pollCan(); updateSlideSequences(); updateCalibrationSequences();
+  updateHeartbeats(); pollRadio(); pollLearnButton(); delay(1);
 }
