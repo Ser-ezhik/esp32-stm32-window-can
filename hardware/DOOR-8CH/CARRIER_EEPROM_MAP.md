@@ -109,3 +109,39 @@ images in `firmware_releases/carrier_eeprom/default_project/`:
 | `cabinet_05_window.bin` | 5 | 0 | 0 | `0x00` |
 
 Change only the reed mask if the installed D-M9 sensors are PNP/active-high.
+
+## ESP32 backup and carrier replacement
+
+ESP32 firmware build 9 keeps a CRC-protected backup for every configured
+cabinet in its NVS partition. The backup is indexed by `cabinetId` and contains:
+
+- cabinet number and displayed name;
+- object type and actuator/slave count;
+- D-M9 reed polarity mask;
+- enabled CAP1188 channel mask;
+- source MASTER STM32 UID and last confirmed carrier configuration revision.
+
+The backup is refreshed after every successful web configuration and is also
+created when ESP32 discovers an already configured cabinet known in its object
+list.
+
+To replace a complete carrier board:
+
+1. Disconnect the old carrier from CAN and power.
+2. Connect the new carrier with a blank EEPROM and universal STM32 firmware
+   build 9 or newer.
+3. In the web interface open settings, scan the CAN bus and select
+   `Restore` for the unconfigured MASTER.
+4. Enter the old cabinet number.
+
+ESP32 refuses restoration while the old cabinet is online, when that CAN number
+is used by another discovered controller, or when the target is already
+configured. STM32 writes the identity to the inactive A/B slot, reads it back,
+checks its CRC and only then confirms the operation. ESP32 then binds the saved
+object to the new MASTER UID and sends the saved CAP1188 channel mask when the
+new controller starts reporting status.
+
+The power-loss record is deliberately not restored because it is a historical
+event from the old board. Per-actuator speed calibration remains local to each
+STM32 module and must be repeated after replacing STM32 modules, motor drivers
+or actuators.

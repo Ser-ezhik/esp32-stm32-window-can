@@ -855,6 +855,11 @@ void initializeSlave() {
 }  // namespace
 
 void setup() {
+#if defined(STM32F1xx)
+  // Release PA15, PB3 and PB4 from JTAG while keeping PA13/PA14 available for SWD.
+  __HAL_RCC_AFIO_CLK_ENABLE();
+  __HAL_AFIO_REMAP_SWJ_NOJTAG();
+#endif
   bootId = static_cast<uint8_t>(micros() ^ readUidHash());
   uidHash = readUidHash();
   boardRole = readBoardRole();

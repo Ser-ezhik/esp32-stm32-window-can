@@ -103,7 +103,24 @@ static const char WEB_UI_HTML[] PROGMEM = R"WINDOWUI(
       await loadObjects();await discover();
     }catch(error){const messages={cabinet_id_in_use:"Этот CAN-номер уже занят другим шкафом",object_moving:"Сначала остановите все актуаторы",provision_busy:"Другая EEPROM уже программируется",uid_not_discovered:"Контроллер больше не отвечает",stm32_update_required:"Сначала установите на STM32 универсальную прошивку alpha.9 или новее",can_send_failed:"Не удалось отправить команду по CAN"};alert(messages[error.message]||error.message||"Ошибка перенастройки");if(button){button.disabled=false;button.textContent=reconfigure?"Перенастроить":"Настроить"}}
   }
-  async function discover(){await post("/api/discover",{});await wait(700);const j=await(await api("/api/discovery")).json();const nodes=j.nodes||[];$("discoveryList").innerHTML=nodes.map(n=>`<div class="remote-row"><code>${esc(n.uid)}</code><span>${n.configured?'CAN '+n.cabinetId:'Не настроен'}</span><span>FW ${n.firmware}</span><button data-provision-uid="${esc(n.uid)}">${n.configured?'Перенастроить':'Настроить'}</button></div>`).join("")||'<div class="empty">Контроллеры не ответили</div>';document.querySelectorAll("[data-provision-uid]").forEach(button=>{const node=nodes.find(n=>n.uid===button.dataset.provisionUid);button.onclick=()=>provisionNode(node)})}
+  async function restoreNode(node,backups){
+    if(!backups.length){alert("В ESP32 пока нет резервных копий EEPROM");return}
+    const choices=backups.map(b=>`${b.cabinetId}: ${b.name} (${b.actuatorCount} прив.)`).join("\n");
+    const selected=prompt(`Введите номер старой платы:\n${choices}`,String(backups[0].cabinetId));if(selected===null)return;
+    const cabinetId=Number(selected),backup=backups.find(b=>b.cabinetId===cabinetId);
+    if(!backup){alert("Резервная копия этого номера не найдена");return}
+    if(!confirm(`Записать конфигурацию «${backup.name}» из платы №${cabinetId} в новую EEPROM?`))return;
+    try{
+      const started=await(await post("/api/eeprom/restore",{uid:node.uid,cabinetId})).json();
+      const status=await waitProvision(started.token);
+      alert(`EEPROM восстановлена. Плата №${status.cabinetId}, ревизия ${status.configRevision}.`);
+      await loadObjects();await discover();
+    }catch(error){
+      const messages={backup_not_found:"Резервная копия не найдена",target_already_configured:"Выбранная новая плата уже настроена",backup_object_online:"Старая плата с этим номером сейчас работает",cabinet_id_in_use:"Этот номер уже отвечает в CAN",stm32_update_required:"Обновите прошивку STM32 новой платы",can_send_failed:"Не удалось отправить резерв по CAN"};
+      alert(messages[error.message]||error.message||"Восстановление не выполнено");
+    }
+  }
+  async function discover(){await post("/api/discover",{});await wait(700);const [nodeResponse,backupResponse]=await Promise.all([api("/api/discovery"),api("/api/eeprom/backups")]);const nodes=(await nodeResponse.json()).nodes||[],backups=(await backupResponse.json()).backups||[];$("discoveryList").innerHTML=nodes.map(n=>`<div class="remote-row"><code>${esc(n.uid)}</code><span>${n.configured?'CAN '+n.cabinetId:'Не настроен'}</span><span>FW ${n.firmware}</span><button data-provision-uid="${esc(n.uid)}">${n.configured?'Перенастроить':'Настроить'}</button>${!n.configured&&backups.length?`<button data-restore-uid="${esc(n.uid)}">Восстановить</button>`:''}</div>`).join("")||'<div class="empty">Контроллеры не ответили</div>';document.querySelectorAll("[data-provision-uid]").forEach(button=>{const node=nodes.find(n=>n.uid===button.dataset.provisionUid);button.onclick=()=>provisionNode(node)});document.querySelectorAll("[data-restore-uid]").forEach(button=>{const node=nodes.find(n=>n.uid===button.dataset.restoreUid);button.onclick=()=>restoreNode(node,backups)})}
   async function loadSettings(){try{const j=await(await api("/api/settings")).json();$("systemName").value=j.systemName||"";$("canRate").value=String(j.canRate||500000)}catch(e){}}
   async function saveSettings(){await post("/api/settings",{systemName:$("systemName").value});$("systemText").textContent="Настройки сохранены"}
   const renderDetailBase=renderDetail;renderDetail=o=>{renderDetailBase(o);$("detailBody").insertAdjacentHTML("beforeend",capConfigurationHtml(o));bindCapConfiguration()};

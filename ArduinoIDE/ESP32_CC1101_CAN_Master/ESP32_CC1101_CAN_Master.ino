@@ -13,8 +13,8 @@ using namespace windowbus;
 
 namespace {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.8";
-constexpr uint8_t FW_BUILD = 7;
+constexpr char FW_VERSION[] = "0.1.0-alpha.9";
+constexpr uint8_t FW_BUILD = 9;
 
 constexpr int PIN_RF_SCK = 12;
 constexpr int PIN_RF_MISO = 13;
@@ -38,6 +38,8 @@ constexpr uint8_t REMOTE_COUNT = 36;
 constexpr uint8_t DISCOVERY_COUNT = 24;
 constexpr uint8_t NAME_LENGTH = 32;
 constexpr uint32_t PROVISION_TIMEOUT_MS = 3000;
+constexpr uint32_t CARRIER_BACKUP_MAGIC = 0x314B4243u;  // CBK1
+constexpr uint8_t CARRIER_BACKUP_VERSION = 1;
 
 constexpr float RF_FREQUENCY_MHZ = 433.92f;
 constexpr float RF_DATA_RATE_KBPS = 19.2f;
@@ -72,6 +74,22 @@ struct RemoteRecord {
   uint8_t command;
   uint8_t enabled;
   char name[NAME_LENGTH];
+};
+
+struct CarrierBackupRecord {
+  uint32_t magic;
+  uint8_t version;
+  uint8_t valid;
+  uint8_t cabinetId;
+  uint8_t objectType;
+  uint8_t actuatorCount;
+  uint8_t slaveCount;
+  uint8_t reedPolarityMask;
+  uint8_t capEnabledMask;
+  uint32_t sourceUidHash;
+  uint16_t configRevision;
+  char name[NAME_LENGTH];
+  uint16_t crc;
 };
 #pragma pack(pop)
 
@@ -143,6 +161,7 @@ struct ProvisionTransaction {
   uint8_t actuatorCount = 0;
   uint8_t slaveCount = 0;
   uint8_t reedPolarityMask = 0;
+  uint8_t capEnabledMask = 0x07;
   uint8_t result = 0;
   char name[NAME_LENGTH] = {};
 };
@@ -155,6 +174,7 @@ uint8_t reedPolarityMasks[MAX_CABINETS] = {};
 RemoteRecord remotes[REMOTE_COUNT] = {};
 EventRecord events[EVENT_COUNT] = {};
 DiscoveryRecord discovered[DISCOVERY_COUNT] = {};
+CarrierBackupRecord carrierBackups[MAX_CABINETS] = {};
 ProvisionTransaction provision = {};
 uint8_t objectCount = 0;
 uint8_t remoteCount = 0;
@@ -276,6 +296,62 @@ int discoveryIndexByUid(uint32_t uidHash) {
   return -1;
 }
 
+uint16_t carrierBackupCrc(CarrierBackupRecord value) {
+  value.crc = 0;
+  return crc16(reinterpret_cast<const uint8_t *>(&value), sizeof(value));
+}
+
+bool validCarrierBackup(const CarrierBackupRecord &backup) {
+  return backup.magic == CARRIER_BACKUP_MAGIC &&
+    backup.version == CARRIER_BACKUP_VERSION && backup.valid != 0 &&
+    validCabinetId(backup.cabinetId) && backup.cabinetId < MAX_CABINETS &&
+    backup.objectType <= static_cast<uint8_t>(ObjectType::DoubleDoor) &&
+    backup.actuatorCount >= 2 && backup.actuatorCount <= MAX_ACTUATORS_PER_CABINET &&
+    (backup.actuatorCount & 1u) == 0 && backup.slaveCount == backup.actuatorCount / 2u - 1u &&
+    backup.crc == carrierBackupCrc(backup);
+}
+
+void saveCarrierBackups() {
+  prefs.begin("windowcan", false);
+  prefs.putBytes("ee_backups", carrierBackups, sizeof(carrierBackups));
+  prefs.end();
+}
+
+void loadCarrierBackups() {
+  memset(carrierBackups, 0, sizeof(carrierBackups));
+  prefs.begin("windowcan", true);
+  if (prefs.getBytesLength("ee_backups") == sizeof(carrierBackups)) {
+    prefs.getBytes("ee_backups", carrierBackups, sizeof(carrierBackups));
+  }
+  prefs.end();
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) {
+    if (!validCarrierBackup(carrierBackups[i]) || carrierBackups[i].cabinetId != i) {
+      memset(&carrierBackups[i], 0, sizeof(carrierBackups[i]));
+    }
+  }
+}
+
+void storeCarrierBackup(const ObjectConfig &object, uint8_t reedPolarityMask,
+                        uint32_t sourceUidHash, uint16_t configRevision) {
+  if (!validCabinetId(object.cabinetId)) return;
+  CarrierBackupRecord backup = {};
+  backup.magic = CARRIER_BACKUP_MAGIC;
+  backup.version = CARRIER_BACKUP_VERSION;
+  backup.valid = 1;
+  backup.cabinetId = object.cabinetId;
+  backup.objectType = object.type;
+  backup.actuatorCount = object.actuatorCount;
+  backup.slaveCount = object.slaveCount;
+  backup.reedPolarityMask = reedPolarityMask & 0x3Fu;
+  backup.capEnabledMask = object.capEnabledMask;
+  backup.sourceUidHash = sourceUidHash;
+  backup.configRevision = configRevision;
+  strlcpy(backup.name, object.name, sizeof(backup.name));
+  backup.crc = carrierBackupCrc(backup);
+  carrierBackups[backup.cabinetId] = backup;
+  saveCarrierBackups();
+}
+
 void commitProvisionTransaction(uint16_t configRevision) {
   int objectIndex = provision.oldCabinetId < MAX_CABINETS
     ? objectIndexByCabinet(provision.oldCabinetId) : -1;
@@ -300,6 +376,7 @@ void commitProvisionTransaction(uint16_t configRevision) {
   object.type = provision.objectType;
   object.actuatorCount = provision.actuatorCount;
   object.slaveCount = provision.slaveCount;
+  object.capEnabledMask = provision.capEnabledMask;
   reedPolarityMasks[objectIndex] = provision.reedPolarityMask;
   if (provision.name[0]) strncpy(object.name, provision.name, sizeof(object.name) - 1);
   else snprintf(object.name, sizeof(object.name), "CAN %u", provision.cabinetId);
@@ -317,6 +394,7 @@ void commitProvisionTransaction(uint16_t configRevision) {
   provision.result = static_cast<uint8_t>(ProvisionResult::Success);
   provision.state = ProvisionTransactionState::Success;
   provision.completedAt = millis();
+  storeCarrierBackup(object, reedPolarityMasks[objectIndex], provision.uidHash, configRevision);
   appendEvent(object.id, 0, 0, "EEPROM configuration verified");
 }
 
@@ -523,6 +601,17 @@ void rememberDiscovery(const CanDiscoveryFrame &frame) {
   discovered[index].role = frame.role;
   discovered[index].firmware = frame.firmwareBuild;
   discovered[index].lastSeen = millis();
+  if (frame.configured && validCabinetId(frame.cabinetId)) {
+    const int objectIndex = objectIndexByCabinet(frame.cabinetId);
+    const CarrierBackupRecord &stored = carrierBackups[frame.cabinetId];
+    if (objectIndex >= 0 &&
+        (!validCarrierBackup(stored) || stored.sourceUidHash != frame.uidHash)) {
+      const uint16_t revision = validCarrierBackup(stored) ? stored.configRevision : 0;
+      storeCarrierBackup(
+        objects[objectIndex], reedPolarityMasks[objectIndex], frame.uidHash, revision
+      );
+    }
+  }
 }
 
 void processStatus(uint8_t cabinetId, const CanStatusFrame &frame) {
@@ -799,6 +888,109 @@ void handleDiscoveryList() {
   json += F("]}"); sendJson(json);
 }
 
+void handleCarrierBackups() {
+  if (!webAuth()) return;
+  String json = F("{\"backups\":[");
+  json.reserve(5000);
+  bool first = true;
+  for (uint8_t i = 0; i < MAX_CABINETS; ++i) {
+    const CarrierBackupRecord &backup = carrierBackups[i];
+    if (!validCarrierBackup(backup)) continue;
+    if (!first) json += ',';
+    first = false;
+    char uid[9];
+    snprintf(uid, sizeof(uid), "%08lX", static_cast<unsigned long>(backup.sourceUidHash));
+    json += F("{\"cabinetId\":"); json += backup.cabinetId;
+    json += F(",\"name\":\""); json += jsonEscape(backup.name); json += '"';
+    json += F(",\"type\":"); json += backup.objectType;
+    json += F(",\"actuatorCount\":"); json += backup.actuatorCount;
+    json += F(",\"revision\":"); json += backup.configRevision;
+    json += F(",\"sourceUid\":\""); json += uid; json += F("\"}");
+  }
+  json += F("]}");
+  sendJson(json);
+}
+
+void handleRestoreCarrierBackup() {
+  if (!webAuth()) return;
+  if (provision.state == ProvisionTransactionState::Pending) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"provision_busy\"}");
+    return;
+  }
+  const int cabinetValue = server.arg("cabinetId").toInt();
+  if (cabinetValue < 0 || cabinetValue >= MAX_CABINETS ||
+      !validCarrierBackup(carrierBackups[cabinetValue])) {
+    server.send(404, "application/json", "{\"ok\":false,\"error\":\"backup_not_found\"}");
+    return;
+  }
+  const CarrierBackupRecord backup = carrierBackups[cabinetValue];
+  const uint32_t uidHash = strtoul(server.arg("uid").c_str(), nullptr, 16);
+  const int discoveryIndex = discoveryIndexByUid(uidHash);
+  if (discoveryIndex < 0) {
+    server.send(404, "application/json", "{\"ok\":false,\"error\":\"uid_not_discovered\"}");
+    return;
+  }
+  if (discovered[discoveryIndex].configured) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"target_already_configured\"}");
+    return;
+  }
+  if (discovered[discoveryIndex].firmware < 9) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"stm32_update_required\"}");
+    return;
+  }
+  for (uint8_t i = 0; i < discoveredCount; ++i) {
+    if (i != discoveryIndex && discovered[i].configured &&
+        discovered[i].cabinetId == backup.cabinetId) {
+      server.send(409, "application/json", "{\"ok\":false,\"error\":\"cabinet_id_in_use\"}");
+      return;
+    }
+  }
+  const int objectIndex = objectIndexByCabinet(backup.cabinetId);
+  if (objectIndex >= 0 && runtime[objectIndex].online) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"backup_object_online\"}");
+    return;
+  }
+  if (objectIndex < 0 && objectCount >= MAX_CABINETS) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"object_limit\"}");
+    return;
+  }
+
+  const CanProvisionFrame frame = {
+    uidHash,
+    backup.cabinetId,
+    backup.objectType,
+    backup.slaveCount,
+    static_cast<uint8_t>(backup.reedPolarityMask & 0x3Fu),
+  };
+  uint32_t nextToken = provision.token + 1u;
+  if (nextToken == 0) nextToken = 1;
+  provision = ProvisionTransaction{};
+  provision.state = ProvisionTransactionState::Pending;
+  provision.token = nextToken;
+  provision.uidHash = uidHash;
+  provision.startedAt = millis();
+  provision.oldCabinetId = 0xFF;
+  provision.cabinetId = backup.cabinetId;
+  provision.objectType = backup.objectType;
+  provision.actuatorCount = backup.actuatorCount;
+  provision.slaveCount = backup.slaveCount;
+  provision.reedPolarityMask = backup.reedPolarityMask;
+  provision.capEnabledMask = backup.capEnabledMask;
+  strlcpy(provision.name, backup.name, sizeof(provision.name));
+
+  if (!sendCan(CAN_PROVISION_REQUEST, &frame, sizeof(frame))) {
+    provision.state = ProvisionTransactionState::Failed;
+    provision.result = static_cast<uint8_t>(ProvisionResult::WriteVerifyFailed);
+    provision.completedAt = millis();
+    server.send(503, "application/json", "{\"ok\":false,\"error\":\"can_send_failed\"}");
+    return;
+  }
+  String response = F("{\"ok\":true,\"pending\":true,\"token\":");
+  response += provision.token;
+  response += '}';
+  server.send(202, "application/json", response);
+}
+
 void handleProvision() {
   if (!webAuth()) return;
   if (provision.state == ProvisionTransactionState::Pending) {
@@ -867,6 +1059,8 @@ void handleProvision() {
   provision.actuatorCount = actuatorCount;
   provision.slaveCount = frame.slaveCount;
   provision.reedPolarityMask = frame.flags;
+  provision.capEnabledMask = oldObjectIndex >= 0
+    ? objects[oldObjectIndex].capEnabledMask : static_cast<uint8_t>(0x07);
   String objectName = server.arg("name");
   objectName.trim();
   if (objectName.length()) {
@@ -1054,6 +1248,8 @@ void beginWeb() {
   server.on("/api/events/clear", HTTP_POST, handleClearEvents); server.on("/api/discover", HTTP_POST, handleDiscoveryStart);
   server.on("/api/discovery", HTTP_GET, handleDiscoveryList); server.on("/api/provision", HTTP_POST, handleProvision);
   server.on("/api/provision/status", HTTP_GET, handleProvisionStatus);
+  server.on("/api/eeprom/backups", HTTP_GET, handleCarrierBackups);
+  server.on("/api/eeprom/restore", HTTP_POST, handleRestoreCarrierBackup);
   server.on("/api/remotes", HTTP_GET, handleRemotesApi); server.on("/api/remotes/learn", HTTP_POST, handleRemoteLearn);
   server.on("/api/remotes/delete", HTTP_POST, handleRemoteDelete);
   server.on("/api/remotes/save", HTTP_POST, handleRemoteSave);
@@ -1087,7 +1283,7 @@ void setup() {
   delay(100);
   Serial.printf("\nWindow CAN ESP32 %s\n", FW_VERSION);
   pinMode(PIN_LEARN_BUTTON, INPUT_PULLUP);
-  loadSystemSettings(); loadObjects(); loadRemotes(); loadEvents();
+  loadSystemSettings(); loadObjects(); loadCarrierBackups(); loadRemotes(); loadEvents();
   beginNetwork();
   beginWeb();
   canReady = beginCan();

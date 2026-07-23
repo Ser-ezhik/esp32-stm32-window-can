@@ -28,3 +28,16 @@ active-low D-M9N; a one bit is active-high D-M9P wired for a 3.3 V output.
 The existing universal firmware uses the same 64-byte page and `PWR1` record
 layout documented for `DOOR-8CH`. U250 is supplied from held `S1_3V3`, while
 D280 and C280 keep S1 alive long enough to finish one protected EEPROM write.
+
+## Replacement from the ESP32 backup
+
+The ESP32 backup and restore procedure is shared with the eight-channel board.
+After disconnecting the old carrier, discover the blank replacement in the web
+interface, select `Restore` and enter the old cabinet number. The saved window
+identity, actuator count, reed polarity, name and CAP1188 channel mask are
+restored only after the STM32 has written, read back and CRC-checked its A/B
+EEPROM record.
+
+See `hardware/DOOR-8CH/CARRIER_EEPROM_MAP.md` for the complete safety checks and
+backup contents. Speed calibration is intentionally repeated after replacing
+STM32 modules, drivers or actuators.
