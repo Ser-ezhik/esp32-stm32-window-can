@@ -1,19 +1,19 @@
 (kicad_sch (version 20211014) (generator universal2ch_pcb_sync)
 
-  (uuid 85ce9833-8eb7-46a8-8382-0184392bd20c)
+  (uuid e4e20003-4ae3-42c1-ab34-66c62f6a5ced)
 
   (paper "A3")
   (lib_symbols)
 
   (text "UNIVERSAL-2CH | multisheet principle schematic" (at 20.32 12.7 0)
     (effects (font (size 2.0 2.0) bold))
-    (uuid 5f98618f-0615-4019-826c-be7a02fb7225)
+    (uuid 1150f798-18a9-4145-a1b4-c2065423c169)
   )
 
   (sheet (at 25.4 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 1b913616-de28-4bf1-8646-3901ebef1d03)
+    (uuid 56c57ac9-5893-496d-bf5d-2f351a0b72b6)
     (property "Sheetname" "POWER" (id 0) (at 25.4 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -22,7 +22,7 @@
     )
     (instances
       (project ""
-        (path "/1b913616-de28-4bf1-8646-3901ebef1d03" (page "2"))
+        (path "/56c57ac9-5893-496d-bf5d-2f351a0b72b6" (page "2"))
       )
     )
   )
@@ -30,7 +30,7 @@
   (sheet (at 124.46 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 0df5f307-921b-4c46-9897-0073fd3e5ba8)
+    (uuid 179db750-711e-45c6-8c4c-870d15f83359)
     (property "Sheetname" "CONTROL / CAN" (id 0) (at 124.46 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -39,7 +39,7 @@
     )
     (instances
       (project ""
-        (path "/0df5f307-921b-4c46-9897-0073fd3e5ba8" (page "3"))
+        (path "/179db750-711e-45c6-8c4c-870d15f83359" (page "3"))
       )
     )
   )
@@ -47,7 +47,7 @@
   (sheet (at 223.52 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 99b86600-6d8c-415e-aa68-d0ac041605e4)
+    (uuid 595a4d33-9f00-428f-8e51-abebd155bc40)
     (property "Sheetname" "CAP1188" (id 0) (at 223.52 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -56,7 +56,7 @@
     )
     (instances
       (project ""
-        (path "/99b86600-6d8c-415e-aa68-d0ac041605e4" (page "4"))
+        (path "/595a4d33-9f00-428f-8e51-abebd155bc40" (page "4"))
       )
     )
   )
@@ -64,7 +64,7 @@
   (sheet (at 322.58 30.48) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 93c56625-edf1-4197-8641-8acbead02b38)
+    (uuid f67a93d5-1168-43c2-85f6-defb20fa53b2)
     (property "Sheetname" "REEDS" (id 0) (at 322.58 29.21 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -73,7 +73,7 @@
     )
     (instances
       (project ""
-        (path "/93c56625-edf1-4197-8641-8acbead02b38" (page "5"))
+        (path "/f67a93d5-1168-43c2-85f6-defb20fa53b2" (page "5"))
       )
     )
   )
@@ -81,7 +81,7 @@
   (sheet (at 25.4 83.82) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 453b988d-2ffe-4864-ba83-a8b1d5590fcf)
+    (uuid b216f7a4-d74c-48ce-8e5e-25663cea5727)
     (property "Sheetname" "CHANNEL 1" (id 0) (at 25.4 82.55 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -90,7 +90,7 @@
     )
     (instances
       (project ""
-        (path "/453b988d-2ffe-4864-ba83-a8b1d5590fcf" (page "6"))
+        (path "/b216f7a4-d74c-48ce-8e5e-25663cea5727" (page "6"))
       )
     )
   )
@@ -98,7 +98,7 @@
   (sheet (at 124.46 83.82) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid 6065a46a-fa30-4cb0-bcf4-b21d438a3713)
+    (uuid 4a383188-3596-4605-a9a2-63abd868b85b)
     (property "Sheetname" "CHANNEL 2" (id 0) (at 124.46 82.55 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -107,7 +107,7 @@
     )
     (instances
       (project ""
-        (path "/6065a46a-fa30-4cb0-bcf4-b21d438a3713" (page "7"))
+        (path "/4a383188-3596-4605-a9a2-63abd868b85b" (page "7"))
       )
     )
   )
@@ -115,7 +115,7 @@
   (sheet (at 223.52 83.82) (size 88.9 38.1)
     (stroke (width 0.254) (type default))
     (fill (color 1 1 1 0))
-    (uuid e83e371f-9f6a-4e28-ac68-f2d9122ce453)
+    (uuid 4483e9eb-64cc-412a-a31e-96a1a327e1b9)
     (property "Sheetname" "OTHER / MECHANICAL" (id 0) (at 223.52 82.55 0)
       (effects (font (size 1.0 1.0)))
     )
@@ -124,7 +124,7 @@
     )
     (instances
       (project ""
-        (path "/e83e371f-9f6a-4e28-ac68-f2d9122ce453" (page "8"))
+        (path "/4483e9eb-64cc-412a-a31e-96a1a327e1b9" (page "8"))
       )
     )
   )

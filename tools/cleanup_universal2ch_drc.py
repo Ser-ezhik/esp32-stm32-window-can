@@ -36,21 +36,36 @@ for ref in ("J201", "J202", "J203", "J211", "J212", "J213", "J240"):
             item.SetLayer(pcbnew.F_Fab)
 
 reference_positions = {
-    "H1": (5.0, 2.0),
-    "H2": (104.0, 2.0),
-    "D240": (76.0, 120.0),
-    "C235": (94.0, 72.5),
-    "R210": (82.0, 92.0),
+    "H1": (5.0, 10.0),
+    "H2": (99.0, 54.0),
+    "H4": (99.0, 101.0),
+    "R262": (38.0, 88.0),
+    "R272": (70.0, 88.5),
+    "C280": (53.0, 93.0),
+    "F230": (70.0, 20.0),
+    "R210": (53.0, 77.0),
+    "R1206": (64.0, 60.0),
 }
 for ref, point in reference_positions.items():
     board.FindFootprintByReference(ref).Reference().SetPosition(mm(*point))
 
 for drawing in board.GetDrawings():
-    if (
-        isinstance(drawing, pcbnew.PCB_TEXT)
-        and drawing.GetText() == "2x VNH5019 / STM32 / CAN / CAP1188"
-    ):
+    if not isinstance(drawing, pcbnew.PCB_TEXT):
+        continue
+    if drawing.GetText() == "2x VNH5019 / STM32 / CAN / CAP1188":
         drawing.SetLayer(pcbnew.F_Fab)
+    elif drawing.GetText() == "UNIVERSAL-2CH":
+        drawing.SetPosition(mm(39.0, 20.0))
+        drawing.SetTextHeight(pcbnew.FromMM(1.0))
+        drawing.SetTextWidth(pcbnew.FromMM(1.0))
+
+# Edge mounting-hole outlines are documented on fabrication instead of being
+# clipped in the production silkscreen.
+for ref in ("H2", "H4"):
+    fp = board.FindFootprintByReference(ref)
+    for item in fp.GraphicalItems():
+        if item.GetLayer() == pcbnew.F_SilkS:
+            item.SetLayer(pcbnew.F_Fab)
 
 # Stitch the four GND pours together. Without these vias the routed signal
 # channels divide the front pour into several pad-connected regions which DRC
@@ -105,8 +120,8 @@ def hole_clear(point, drill=0.40):
             return False
     return True
 stitches = 0
-for y in range(6, 132, 8):
-    for x in range(6, 118, 8):
+for y in range(6, 110, 8):
+    for x in range(6, 104, 8):
         point = (float(x), float(y))
         if point in existing_vias:
             continue
@@ -114,6 +129,16 @@ for y in range(6, 132, 8):
         if all(key not in layer_blocked for layer_blocked in blocked):
             router.add_via(board, "GND", point, 0.80, 0.40)
             stitches += 1
+
+# The coarse grid point at (62, 78) is too close to C280's drilled lead.
+for item in list(board.GetTracks()):
+    if (
+        isinstance(item, pcbnew.PCB_VIA)
+        and item.GetNetname() == "GND"
+        and item.GetPosition() == mm(62.0, 78.0)
+    ):
+        board.Delete(item)
+        stitches -= 1
 
 filler = pcbnew.ZONE_FILLER(board)
 filler.Fill(board.Zones())
@@ -170,8 +195,8 @@ for _ in range(2):
         break
     filler.Fill(board.Zones())
 
-# The final controller fan-out leaves one valid but only 0.80 mm high front
-# copper strip. A 0.60/0.30 mm stitch is intentionally used here.
+# A narrow front-copper strip between the two current-sense channels is too
+# small for the coarse stitch grid but has a verified 0.60/0.30 mm location.
 final_stitch = (29.175, 63.9912)
 if not any(
     isinstance(item, pcbnew.PCB_VIA)

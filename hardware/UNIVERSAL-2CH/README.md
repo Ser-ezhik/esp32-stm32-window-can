@@ -6,7 +6,7 @@ vent/window node.
 
 ## Hardware
 
-- Board: 120 x 135 mm, four copper layers.
+- Board: 106 x 112 mm, four copper layers.
 - Controller: one socketed STM32F103C8T6 Mini.
 - Drivers: two VNH5019A-E channels with mounting holes for top heatsinks.
 - Network: socketed SN65HVD230 CAN transceiver module and protected edge entry.
@@ -29,12 +29,17 @@ All external field connectors are placed on board edges. Power routing and
 VNH5019 devices occupy the upper half; CAN and touch electronics are kept away
 from the motor outputs.
 
+The field interfaces use board-mounted male headers with removable female cable
+plugs. Connector fronts face outwards; the layout includes body clearance
+between adjacent plugs and keeps the cable-entry space outside the board edge.
+
 ## KiCad Files
 
 - `kicad/UNIVERSAL-2CH.kicad_pcb`: routed PCB.
 - `kicad/UNIVERSAL-2CH.kicad_sch`: complete flat schematic.
 - `kicad/UNIVERSAL-2CH-multisheet.kicad_sch`: multisheet root schematic.
-- `kicad/UNIVERSAL-2CH-top.png`: top-side 3D render.
+- `kicad/UNIVERSAL-2CH-routed-top.png`: final top-side 3D render.
+- `kicad/UNIVERSAL-2CH-routed-iso.png`: final isometric 3D render.
 - `UNIVERSAL-2CH-BOM.csv`: grouped BOM.
 
 ## Verification
@@ -43,5 +48,7 @@ from the motor outputs.
 - Flat schematic ERC: 0 errors, 0 warnings.
 - Multisheet schematic ERC: 0 errors, 0 warnings.
 - PCB-to-schematic sync: 90 references, 283 connected pads, 38 explicit NCs.
+- Routing geometry: straight segments with 45-degree transitions; no staircase
+  routing on long connections.
 - STM32 pin audit: 27 functional socket connections match `config.h`.
 - STM32 build: 24,136 bytes Flash (36%), 3,500 bytes RAM (17%).

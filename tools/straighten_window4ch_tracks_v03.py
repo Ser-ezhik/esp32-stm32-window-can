@@ -16,11 +16,21 @@ BOARD_PATH = Path(os.environ.get("BOARD_PATH", DEFAULT_BOARD))
 EPSILON = pcbnew.FromMM(float(os.environ.get("STRAIGHTEN_EPSILON_MM", "0.19")))
 MAX_WIDTH = pcbnew.FromMM(0.80)
 EXCLUDED_NETS = {
+    "CAP_MISO",
+    "CH1_CS_RAW",
+    "CH1_INA",
     "CH2_PWM",
     "CH3_CS_RAW",
     "CH3_INB",
+    "CH4_DIAG",
     "CH4_PWM",
+    "S1_UART1_RX",
 }
+EXCLUDED_NETS.update(
+    item.strip()
+    for item in os.environ.get("STRAIGHTEN_EXCLUDED_NETS", "").split(",")
+    if item.strip()
+)
 
 
 def key(position: pcbnew.VECTOR2I) -> tuple[int, int]:
@@ -51,9 +61,17 @@ def simplify(points: list[tuple[int, int]]) -> list[tuple[int, int]]:
 
 board = pcbnew.LoadBoard(str(BOARD_PATH))
 groups = defaultdict(list)
+via_nodes = defaultdict(set)
+pad_nodes = defaultdict(set)
+for footprint in board.GetFootprints():
+    for pad in footprint.Pads():
+        if pad.GetNetCode():
+            pad_nodes[pad.GetNetCode()].add(key(pad.GetPosition()))
 for track in board.GetTracks():
-    if (isinstance(track, pcbnew.PCB_VIA) or track.GetWidth() > MAX_WIDTH or
-            track.GetNetname() in EXCLUDED_NETS):
+    if isinstance(track, pcbnew.PCB_VIA):
+        via_nodes[track.GetNetCode()].add(key(track.GetPosition()))
+        continue
+    if (track.GetWidth() > MAX_WIDTH or track.GetNetname() in EXCLUDED_NETS):
         continue
     groups[(track.GetNetCode(), track.GetLayer(), track.GetWidth())].append(track)
 
@@ -72,7 +90,14 @@ for (net_code, layer, width), tracks in groups.items():
         adjacency[second].append(edge_id)
 
     visited = set()
-    starts = [node for node, incident in adjacency.items() if len(incident) != 2]
+    starts = [
+        node for node, incident in adjacency.items()
+        if (
+            len(incident) != 2
+            or node in via_nodes[net_code]
+            or node in pad_nodes[net_code]
+        )
+    ]
     for start in starts:
         for first_edge in adjacency[start]:
             if first_edge in visited:
@@ -87,7 +112,11 @@ for (net_code, layer, width), tracks in groups.items():
                 a, b, _ = edges[edge_id]
                 node = b if node == a else a
                 points.append(node)
-                if len(adjacency[node]) != 2:
+                if (
+                    len(adjacency[node]) != 2
+                    or node in via_nodes[net_code]
+                    or node in pad_nodes[net_code]
+                ):
                     break
                 candidates = [item for item in adjacency[node] if item not in visited]
                 if not candidates:
@@ -138,13 +167,68 @@ for track in list(board.GetTracks()):
         board.Add(piece)
     break
 
+# Keep CH4_CS_RAW clear of the grounded R1406 pad.  The previous diagonal
+# passed the pad by only 0.180 mm; a short vertical leg provides full margin.
+cs_start = key(pcbnew.VECTOR2I_MM(126.0, 64.3756))
+cs_end = key(pcbnew.VECTOR2I_MM(126.313, 62.8615))
+for track in list(board.GetTracks()):
+    if (isinstance(track, pcbnew.PCB_VIA) or
+            track.GetNetname() != "CH4_CS_RAW" or
+            track.GetLayer() != pcbnew.F_Cu or
+            {key(track.GetStart()), key(track.GetEnd())} != {cs_start, cs_end}):
+        continue
+    net = board.FindNet(track.GetNetCode())
+    width = track.GetWidth()
+    board.Delete(track)
+    points = [cs_start, key(pcbnew.VECTOR2I_MM(126.0, 62.8615)), cs_end]
+    for first, second in zip(points, points[1:]):
+        piece = pcbnew.PCB_TRACK(board)
+        piece.SetNet(net)
+        piece.SetLayer(pcbnew.F_Cu)
+        piece.SetWidth(width)
+        piece.SetStart(pcbnew.VECTOR2I(*first))
+        piece.SetEnd(pcbnew.VECTOR2I(*second))
+        board.Add(piece)
+    break
+
+# Replace the long S1 UART RX staircase while keeping a deliberate corridor
+# above the CAP_MISO via at (72.0, 108.25).
+uart_rx_tracks = [
+    track for track in board.GetTracks()
+    if (not isinstance(track, pcbnew.PCB_VIA) and
+        track.GetNetname() == "S1_UART1_RX" and
+        track.GetLayer() == pcbnew.In2_Cu)
+]
+if uart_rx_tracks:
+    net = board.FindNet(uart_rx_tracks[0].GetNetCode())
+    width = uart_rx_tracks[0].GetWidth()
+    for track in uart_rx_tracks:
+        board.Delete(track)
+    points = [
+        key(pcbnew.VECTOR2I_MM(52.5, 121.0)),
+        key(pcbnew.VECTOR2I_MM(61.0, 121.0)),
+        key(pcbnew.VECTOR2I_MM(71.5, 110.5)),
+        key(pcbnew.VECTOR2I_MM(71.5, 109.5)),
+        key(pcbnew.VECTOR2I_MM(73.5, 109.5)),
+        key(pcbnew.VECTOR2I_MM(78.0, 104.5)),
+    ]
+    for first, second in zip(points, points[1:]):
+        piece = pcbnew.PCB_TRACK(board)
+        piece.SetNet(net)
+        piece.SetLayer(pcbnew.In2_Cu)
+        piece.SetWidth(width)
+        piece.SetStart(pcbnew.VECTOR2I(*first))
+        piece.SetEnd(pcbnew.VECTOR2I(*second))
+        board.Add(piece)
+
 # KiCad expects a segment boundary at T junctions.  Simplification can make a
 # short branch meet the middle of a new straight segment, so split that segment
 # at every same-net endpoint lying exactly on it.
 split_count = 0
 track_groups = defaultdict(list)
 for track in board.GetTracks():
-    if not isinstance(track, pcbnew.PCB_VIA):
+    if (not isinstance(track, pcbnew.PCB_VIA) and
+            track.GetNetname() not in EXCLUDED_NETS):
         track_groups[(track.GetNetCode(), track.GetLayer())].append(track)
 
 for tracks in track_groups.values():

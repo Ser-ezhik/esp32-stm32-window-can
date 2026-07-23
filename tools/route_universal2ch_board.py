@@ -112,12 +112,9 @@ retained = {
     "CH1_OUTA", "CH1_OUTB", "CH2_OUTA", "CH2_OUTB",
     "FUSED_12V_CH1", "FUSED_12V_CH2",
     "CH1_DIAG", "CH2_DIAG",
-    "CAP_MOSI", "CAP_MISO", "CAP_SCK", "CAP_CS",
+    "CAP_MOSI", "CAP_MISO", "CAP_SCK",
     "EEPROM_CS", "EEPROM_WP", "EEPROM_HOLD",
-    "POWER_GOOD", "PGOOD_SENSE",
-    "S1_SWDIO", "REED_A_IN_PLACE",
-    "CAP_IRQ", "CAP_RESET",
-    "CH1_INB_MCU", "S1_NRST",
+    "REED_A_IN_PLACE",
 }
 for channel in (1, 2):
     retained.update({
