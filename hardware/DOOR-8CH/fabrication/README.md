@@ -1,6 +1,6 @@
-# DOOR-8CH JLCPCB fabrication package v1.47
+# DOOR-8CH JLCPCB fabrication package v1.48
 
-Upload `DOOR-8CH_JLCPCB_Gerber_v1.47.zip` directly to the JLCPCB PCB quote.
+Upload `DOOR-8CH_JLCPCB_Gerber_v1.48.zip` directly to the JLCPCB PCB quote.
 
 Order parameters:
 
@@ -20,7 +20,7 @@ The production ZIP contains nine Gerber layers, separate PTH and NPTH Excellon
 drill files, and the Gerber job file. KiCad DRC passed with zero violations and
 zero unconnected items before export.
 
-For JLCPCB top-side SMD assembly, use the BOM and CPL from `v1.47/`:
+For JLCPCB top-side SMD assembly, use the BOM and CPL from `v1.48/`:
 
 - `DOOR-8CH_BOM_JLCPCB_SMD_ONLY.csv`;
 - `DOOR-8CH_CPL_JLCPCB_SMD_ONLY.csv`.
@@ -31,6 +31,12 @@ parts, and bottom-side D280. These parts are installed manually after delivery.
 The CPL includes the verified JLCPCB rotation corrections for SOT-23,
 SOT-23-6, SOT-223 and SOIC-8 packages. `DOOR-8CH_PCBA_ORIENTATION_AUDIT.csv`
 records each correction.
+
+Version v1.48 restores the CAP1188 IRQ connection to PB13 on the master STM32
+and removes the Telegram QR graphic from front silkscreen. The unavailable CAN
+common-mode choke C88056 is replaced in the assembly BOM by the compatible
+Pulse PE-1812ACC101STS, JLCPCB/LCSC part C2662187. JLCPCB matched all 18 BOM
+groups, and KiCad DRC passes with zero violations and zero unconnected items.
 
 Version v1.47 corrects the photographed YD ESP32-S3 N16R8 female-socket row
 spacing from 22.86 mm to 25.40 mm. The ESP32 outline, right-side labels,
@@ -58,4 +64,4 @@ polarity correction and Telegram QR code from v1.43 are retained.
 
 SHA-256:
 
-`22AB6B0D419EB8FEE658949089B4AA8E29D951DA397C86C450E947D43B0CF0CB`
+`C07AE03496229F518C9FCB5BC09F7C89EE05D0957EF5383E401B568D354D3CD3`
