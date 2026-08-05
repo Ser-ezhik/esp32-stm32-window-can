@@ -4,7 +4,7 @@ Compact four-actuator controller placement based on one STM32F103RCT6.
 
 ## Placement release
 
-- Board outline: 136.0 x 105.0 mm.
+- Board outline: 124.0 x 93.0 mm.
 - Layers: two copper layers planned.
 - Controller: STM32F103RCT6, LQFP64, soldered on the bottom.
 - Motor drivers: four VNH5019A-E, soldered on the bottom.
@@ -25,4 +25,3 @@ zones. Routing starts only after the placement is approved.
 - Unconnected items reported by KiCad are expected in this placement release.
 
 Open `kicad/UNIVERSAL-4CH-F103RC-IC.kicad_pcb` in KiCad 10.
-

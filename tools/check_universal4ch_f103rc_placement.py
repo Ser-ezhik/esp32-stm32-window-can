@@ -21,8 +21,6 @@ BOARD_PATH = (
     / "kicad"
     / "UNIVERSAL-4CH-F103RC-IC.kicad_pcb"
 )
-BOARD_WIDTH = 136.0
-BOARD_HEIGHT = 105.0
 EDGE_MARGIN = 0.0
 MIN_OVERLAP = 0.20
 PAD_TO_SMD_CLEARANCE = 0.20
@@ -33,10 +31,13 @@ def mm(value: int) -> float:
 
 
 def bbox_mm(item) -> tuple[float, float, float, float]:
-    try:
-        box = item.GetBoundingBox(False, False)
-    except TypeError:
-        box = item.GetBoundingBox()
+    if hasattr(item, "GetRight"):
+        box = item
+    else:
+        try:
+            box = item.GetBoundingBox(False, False)
+        except TypeError:
+            box = item.GetBoundingBox()
     return mm(box.GetX()), mm(box.GetY()), mm(box.GetRight()), mm(box.GetBottom())
 
 
@@ -51,15 +52,19 @@ def expanded(box, margin: float):
 board = pcbnew.LoadBoard(str(BOARD_PATH))
 footprints = list(board.GetFootprints())
 errors: list[str] = []
+edge_box = bbox_mm(board.GetBoardEdgesBoundingBox())
+board_left, board_top, board_right, board_bottom = edge_box
+board_width = board_right - board_left
+board_height = board_bottom - board_top
 
 # Bodies and silkscreen must remain inside the manufactured board outline.
 for fp in footprints:
     box = bbox_mm(fp)
     if (
-        box[0] < EDGE_MARGIN
-        or box[1] < EDGE_MARGIN
-        or box[2] > BOARD_WIDTH - EDGE_MARGIN
-        or box[3] > BOARD_HEIGHT - EDGE_MARGIN
+        box[0] < board_left + EDGE_MARGIN
+        or box[1] < board_top + EDGE_MARGIN
+        or box[2] > board_right - EDGE_MARGIN
+        or box[3] > board_bottom - EDGE_MARGIN
     ):
         errors.append(f"OUTSIDE {fp.GetReference()}: {box}")
 
@@ -99,7 +104,7 @@ for tht_fp in footprints:
                     f"hits {smd_fp.GetReference()}"
                 )
 
-print(f"Board: {BOARD_WIDTH:.1f} x {BOARD_HEIGHT:.1f} mm")
+print(f"Board: {board_width:.1f} x {board_height:.1f} mm")
 print(f"Footprints: {len(footprints)}")
 print(f"Placement errors: {len(errors)}")
 for error in errors:
