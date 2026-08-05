@@ -9,7 +9,7 @@ STM32F103C8T6 and CAP1188 ICs.
 - board size: 83.1 x 100.1 mm;
 - 101 footprints;
 - 2 VNH5019A-E actuator channels;
-- 2 reed-switch connectors;
+- 2 protected 5 V reed-sensor connectors (5V/SIG/GND);
 - 3 capacitive sensor connectors;
 - CAN transceiver module socket;
 - external 5 V MP1584 DC-DC module footprint;
@@ -32,9 +32,17 @@ remain enabled.
 
 Open `kicad/UNIVERSAL-2CH-F103-IC.kicad_pro` in KiCad.
 
+## Assembly links
+
+The board requires two insulated wire links: `C280+ -> J280B` and
+`TP290 -> JP290 (J220.6)`. See `REED_5V_PROTECTION.md` before powering the
+board.
+
 ## Fabrication releases
 
-- `fabrication/v1.5-c88056` is the current production release. It preserves the
+- `fabrication/v1.6-reed5v-protected` is the current production release. It
+  powers J201/J202 from 5 V and adds 4.7 kOhm protected signal inputs.
+- `fabrication/v1.5-c88056` is retained as the preceding release. It preserves the
   verified v1.4 Gerber/CPL and replaces the unavailable L240 with TDK
   ACT45B-101-2P-TL003 (`C88056`).
 - `fabrication/v1.4-orientation-verified` is retained as the preceding release.

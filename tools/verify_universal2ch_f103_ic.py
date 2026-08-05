@@ -15,17 +15,17 @@ CAP_DRIVER = ROOT / "ArduinoIDE/STM32_Universal_Actuator_Node/Cap1188Spi.h"
 
 
 STM32_NETS = {
-    "1": "S1_3V3", "2": "POWER_GOOD", "5": "MCU_HSE_IN", "6": "MCU_HSE_OUT",
-    "7": "S1_NRST", "8": "GND", "9": "S1_3V3", "10": "CH1_CURRENT_ADC",
+    "1": "S1_3V3_REED_BRANCH", "2": "POWER_GOOD", "5": "MCU_HSE_IN", "6": "MCU_HSE_OUT",
+    "7": "S1_NRST", "8": "GND", "9": "S1_3V3_REED_BRANCH", "10": "CH1_CURRENT_ADC",
     "11": "CH2_CURRENT_ADC", "14": "CAP_CS", "15": "CAP_SCK", "16": "CAP_MISO",
     "17": "CAP_MOSI", "18": "REED_A_OPEN", "19": "REED_A_CLOSED", "20": "MCU_BOOT1",
-    "23": "GND", "24": "S1_3V3", "25": "CH2_DIAG", "26": "CAP_IRQ",
+    "23": "GND", "24": "S1_3V3_REED_BRANCH", "25": "CH2_DIAG", "26": "CAP_IRQ",
     "27": "CH1_INA_MCU", "28": "CH1_INB_MCU", "29": "CH1_PWM_MCU",
     "30": "CH2_PWM_MCU", "32": "S1_CAN_RX", "33": "S1_CAN_TX", "34": "S1_SWDIO",
-    "35": "GND", "36": "S1_3V3", "37": "S1_SWCLK", "38": "EEPROM_CS",
+    "35": "GND", "36": "S1_3V3_REED_BRANCH", "37": "S1_SWCLK", "38": "EEPROM_CS",
     "39": "CH2_INA_MCU", "40": "CH2_INB_MCU", "41": "CH1_DIAG",
     "44": "MCU_BOOT0", "45": "REED_A_IN_PLACE", "46": "CAP_RESET", "47": "GND",
-    "48": "S1_3V3",
+    "48": "S1_3V3_REED_BRANCH",
 }
 
 CONFIG_ARRAYS = {
@@ -93,10 +93,25 @@ def main():
     expect_pads(board, failures, "D280", {"1": "S1_5V_HOLD", "2": "LOGIC_5V"})
     expect_pads(board, failures, "C280", {"1": "S1_5V_HOLD", "2": "GND"})
     expect_pads(board, failures, "U230", {"1": "GND", "2": "LOGIC_3V3", "3": "S1_5V_REG"})
-    expect_pads(board, failures, "R2301", {"1": "LOGIC_3V3", "2": "S1_3V3"})
+    expect_pads(board, failures, "R2301", {"1": "LOGIC_3V3", "2": "S1_3V3_REED_BRANCH"})
     expect_pads(board, failures, "J280B", {"1": "S1_5V_REG"})
     expect_value(board, failures, "R2301", r"0R")
     expect_value(board, failures, "C280", r"4700UF")
+
+    expect_pads(board, failures, "J201", {
+        "1": "LOGIC_5V", "2": "REED_A_OPEN_RAW_5V", "3": "GND",
+    })
+    expect_pads(board, failures, "J202", {
+        "1": "LOGIC_5V", "2": "REED_A_CLOSED_RAW_5V", "3": "GND",
+    })
+    expect_pads(board, failures, "R290", {
+        "1": "REED_A_OPEN", "2": "REED_A_OPEN_RAW_5V",
+    })
+    expect_pads(board, failures, "R291", {
+        "1": "REED_A_CLOSED", "2": "REED_A_CLOSED_RAW_5V",
+    })
+    expect_value(board, failures, "R290", r"4\.7K")
+    expect_value(board, failures, "R291", r"4\.7K")
 
     for channel, prefix in ((1, "CH1"), (2, "CH2")):
         expect_pads(board, failures, f"U{channel}", {
@@ -127,8 +142,10 @@ def main():
     expect_value(board, failures, "R210", r"10K")
     expect_pads(board, failures, "U250", {
         "1": "EEPROM_CS", "2": "CAP_MISO", "3": "EEPROM_WP", "4": "GND",
-        "5": "CAP_MOSI", "6": "CAP_SCK", "7": "EEPROM_HOLD", "8": "S1_3V3",
+        "5": "CAP_MOSI", "6": "CAP_SCK", "7": "EEPROM_HOLD", "8": "S1_3V3_REED_BRANCH",
     })
+    expect_pads(board, failures, "TP290", {"1": "S1_3V3"})
+    expect_pads(board, failures, "J220", {"6": "S1_3V3_REED_BRANCH"})
     expect_pads(board, failures, "U270", {
         "1": "POWER_GOOD", "2": "GND", "3": "PGOOD_SENSE", "4": "GND",
         "5": "LOGIC_12V_FUSED", "6": "POWER_GOOD",
@@ -156,6 +173,7 @@ def main():
     print("OK: VNH5019, CAP1188, EEPROM, CAN/power-good and power rails audited")
     print("OK: current baseline 5.7 mA/count, JTAG release and Master role verified")
     print("REQUIRED ASSEMBLY LINK: insulated wire C280+ -> J280B")
+    print("REQUIRED ASSEMBLY LINK: insulated wire TP290 -> JP290 (J220.6)")
     return 0
 
 

@@ -17,7 +17,7 @@ OUTPUT = PROJECT / "fabrication" / os.environ.get(
     "UNIVERSAL_2CH_RELEASE_VERSION", "v1.0-audited"
 )
 
-EXCLUDED = {"U1", "U2", "R240", "J280B"}
+EXCLUDED = {"U1", "U2", "R240", "J280B", "TP290"}
 
 # Verified starting selections. JLCPCB performs a live availability check when
 # the BOM is uploaded; unavailable parts are left unplaced rather than delayed.
@@ -68,7 +68,7 @@ def part_for(reference: str, value: str, footprint: str) -> tuple[str, str]:
             return "100R 1% 0603; UNI-ROYAL 0603WAF1000T5E", "C22775"
         if upper.startswith("1K"):
             return "1K 1% 0603; UNI-ROYAL 0603WAF1001T5E", "C21190"
-        if upper.startswith("4K7"):
+        if upper.startswith(("4K7", "4.7K")):
             return "4.7K 1% 0603; UNI-ROYAL 0603WAF4701T5E", "C23162"
         if upper.startswith("10K"):
             return "10K 1% 0603; UNI-ROYAL 0603WAF1002T5E", "C25804"
@@ -111,7 +111,7 @@ for fp in sorted(board.GetFootprints(), key=lambda item: item.GetReference()):
             else "DNP CAN termination."
             if ref == "R240"
             else "Assembly wire solder pad; no component."
-            if ref == "J280B"
+            if ref in {"J280B", "TP290"}
             else "Through-hole/module part; install manually."
         )
         manual.append({
@@ -141,7 +141,7 @@ for fp in sorted(board.GetFootprints(), key=lambda item: item.GetReference()):
         "Designator": ref,
         "Mid X": f"{pcbnew.ToMM(position.x):.6f}mm",
         "Mid Y": f"{-pcbnew.ToMM(position.y):.6f}mm",
-        "Layer": "Bottom",
+        "Layer": "Bottom" if fp.IsFlipped() else "Top",
         "Rotation": f"{final:.1f}",
     })
     if ref in {
@@ -179,6 +179,8 @@ write_csv(OUTPUT / "UNIVERSAL-2CH-F103-IC_ORIENTATION_AUDIT.csv",
           ("Reference", "Footprint", "KiCadRotation", "JlcCorrection", "FinalRotation"), audit)
 
 print(f"BOM groups: {len(bom)}")
-print(f"Bottom-side SMD placements: {len(placements)}")
+top_count = sum(row["Layer"] == "Top" for row in placements)
+bottom_count = sum(row["Layer"] == "Bottom" for row in placements)
+print(f"SMD placements: {top_count} top, {bottom_count} bottom")
 print(f"Manual/DNP placements: {len(manual)}")
 print(OUTPUT)
