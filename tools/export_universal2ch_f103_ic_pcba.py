@@ -22,13 +22,13 @@ EXCLUDED = {"U1", "U2", "R240", "J280B"}
 # Verified starting selections. JLCPCB performs a live availability check when
 # the BOM is uploaded; unavailable parts are left unplaced rather than delayed.
 REF_PARTS = {
-    "CAP1": ("CAP1188-1-CP-TR capacitive touch controller", ""),
+    "CAP1": ("CAP1188-1-CP-TR capacitive touch controller", "C2652057"),
     "D230": ("SS54 5A 40V SMB; LGE SS54", "C432139"),
     "D231": ("SMBJ16A 600W unidirectional SMB; LGE SMBJ16A", "C713715"),
     "D240": ("ESD24VD3B bidirectional CAN ESD SOD-323", "C484324"),
     "D241": ("ESD24VD3B bidirectional CAN ESD SOD-323", "C484324"),
     "D280": ("SS34 3A 40V SMA Schottky; MDD SS34", "C8678"),
-    "L240": ("ACT45B-101-2P-TL003 CAN common-mode choke", "C88056"),
+    "L240": ("PE-1812ACC101STS CAN common-mode choke", "C2662187"),
     "U230": ("AMS1117-3.3 SOT-223", "C6186"),
     "U250": ("25LC256-I/SN SPI EEPROM SOIC-8", "C84670"),
     "U270": ("TLV6700DDCR dual comparator SOT-23-6", "C2868382"),
@@ -79,11 +79,14 @@ def part_for(reference: str, value: str, footprint: str) -> tuple[str, str]:
     raise RuntimeError(f"No JLCPCB mapping for {reference}: {value} / {footprint}")
 
 
-def correction(reference: str, footprint: str) -> float:
-    if reference in {"D1101", "D1201", "D230", "D231", "D280", "U230", "U270"}:
+def correction(reference: str) -> float:
+    """Return bottom-side JLC library offsets verified by the pin-1 preview."""
+    if reference in {"CAP1", "U250", "U300"}:
+        return 90.0
+    if reference in {
+        "D230", "D231", "D280", "L240", "U270", "Y300",
+    }:
         return 180.0
-    if reference == "U250":
-        return 270.0
     return 0.0
 
 
@@ -129,7 +132,10 @@ for fp in sorted(board.GetFootprints(), key=lambda item: item.GetReference()):
     })
     position = fp.GetPosition()
     base = fp.GetOrientationDegrees() % 360.0
-    fix = correction(ref, footprint)
+    # JLCPCB library models use package-specific zero angles. These offsets
+    # are for the bottom-side preview and are not interchangeable with the
+    # top-side corrections used by the larger controller board.
+    fix = correction(ref)
     final = (base + fix) % 360.0
     placements.append({
         "Designator": ref,
@@ -138,7 +144,10 @@ for fp in sorted(board.GetFootprints(), key=lambda item: item.GetReference()):
         "Layer": "Bottom",
         "Rotation": f"{final:.1f}",
     })
-    if fix:
+    if ref in {
+        "CAP1", "D1101", "D1201", "D230", "D231", "D240", "D241",
+        "D280", "L240", "U230", "U250", "U270", "U300", "Y300",
+    }:
         audit.append({
             "Reference": ref,
             "Footprint": footprint,

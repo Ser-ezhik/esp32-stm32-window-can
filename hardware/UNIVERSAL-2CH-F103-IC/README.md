@@ -34,9 +34,12 @@ Open `kicad/UNIVERSAL-2CH-F103-IC.kicad_pro` in KiCad.
 
 ## Fabrication releases
 
-- `fabrication/v1.1-maskfix` is the current production release. It includes
-  `F.Mask` and `B.Mask`, JLCPCB BOM/CPL files, DRC report, Gerber ZIP, and
-  top/bottom verification renders.
+- `fabrication/v1.4-orientation-verified` is the current production release.
+  It includes `F.Mask` and `B.Mask`, the corrected JLCPCB BOM/CPL files, DRC
+  report, Gerber ZIP, the JLCPCB placement screenshot, and a component-by-
+  component orientation check. The JLCPCB cart project is `Y14`.
+- `fabrication/v1.1-maskfix`, `v1.2-orientationfix`, and
+  `v1.3-orientation-audit` are retained for history and must not be ordered.
 - `fabrication/v1.0-audited` must not be manufactured: its Gerber archive was
   generated without the solder-mask layers.
 
