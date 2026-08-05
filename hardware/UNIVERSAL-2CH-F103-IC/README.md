@@ -34,7 +34,10 @@ Open `kicad/UNIVERSAL-2CH-F103-IC.kicad_pro` in KiCad.
 
 ## Fabrication releases
 
-- `fabrication/v1.4-orientation-verified` is the current production release.
+- `fabrication/v1.5-c88056` is the current production release. It preserves the
+  verified v1.4 Gerber/CPL and replaces the unavailable L240 with TDK
+  ACT45B-101-2P-TL003 (`C88056`).
+- `fabrication/v1.4-orientation-verified` is retained as the preceding release.
   It includes `F.Mask` and `B.Mask`, the corrected JLCPCB BOM/CPL files, DRC
   report, Gerber ZIP, the JLCPCB placement screenshot, and a component-by-
   component orientation check. The JLCPCB cart project is `Y14`.

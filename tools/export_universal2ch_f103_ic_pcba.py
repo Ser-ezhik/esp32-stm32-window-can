@@ -28,7 +28,7 @@ REF_PARTS = {
     "D240": ("ESD24VD3B bidirectional CAN ESD SOD-323", "C484324"),
     "D241": ("ESD24VD3B bidirectional CAN ESD SOD-323", "C484324"),
     "D280": ("SS34 3A 40V SMA Schottky; MDD SS34", "C8678"),
-    "L240": ("PE-1812ACC101STS CAN common-mode choke", "C2662187"),
+    "L240": ("ACT45B-101-2P-TL003 CAN common-mode choke", "C88056"),
     "U230": ("AMS1117-3.3 SOT-223", "C6186"),
     "U250": ("25LC256-I/SN SPI EEPROM SOIC-8", "C84670"),
     "U270": ("TLV6700DDCR dual comparator SOT-23-6", "C2868382"),
