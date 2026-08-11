@@ -1,5 +1,5 @@
 param(
-    [string]$Version = 'v1.0-audited',
+    [string]$Version = 'v1.0-jlc-cart',
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
@@ -7,27 +7,26 @@ $ErrorActionPreference = 'Stop'
 $kicadRoot = 'C:\Users\Ezhik\AppData\Local\Programs\KiCad\10.0'
 $kicadCli = Join-Path $kicadRoot 'bin\kicad-cli.exe'
 $kicadPython = Join-Path $kicadRoot 'bin\python.exe'
-$project = Join-Path $ProjectRoot 'hardware\UNIVERSAL-2CH-F103-IC'
-$board = Join-Path $project 'kicad\UNIVERSAL-2CH-F103-IC.kicad_pcb'
-$fabrication = Join-Path $project 'fabrication'
-$release = Join-Path $fabrication $Version
+$project = Join-Path $ProjectRoot 'hardware\UNIVERSAL-4CH-F103RC-IC'
+$board = Join-Path $project 'kicad\UNIVERSAL-4CH-F103RC-IC.kicad_pcb'
+$release = Join-Path (Join-Path $project 'fabrication') $Version
 $gerbers = Join-Path $release 'gerbers'
-$zip = Join-Path $release 'UNIVERSAL-2CH-F103-IC_GERBER.zip'
+$zip = Join-Path $release 'UNIVERSAL-4CH-F103RC-IC_GERBER.zip'
 $stencilGerbers = Join-Path $release 'stencil-gerbers'
-$stencilZip = Join-Path $release 'UNIVERSAL-2CH-F103-IC_STENCIL_GERBER.zip'
+$stencilZip = Join-Path $release 'UNIVERSAL-4CH-F103RC-IC_STENCIL_GERBER.zip'
 
 New-Item -ItemType Directory -Force -Path $gerbers | Out-Null
 New-Item -ItemType Directory -Force -Path $stencilGerbers | Out-Null
 Get-ChildItem -LiteralPath $stencilGerbers -File | Remove-Item -Force
 
-$previousReleaseVersion = $env:UNIVERSAL_2CH_RELEASE_VERSION
-$env:UNIVERSAL_2CH_RELEASE_VERSION = $Version
-& $kicadPython (Join-Path $ProjectRoot 'tools\export_universal2ch_f103_ic_pcba.py')
-$env:UNIVERSAL_2CH_RELEASE_VERSION = $previousReleaseVersion
+$previousReleaseVersion = $env:UNIVERSAL_4CH_RELEASE_VERSION
+$env:UNIVERSAL_4CH_RELEASE_VERSION = $Version
+& $kicadPython (Join-Path $ProjectRoot 'tools\export_universal4ch_f103rc_pcba.py')
+$env:UNIVERSAL_4CH_RELEASE_VERSION = $previousReleaseVersion
 if ($LASTEXITCODE) { throw 'BOM/CPL export failed' }
 
 & $kicadCli pcb drc --exit-code-violations `
-    -o (Join-Path $release 'UNIVERSAL-2CH-F103-IC_DRC.rpt') $board
+    -o (Join-Path $release 'UNIVERSAL-4CH-F103RC-IC_DRC.rpt') $board
 if ($LASTEXITCODE) { throw 'PCB DRC failed' }
 
 & $kicadCli pcb export gerbers --board-plot-params --check-zones -o $gerbers $board
@@ -37,11 +36,11 @@ if ($LASTEXITCODE) { throw 'Gerber export failed' }
 if ($LASTEXITCODE) { throw 'Drill export failed' }
 
 $requiredGerbers = @(
-    'UNIVERSAL-2CH-F103-IC-F_Cu.gbr',
-    'UNIVERSAL-2CH-F103-IC-B_Cu.gbr',
-    'UNIVERSAL-2CH-F103-IC-F_Mask.gbr',
-    'UNIVERSAL-2CH-F103-IC-B_Mask.gbr',
-    'UNIVERSAL-2CH-F103-IC-Edge_Cuts.gbr'
+    'UNIVERSAL-4CH-F103RC-IC-F_Cu.gbr',
+    'UNIVERSAL-4CH-F103RC-IC-B_Cu.gbr',
+    'UNIVERSAL-4CH-F103RC-IC-F_Mask.gbr',
+    'UNIVERSAL-4CH-F103RC-IC-B_Mask.gbr',
+    'UNIVERSAL-4CH-F103RC-IC-Edge_Cuts.gbr'
 )
 foreach ($requiredGerber in $requiredGerbers) {
     if (-not (Test-Path -LiteralPath (Join-Path $gerbers $requiredGerber))) {
