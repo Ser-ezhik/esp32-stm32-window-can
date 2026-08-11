@@ -17,6 +17,9 @@ Compact four-actuator controller based on one STM32F103RCT6.
 - The 12 main motor supply/output paths are reinforced by boolean-union copper
   zones with a nominal 3.0 mm width; local connector/pad breakouts narrow only
   where adjacent plated contacts limit the available clearance.
+- Every clearance-permitted underlying power segment is widened to 0.6 mm;
+  only short package/connector fanouts retain their smaller library width and
+  remain fully covered by the reinforced copper zones.
 - CH3/CH4 OUTA use two redundant three-via layer transitions per path
   (0.8 mm via, 0.4 mm drill) to cross the obstructing power branches.
 - Both copper layers include GND planes.
