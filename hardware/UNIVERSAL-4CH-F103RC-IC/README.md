@@ -20,8 +20,10 @@ Compact four-actuator controller based on one STM32F103RCT6.
 - Every clearance-permitted underlying power segment is widened to 0.6 mm;
   only short package/connector fanouts retain their smaller library width and
   remain fully covered by the reinforced copper zones.
-- CH3/CH4 OUTA use two redundant three-via layer transitions per path
-  (0.8 mm via, 0.4 mm drill) to cross the obstructing power branches.
+- CH1/CH2 OUTA have at least four parallel vias at each required layer
+  transition. CH3/CH4 OUTA use 3 x 3 via banks at both transitions, and the
+  CH4 OUTB auxiliary transition has four parallel vias. CH1-CH3 OUTB stay on
+  B.Cu throughout and therefore carry no motor current through vias.
 - Both copper layers include GND planes.
 - Reed connectors supply 5 V and use 4.7 kohm series protection for accidental
   D-M9P connection to a 3.3 V MCU input.
