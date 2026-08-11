@@ -14,7 +14,11 @@ Compact four-actuator controller based on one STM32F103RCT6.
 - CAP1188, SPI flash EEPROM and low-voltage SMD parts are soldered on the bottom.
 - CAN transceiver and MP1584 5 V converter remain replaceable top-side modules.
 - Two unplated heatsink mounting holes are provided around each VNH5019A-E.
-- Motor supply and output routes are reinforced by 2.0 mm copper zones.
+- The 12 main motor supply/output paths are reinforced by boolean-union copper
+  zones with a nominal 3.0 mm width; local connector/pad breakouts narrow only
+  where adjacent plated contacts limit the available clearance.
+- CH3/CH4 OUTA use two redundant three-via layer transitions per path
+  (0.8 mm via, 0.4 mm drill) to cross the obstructing power branches.
 - Both copper layers include GND planes.
 - Reed connectors supply 5 V and use 4.7 kohm series protection for accidental
   D-M9P connection to a 3.3 V MCU input.
@@ -29,8 +33,16 @@ the 3.3 V regulator. The connection is explicitly marked on B.Silkscreen.
 
 - KiCad DRC: 0 violations, 0 unconnected pads.
 - Automated critical pad/net contract check: PASS.
+- Automated effective-copper audit: PASS for all 12 power paths. With 2 oz
+  copper, estimated planar path resistance is 1.1-4.0 milliohm and estimated
+  dissipation at the 5 A design-check current is at most 0.10 W per path
+  (excluding the small additional resistance of plated transitions).
 - Four VNH channels, CAP1188 SPI, EEPROM SPI, remapped CAN, SWD, power-good and
   three protected reed inputs are included in the contract check.
+
+Use 2 oz finished copper for production. The expected actuator current is
+about 2.5 A; 5 A is the routing verification current, not the continuous-load
+rating of the complete controller assembly.
 
 ## Firmware status
 
