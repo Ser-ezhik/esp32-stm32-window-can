@@ -4,6 +4,9 @@ The controller uses the same CAN/UART protocol and universal cabinet
 configuration model as the other STM32 nodes. Four motor channels are handled
 locally by one LQFP64 MCU.
 
+This is a separate compile-time hardware target of the universal source. It is
+not pin-compatible with the compiled F103C8 two-channel target.
+
 | Function | STM32 pin |
 | --- | --- |
 | VNH1 current | PA0 / ADC1_IN0 |
@@ -37,3 +40,7 @@ locally by one LQFP64 MCU.
 
 BOOT0 and BOOT1 have dedicated 10 kohm pull-down resistors. SWD remains
 available for programming and recovery.
+
+The F103 CAN peripheral must use the PB8/PB9 remap. PA11 remains available as
+TIM1_CH4 for actuator 4 PWM. CAP1188 and the 25LC256 share SPI1, with separate
+chip-select signals on PA4 and PC4.
