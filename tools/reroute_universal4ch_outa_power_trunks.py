@@ -64,7 +64,10 @@ def add_via_array(
 def add_route(board: pcbnew.BOARD, net_name: str, route: dict) -> None:
     net = board.FindNet(net_name)
     for start, end in zip(route["bottom_entry"], route["bottom_entry"][1:]):
-        add_track(board, net, pcbnew.B_Cu, start, end)
+        # Use a real 3 mm track here. These two disconnected zone outlines
+        # share one net/layer zone, and KiCad can otherwise discard the entry
+        # island even though it terminates at the plated connector pad.
+        add_track(board, net, pcbnew.B_Cu, start, end, 3.00)
     add_via_array(board, net, route["entry_vias"])
 
     for start, end in zip(route["front"], route["front"][1:]):

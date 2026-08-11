@@ -34,7 +34,7 @@ the 3.3 V regulator. The connection is explicitly marked on B.Silkscreen.
 - KiCad DRC: 0 violations, 0 unconnected pads.
 - Automated critical pad/net contract check: PASS.
 - Automated effective-copper audit: PASS for all 12 power paths. With 2 oz
-  copper, estimated planar path resistance is 1.1-4.0 milliohm and estimated
+  copper, estimated planar path resistance is 1.1-2.6 milliohm and estimated
   dissipation at the 5 A design-check current is at most 0.10 W per path
   (excluding the small additional resistance of plated transitions).
 - Four VNH channels, CAP1188 SPI, EEPROM SPI, remapped CAN, SWD, power-good and
