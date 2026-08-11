@@ -44,16 +44,19 @@ the 3.3 V regulator. The connection is explicitly marked on B.Silkscreen.
   (excluding the small additional resistance of plated transitions).
 - Four VNH channels, CAP1188 SPI, EEPROM SPI, remapped CAN, SWD, power-good and
   three protected reed inputs are included in the contract check.
+- Channel 3 and 4 ADC clamps and diagnostic pull-ups are connected to the
+  powered `S1_3V3` rail; the electrical audit rejects the former orphan rail.
 
 Use 2 oz finished copper for production. The expected actuator current is
 about 2.5 A; 5 A is the routing verification current, not the continuous-load
 rating of the complete controller assembly.
 
-## Firmware status
+## Firmware
 
-The board uses the universal CAN protocol, but it requires the dedicated
-`STM32F103RCT6 / 4CH integrated` build configuration. The existing F103C8
-two-channel binary must not be flashed onto this board. The pin contract for
-the four-channel build is documented in `PINMAP.md`.
+Use `ArduinoIDE/STM32_Universal_Actuator_Node_4CH_F103RC`. It publishes two
+classic-CAN actuator frames, each containing two local channels, and is
+compatible with the existing ESP32 four-actuator object model. Build it with
+`tools/build-stm32-4ch-f103rc.ps1`. The existing F103C8 two-channel binary must
+not be flashed onto this board.
 
 Open `kicad/UNIVERSAL-4CH-F103RC-IC.kicad_pcb` in KiCad 10.
