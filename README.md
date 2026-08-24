@@ -17,7 +17,8 @@ under the `legacy-rp2040-import` tag. New releases never replace previous binari
 
 ## Current development status
 
-The current releases are STM32 `0.1.0-alpha.8` and ESP32-S3 `0.1.0-alpha.7`:
+The current releases are STM32 two-channel `0.1.0-alpha.14`, STM32 four-channel
+`0.1.0-alpha.13`, and ESP32-S3 `0.1.0-alpha.12`:
 
 - hardware bxCAN at 500 kbit/s;
 - three hardware UART links at 250 kbit/s with CRC16 frames;
@@ -29,6 +30,9 @@ The current releases are STM32 `0.1.0-alpha.8` and ESP32-S3 `0.1.0-alpha.7`:
 - per-direction full-stroke calibration data and PWM equalization;
 - carrier provisioning/discovery protocol;
 - watchdog and safe outputs at boot.
+- bounded CAN/UART receive work per control-loop pass;
+- validation of command, fault and object-type values received from the bus;
+- verified internal configuration writes with retries and a latched storage fault;
 - ESP32-S3 CAN coordinator with CC1101 receiver and configuration stored in NVS;
 - object-based web UI for up to 64 windows/doors, actuator telemetry, events and emergency stop;
 - editable 433 MHz button assignments;
