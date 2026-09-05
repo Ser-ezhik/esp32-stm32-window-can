@@ -88,6 +88,7 @@ uint32_t lastCommandAt = 0;
 uint32_t armedUntil = 0;
 uint32_t lastControlAt = 0;
 uint32_t lastSensorAt = 0;
+uint32_t lastCapHealthAt = 0;
 uint32_t lastStatusAt = 0;
 uint32_t lastDiscoveryAt = 0;
 bool carrierConfigured = false;
@@ -291,6 +292,13 @@ void clearFault() {
     setFault(Fault::ConfigStorage);
     return;
   }
+  if (isMaster() && config.capEnabledMask != 0 && !capOnline) {
+    capOnline = cap1188.begin(config.capEnabledMask);
+    if (!capOnline) {
+      setFault(Fault::Cap1188Offline);
+      return;
+    }
+  }
   fault = carrierConfigured || !isMaster() ? Fault::None : Fault::NotConfigured;
   faultActuator = 0;
   runState = fault == Fault::None ? RunState::Safe : RunState::Fault;
@@ -417,6 +425,19 @@ void executeCommand(Command command, uint8_t flags, uint16_t argument, bool from
   const Direction direction = commandDirection(command);
   if (direction == Direction::None) return;
   if (activeCommand == command && (runState == RunState::Moving || runState == RunState::Calibrating)) return;
+
+  if (isMaster() && config.capEnabledMask != 0) {
+    capOnline = cap1188.checkOnline(config.capEnabledMask);
+    if (!capOnline) {
+      setFault(Fault::Cap1188Offline);
+      return;
+    }
+    capMask = cap1188.touched() & config.capEnabledMask;
+    if (direction == Direction::Retract && capMask != 0) {
+      setFault(Fault::SafetyEdge);
+      return;
+    }
+  }
 
   activeCommand = command;
   lastMovementCommand = command;
@@ -602,11 +623,25 @@ void applyCalibration() {
 }
 
 void completeMovementIfReady() {
+  if (runState != RunState::Moving && runState != RunState::Calibrating) return;
   if (!cabinetMovementFinished()) return;
+  const Direction completedDirection = commandDirection(activeCommand);
+  if (completedDirection == Direction::None) return;
+  if (isMaster()) {
+    const bool doubleDoor = carrierConfigured &&
+                            carrier.objectType == static_cast<uint8_t>(ObjectType::DoubleDoor);
+    const uint8_t expectedMask = completedDirection == Direction::Extend
+                                   ? static_cast<uint8_t>(doubleDoor ? 0x09u : 0x01u)
+                                   : static_cast<uint8_t>(doubleDoor ? 0x12u : 0x02u);
+    if ((reedMask & expectedMask) != expectedMask) {
+      setFault(Fault::NoCurrent);
+      return;
+    }
+  }
   if (calibrationPendingApply && isMaster()) applyCalibration();
   calibrationPendingApply = false;
   if (fault != Fault::None) return;
-  position = commandDirection(activeCommand) == Direction::Extend ? Position::Open : Position::Closed;
+  position = completedDirection == Direction::Extend ? Position::Open : Position::Closed;
   activeCommand = Command::None;
   runState = RunState::Idle;
 }
@@ -653,6 +688,15 @@ void readMasterSensors() {
     else position = Position::Intermediate;
   }
 
+  if (config.capEnabledMask != 0 && millis() - lastCapHealthAt >= hw::CAP_HEALTH_PERIOD_MS) {
+    lastCapHealthAt = millis();
+    capOnline = cap1188.checkOnline(config.capEnabledMask);
+    if (!capOnline) {
+      capMask = 0;
+      setFault(Fault::Cap1188Offline);
+      return;
+    }
+  }
   if (capOnline) {
     const uint8_t nextCapMask = cap1188.touched() & config.capEnabledMask;
     if (nextCapMask != capMask) {
@@ -915,7 +959,7 @@ void initializeMaster() {
   canOnline = canBus.begin(hw::CAN_BITRATE);
   clearFault();
   if (!carrierConfigured) setFault(Fault::NotConfigured);
-  else if (!capOnline && carrier.objectType != static_cast<uint8_t>(ObjectType::Window)) {
+  else if (!capOnline && config.capEnabledMask != 0) {
     setFault(Fault::Cap1188Offline);
   }
 }
@@ -946,7 +990,7 @@ void setup() {
 }
 
 void loop() {
-  const uint32_t now = millis();
+  uint32_t now = millis();
   IWatchdog.reload();
 
   if (isMaster() && digitalRead(hw::POWER_GOOD) == LOW) {
@@ -962,6 +1006,9 @@ void loop() {
   } else {
     pollSlaveLink();
   }
+
+  // Command handlers may spend time in direction dead-time; protection must use a newer timestamp.
+  now = millis();
 
   if (now - lastSensorAt >= hw::SENSOR_PERIOD_MS) {
     lastSensorAt = now;

@@ -4,8 +4,8 @@
 
 namespace hw {
 
-constexpr char FW_VERSION[] = "0.1.0-alpha.14";
-constexpr uint32_t FW_BUILD = 14;
+constexpr char FW_VERSION[] = "0.1.0-alpha.15";
+constexpr uint32_t FW_BUILD = 15;
 
 constexpr uint8_t ACTUATOR_COUNT = 2;
 constexpr uint8_t SLAVE_COUNT = 3;
@@ -55,6 +55,7 @@ constexpr uint16_t PWM_MAX = 1000;
 
 constexpr uint32_t CONTROL_PERIOD_MS = 5;
 constexpr uint32_t SENSOR_PERIOD_MS = 10;
+constexpr uint32_t CAP_HEALTH_PERIOD_MS = 250;
 constexpr uint32_t STATUS_PERIOD_MOVING_MS = 100;
 constexpr uint32_t STATUS_PERIOD_IDLE_MS = 1000;
 constexpr uint32_t HEARTBEAT_TIMEOUT_MS = 300;

@@ -24,10 +24,16 @@ class Cap1188Spi {
     if (!online_) return false;
 
     setEnabledMask(enabledMask);
-    return true;
+    return checkOnline(enabledMask);
   }
 
   bool online() const { return online_; }
+
+  bool checkOnline(uint8_t expectedMask) {
+    online_ = readRegister(0xFD) == 0x50 &&
+              readRegister(0x21) == expectedMask && readRegister(0x27) == expectedMask;
+    return online_;
+  }
 
   uint8_t touched() {
     if (!online_) return 0;

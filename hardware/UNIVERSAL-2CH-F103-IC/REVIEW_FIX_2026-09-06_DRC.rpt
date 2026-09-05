@@ -1,0 +1,218 @@
+** Drc report for UNIVERSAL-2CH-F103-IC.kicad_pcb **
+** Created on 2026-09-06T03:02:07 **
+** Report includes: Errors, Warnings **
+
+** Found 52 DRC violations **
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: ограничения настроек платы; warning
+    @(12.0000 mm, 0.0000 mm): Segment on Edge.Cuts
+    @(72.1200 mm, 0.4000 mm): Reference field of J2
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: ограничения настроек платы; warning
+    @(12.0000 mm, 0.0000 mm): Segment on Edge.Cuts
+    @(36.1200 mm, 0.4000 mm): Reference field of J1
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(25.1500 mm, 1.5000 mm): Rectangle of J1 on f.silkscreen
+    @(30.5000 mm, 13.8500 mm): Reference field of HS1A
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(61.1500 mm, 1.5000 mm): Rectangle of J2 on f.silkscreen
+    @(66.5000 mm, 13.8500 mm): Reference field of HS2A
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(31.4800 mm, 61.2600 mm): Reference field of CAN1
+    @(32.1250 mm, 60.8473 mm): Segment of C230 on f.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(42.0000 mm, 85.5000 mm): Circle of C280 on f.silkscreen
+    @(35.0000 mm, 86.0000 mm): Reference field of D280
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(35.6700 mm, 85.4600 mm): Segment of C280 on f.silkscreen
+    @(35.0000 mm, 86.0000 mm): Reference field of D280
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(35.6700 mm, 85.5000 mm): Segment of C280 on f.silkscreen
+    @(35.0000 mm, 86.0000 mm): Reference field of D280
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(72.0000 mm, 54.0000 mm): PCB text 'WIRE TP290 -> JP290' on f.silkscreen
+    @(78.0000 mm, 54.0000 mm): PTH pad 6 [S1_3V3_REED_BRANCH] of J220
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(75.7000 mm, 72.5500 mm): Footprint text of DC1 (IN+)
+    @(77.6000 mm, 70.7500 mm): PTH pad 1 [LOGIC_12V_PROTECTED] of DC1
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(65.3000 mm, 77.9500 mm): Footprint text of DC1 (OUT-)
+    @(62.6000 mm, 79.7500 mm): PTH pad 4 [GND] of DC1
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(65.3000 mm, 72.5500 mm): Footprint text of DC1 (OUT+)
+    @(62.6000 mm, 70.7500 mm): PTH pad 3 [LOGIC_5V] of DC1
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(70.0000 mm, 86.1500 mm): Reference field of C231
+    @(64.0000 mm, 86.0000 mm): PCB text 'WIRE C280+ TO J280B' on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(64.0000 mm, 86.0000 mm): PCB text 'WIRE C280+ TO J280B' on b.silkscreen
+    @(62.1406 mm, 85.4900 mm): Segment of C239 on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(62.1406 mm, 86.5100 mm): Segment of C239 on b.silkscreen
+    @(64.0000 mm, 86.0000 mm): PCB text 'WIRE C280+ TO J280B' on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(56.8500 mm, 85.4100 mm): Segment of U230 on b.silkscreen
+    @(64.0000 mm, 86.0000 mm): PCB text 'WIRE C280+ TO J280B' on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(62.0000 mm, 84.5700 mm): Reference field of C239
+    @(60.0000 mm, 84.0000 mm): Circle of J280B on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(58.9300 mm, 72.5000 mm): Reference field of C3008
+    @(59.4300 mm, 76.0000 mm): Reference field of R2301
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(37.7400 mm, 46.5600 mm): Segment of D1101 on b.silkscreen
+    @(38.5000 mm, 47.0700 mm): Reference field of R1107
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(39.2600 mm, 46.5600 mm): Segment of D1101 on b.silkscreen
+    @(38.5000 mm, 47.0700 mm): Reference field of R1107
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(37.7400 mm, 45.5600 mm): Segment of D1101 on b.silkscreen
+    @(38.5000 mm, 47.0700 mm): Reference field of R1107
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(35.2500 mm, 87.0000 mm): Reference field of L240
+    @(31.4900 mm, 87.3500 mm): Segment of D280 on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(74.5000 mm, 47.0700 mm): Reference field of R1207
+    @(73.7400 mm, 45.5600 mm): Segment of D1201 on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(74.5000 mm, 47.0700 mm): Reference field of R1207
+    @(75.2600 mm, 46.5600 mm): Segment of D1201 on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(72.5000 mm, 44.5000 mm): Reference field of R1206
+    @(73.7400 mm, 43.4400 mm): Segment of D1201 on b.silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(73.7400 mm, 46.5600 mm): Segment of D1201 on b.silkscreen
+    @(74.5000 mm, 47.0700 mm): Reference field of R1207
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(70.5000 mm, 43.5700 mm): Reference field of R1202
+    @(72.5000 mm, 44.5000 mm): Reference field of R1206
+[silk_overlap]: Silkscreen clearance
+    Rule: ограничения настроек платы; warning
+    @(70.7373 mm, 44.4775 mm): Segment of R1202 on b.silkscreen
+    @(72.5000 mm, 44.5000 mm): Reference field of R1206
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(62.0000 mm, 84.5700 mm): Reference field of C239
+    @(63.2250 mm, 84.0000 mm): Pad 2 [GND] of C237 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(64.0000 mm, 86.0000 mm): PCB text 'WIRE C280+ TO J280B' on b.silkscreen
+    @(61.2250 mm, 86.0000 mm): Pad 2 [GND] of C239 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(60.0000 mm, 82.5520 mm): Reference field of J280B
+    @(58.1500 mm, 82.0000 mm): Pad 2 [LOGIC_3V3] of U230 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(76.0000 mm, 73.0000 mm): Reference field of U270
+    @(76.0000 mm, 74.2250 mm): Pad 2 [GND] of C271 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(76.0000 mm, 73.0000 mm): Reference field of U270
+    @(77.6000 mm, 70.7500 mm): PTH pad 1 [LOGIC_12V_PROTECTED] of DC1
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(38.0000 mm, 62.5700 mm): Reference field of C3003
+    @(40.8375 mm, 62.2500 mm): Pad 34 [S1_SWDIO] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(38.0000 mm, 62.5700 mm): Reference field of C3003
+    @(40.8375 mm, 62.7500 mm): Pad 33 [S1_CAN_TX] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(38.0000 mm, 66.5700 mm): Reference field of R3002
+    @(40.8375 mm, 66.7500 mm): Pad 25 [CH2_DIAG] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(38.0000 mm, 66.5700 mm): Reference field of R3002
+    @(40.8375 mm, 66.2500 mm): Pad 26 [CAP_IRQ] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(38.0000 mm, 58.5700 mm): Reference field of R3001
+    @(35.0000 mm, 57.8677 mm): PTH pad 1 [LOGIC_12V_PROTECTED] of C230
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(52.0000 mm, 66.5700 mm): Reference field of C3006
+    @(49.1625 mm, 66.2500 mm): Pad 11 [CH2_CURRENT_ADC] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(52.0000 mm, 66.5700 mm): Reference field of C3006
+    @(49.1625 mm, 66.7500 mm): Pad 12 [<no net>] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(52.0000 mm, 62.5700 mm): Reference field of C3005
+    @(49.1625 mm, 62.2500 mm): Pad 3 [<no net>] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(52.0000 mm, 62.5700 mm): Reference field of C3005
+    @(49.1625 mm, 62.7500 mm): Pad 4 [<no net>] of U300 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(73.0000 mm, 59.3200 mm): Reference field of C341
+    @(72.0000 mm, 58.8250 mm): Pad 1 [EEPROM_HOLD] of R262 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(48.0000 mm, 76.1500 mm): Reference field of C234
+    @(48.0800 mm, 75.0000 mm): PTH pad 3 [S1_SWCLK] of J220
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(72.5000 mm, 44.5000 mm): Reference field of R1206
+    @(73.5625 mm, 45.0000 mm): Pad 3 [CH2_CURRENT_ADC] of D1201 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(72.5000 mm, 48.5700 mm): Reference field of C250
+    @(73.6750 mm, 48.5000 mm): Pad 2 [S1_3V3_REED_BRANCH] of R1207 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(72.5000 mm, 44.5000 mm): Reference field of R1206
+    @(71.3250 mm, 45.0000 mm): Pad 1 [CH2_INB_MCU] of R1202 on B.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(72.5000 mm, 48.5700 mm): Reference field of C250
+    @(71.3250 mm, 48.5000 mm): Pad 1 [CH2_PWM] of R1206 on B.Cu
+[copper_sliver]: Тонкий участок меди (B.Cu)
+    Local override; warning
+[copper_sliver]: Тонкий участок меди (B.Cu)
+    Local override; warning
+[copper_sliver]: Тонкий участок меди (B.Cu)
+    Local override; warning
+[copper_sliver]: Тонкий участок меди (B.Cu)
+    Local override; warning
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **
