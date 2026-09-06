@@ -148,9 +148,12 @@ def main():
     expect_pads(board, failures, "J220", {"6": "S1_3V3_REED_BRANCH"})
     expect_pads(board, failures, "U270", {
         "1": "POWER_GOOD", "2": "GND", "3": "PGOOD_SENSE", "4": "GND",
-        "5": "LOGIC_12V_FUSED", "6": "POWER_GOOD",
+        "5": "POWER_MONITOR_12V", "6": "POWER_GOOD",
     })
     expect_value(board, failures, "R270", r"226K")
+    expect_pads(board, failures, "R270", {"1": "POWER_MONITOR_12V"})
+    expect_pads(board, failures, "C270", {"1": "POWER_MONITOR_12V", "2": "GND"})
+    expect_pads(board, failures, "C340", {"1": "S1_3V3", "2": "GND"})
     expect_value(board, failures, "R271", r"10K")
 
     if "__HAL_AFIO_REMAP_SWJ_NOJTAG();" not in sketch:
@@ -174,6 +177,7 @@ def main():
     print("OK: current baseline 5.7 mA/count, JTAG release and Master role verified")
     print("REQUIRED ASSEMBLY LINK: insulated wire C280+ -> J280B")
     print("REQUIRED ASSEMBLY LINK: insulated wire TP290 -> JP290 (J220.6)")
+    print("REQUIRED ASSEMBLY LINK: insulated wire D230.1 (cathode) -> C270.1")
     return 0
 
 

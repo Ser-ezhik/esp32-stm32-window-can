@@ -21,12 +21,13 @@ STM32F103C8T6 and CAP1188 ICs.
 
 KiCad 10 DRC result:
 
-- 0 DRC errors, 52 warnings (48 silkscreen and 4 copper slivers);
+- 0 DRC errors, 0 warnings;
 - 0 unconnected pads;
 - 0 footprint errors.
 
-These results were regenerated on 2026-09-06. Warnings remain visible and
-have not been waived as a manufacturing approval. See REVIEW_FIX_2026-09-06.md.
+These results were regenerated on 2026-09-06 after relocating conflicting
+silkscreen text and refilling copper with a 0.8 mm minimum feature width.
+Check severities were not weakened. See fabrication/v1.7-alpha15-drc-clean/RELEASE.md.
 
 Open `kicad/UNIVERSAL-2CH-F103-IC.kicad_pro` in KiCad.
 
@@ -39,8 +40,9 @@ board.
 
 ## Fabrication releases
 
-- All existing fabrication archives predate the September repair. Do not use
-  their Gerbers or CPL files for the revised PCB. In particular C340 changed sides.
+- `fabrication/v1.7-alpha15-drc-clean` contains current Gerbers, drill files,
+  stencil files, BOM and CPL. C340 is on the top side. Prior releases are stale
+  for this PCB revision and must not be mixed with these manufacturing files.
 - `fabrication/v1.6-reed5v-protected` is a historical release. It
   powers J201/J202 from 5 V and adds 4.7 kOhm protected signal inputs.
 - `fabrication/v1.5-c88056` is retained as the preceding release. It preserves the

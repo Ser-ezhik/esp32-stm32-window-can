@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$kicadRoot = 'C:\Users\Ezhik\AppData\Local\Programs\KiCad\10.0'
+$kicadRoot = 'C:\Program Files\KiCad\10.0'
 $kicadCli = Join-Path $kicadRoot 'bin\kicad-cli.exe'
 $kicadPython = Join-Path $kicadRoot 'bin\python.exe'
 $project = Join-Path $ProjectRoot 'hardware\UNIVERSAL-2CH-F103-IC'
@@ -16,6 +16,7 @@ $zip = Join-Path $release 'UNIVERSAL-2CH-F103-IC_GERBER.zip'
 $stencilGerbers = Join-Path $release 'stencil-gerbers'
 $stencilZip = Join-Path $release 'UNIVERSAL-2CH-F103-IC_STENCIL_GERBER.zip'
 
+if (Test-Path -LiteralPath $release) { throw 'Release already exists; choose a new version.' }
 New-Item -ItemType Directory -Force -Path $gerbers | Out-Null
 New-Item -ItemType Directory -Force -Path $stencilGerbers | Out-Null
 Get-ChildItem -LiteralPath $stencilGerbers -File | Remove-Item -Force
